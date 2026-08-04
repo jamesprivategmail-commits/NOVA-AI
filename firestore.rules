@@ -1,0 +1,48 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Helper function to check if the user is authenticated
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+    
+    // Check if the user is an admin
+    function isAdmin() {
+      return isAuthenticated() && (request.auth.token.email == 'mrnovatech4@gmail.com' || get(/databases/$(database)/documents/users/$(request.auth.uid)).data.isAdmin == true);
+    }
+
+    match /users/{userId} {
+      allow read: if isAuthenticated() && (request.auth.uid == userId || isAdmin());
+      // Only allow user to update their own profile (with safe fields) OR if they are an admin
+      allow create: if isAuthenticated() && request.auth.uid == userId;
+      allow update: if isAuthenticated() && (request.auth.uid == userId || isAdmin());
+      allow delete: if isAdmin();
+    }
+
+    match /chats/{chatId} {
+      // Allow read/update/delete if the user owns the chat
+      allow read, update, delete: if isAuthenticated() && request.auth.uid == resource.data.userId;
+      // Allow creation if the user sets their own UID
+      allow create: if isAuthenticated() && request.auth.uid == request.resource.data.userId;
+      
+      match /messages/{messageId} {
+        // Allow read/write to messages if the user owns the parent chat
+        allow read, write: if isAuthenticated() && request.auth.uid == get(/databases/$(database)/documents/chats/$(chatId)).data.userId;
+      }
+    }
+
+    match /support_chats/{userId} {
+      allow read, write: if isAuthenticated() && (request.auth.uid == userId || isAdmin());
+      
+      match /messages/{messageId} {
+        allow read, write: if isAuthenticated() && (request.auth.uid == userId || isAdmin());
+      }
+    }
+    
+    match /settings/{docId} {
+      allow read: if isAuthenticated();
+      allow write: if isAdmin();
+    }
+  }
+}
