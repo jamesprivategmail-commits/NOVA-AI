@@ -26,7 +26,7 @@ import {
 } from '../../database/db';
 import { sendMessageToGroq } from '../../api/client';
 import { memoryManager } from '../../memory/context';
-import { Menu, Shield, Crown, Mail, ArrowDown, Sparkles, Code, Target, Binary, Zap, Bot, Mic, ChevronDown } from 'lucide-react';
+import { Menu, Shield, Crown, Mail, ArrowDown, Sparkles, Code, Target, Binary, Zap, Bot, Mic, ChevronDown, Send } from 'lucide-react';
 import { getAuth, signOut } from 'firebase/auth';
 import { clsx } from 'clsx';
 import { motion } from 'motion/react';
@@ -141,25 +141,27 @@ export function ChatScreen({ userId }: ChatScreenProps) {
       alert('Your account has been restricted. Please contact support.');
       return false;
     }
-    if (profile.isAdmin || profile.tier === 'vip') return true;
+    // Only VIP tier bypasses daily message limits
+    if (profile.tier === 'vip') return true;
 
     const today = new Date().toISOString().split('T')[0];
     const isToday = profile.lastMessageDate === today;
+    const currentCount = isToday ? (profile.messageCount || 0) : 0;
 
     if (profile.tier === 'free') {
-      if (isToday && profile.messageCount >= 5) {
+      if (currentCount >= 5) {
         alert('Free tier limit reached (5 messages per day). Please upgrade your plan.');
         setShowSubscription(true);
         return false;
       }
     } else if (profile.tier === 'pro') {
-      if (isToday && profile.messageCount >= 50) {
+      if (currentCount >= 50) {
         alert('Pro tier limit reached (50 messages per day). Please upgrade your plan.');
         setShowSubscription(true);
         return false;
       }
     } else if (profile.tier === 'premium') {
-      if (isToday && profile.messageCount >= 250) {
+      if (currentCount >= 250) {
         alert('Premium tier limit reached (250 messages per day). Please upgrade your plan.');
         setShowSubscription(true);
         return false;
@@ -303,28 +305,28 @@ export function ChatScreen({ userId }: ChatScreenProps) {
       {/* Main Chat Workspace */}
       <div className="flex-1 flex flex-col h-full relative min-w-0 bg-[#0D1117]">
         {/* Header Bar */}
-        <header className="h-14 flex items-center justify-between px-4 md:px-6 sticky top-0 z-10 bg-[#0D1117]/80 border-b border-[#30363D] backdrop-blur-md">
-          <div className="flex items-center gap-3">
+        <header className="min-h-[3.5rem] py-2 px-3 sm:px-4 md:px-6 sticky top-0 z-10 bg-[#0D1117]/90 border-b border-[#30363D] backdrop-blur-md flex items-center justify-between gap-2 overflow-x-auto">
+          <div className="flex items-center gap-2 sm:gap-3 shrink-0">
             <button
               onClick={() => setIsSidebarOpen(!isSidebarOpen)}
-              className="p-2 -ml-2 rounded-xl hover:bg-[#161B22] text-slate-400 hover:text-slate-100 transition-colors"
+              className="p-2 -ml-1 rounded-xl hover:bg-[#161B22] text-slate-400 hover:text-slate-100 transition-colors"
               title="Toggle sidebar"
             >
               <Menu size={20} />
             </button>
-            <div className="flex items-center gap-2.5">
-              <span className="font-extrabold text-lg tracking-wider bg-gradient-to-r from-red-500 via-slate-100 to-blue-500 bg-clip-text text-transparent">
+            <div className="flex items-center gap-2">
+              <span className="font-extrabold text-base sm:text-lg tracking-wider bg-gradient-to-r from-red-500 via-slate-100 to-blue-500 bg-clip-text text-transparent">
                 VOID AI
               </span>
-              <span className="px-2 py-0.5 rounded-full bg-red-950/70 border border-red-800/40 text-[10px] text-red-400 font-mono font-bold uppercase tracking-wider hidden sm:inline-block">
+              <span className="px-2 py-0.5 rounded-full bg-red-950/70 border border-red-800/40 text-[10px] text-red-400 font-mono font-bold uppercase tracking-wider hidden lg:inline-block">
                 PREMIUM INTELLIGENCE
               </span>
             </div>
           </div>
 
-          <div className="flex items-center gap-2 md:gap-3">
+          <div className="flex items-center gap-1.5 sm:gap-2 md:gap-2.5 shrink-0">
             {/* Model Selector Dropdown */}
-            <div className="relative">
+            <div className="relative max-w-[130px] sm:max-w-[180px] md:max-w-[220px]">
               <select
                 value={`${selectedProvider}:${selectedModel}`}
                 onChange={(e) => {
@@ -332,62 +334,75 @@ export function ChatScreen({ userId }: ChatScreenProps) {
                   setSelectedProvider(prov as 'groq' | 'cohere');
                   setSelectedModel(mod);
                 }}
-                className="bg-[#161B22] border border-[#30363D] hover:border-red-500/50 text-slate-200 text-xs font-mono font-bold py-1.5 pl-3 pr-7 rounded-xl focus:outline-none focus:border-red-500 cursor-pointer appearance-none shadow-sm transition-all"
+                className="w-full bg-[#161B22] border border-[#30363D] hover:border-red-500/50 text-slate-200 text-xs font-mono font-bold py-1.5 pl-2.5 pr-6 rounded-xl focus:outline-none focus:border-red-500 cursor-pointer appearance-none shadow-sm transition-all truncate"
                 title="Select AI Model"
               >
                 <optgroup label="Groq Engine">
-                  <option value="groq:llama-3.3-70b-versatile">Llama 3.3 70B (Fast & Intelligent)</option>
-                  <option value="groq:llama-3.1-8b-instant">Llama 3.1 8B Instant (Ultra Fast)</option>
-                  <option value="groq:mixtral-8x7b-32768">Mixtral 8x7B (MoE Architecture)</option>
-                  <option value="groq:deepseek-r1-distill-llama-70b">DeepSeek R1 Distill 70B</option>
+                  <option value="groq:llama-3.3-70b-versatile">Llama 3.3 70B (Fast)</option>
+                  <option value="groq:llama-3.1-8b-instant">Llama 3.1 8B (Instant)</option>
+                  <option value="groq:mixtral-8x7b-32768">Mixtral 8x7B (MoE)</option>
+                  <option value="groq:deepseek-r1-distill-llama-70b">DeepSeek R1 70B</option>
                 </optgroup>
                 <optgroup label="Cohere Engine">
-                  <option value="cohere:command-r-plus">Cohere Command R+ (Elite RAG)</option>
-                  <option value="cohere:command-r">Cohere Command R (High Performance)</option>
-                  <option value="cohere:command-light">Cohere Command Light (Lightweight)</option>
+                  <option value="cohere:command-r-plus">Cohere Command R+</option>
+                  <option value="cohere:command-r">Cohere Command R</option>
+                  <option value="cohere:command-light">Cohere Command Light</option>
                 </optgroup>
               </select>
-              <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-slate-400">
-                <ChevronDown size={14} />
+              <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-1.5 text-slate-400">
+                <ChevronDown size={13} />
               </div>
             </div>
 
+            {/* Telegram Channel Link */}
+            <a
+              href="https://t.me/novatechco"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center gap-1.5 px-2.5 py-1.5 bg-[#0088cc]/20 border border-[#0088cc]/40 text-[#38bdf8] hover:bg-[#0088cc]/30 hover:border-[#0088cc]/60 rounded-xl transition-all text-xs font-bold shadow-sm shrink-0"
+              title="Join Telegram Channel @novatechco"
+            >
+              <Send size={13} className="-rotate-45 text-[#38bdf8]" />
+              <span className="hidden sm:inline">Telegram</span>
+            </a>
+
             <button
               onClick={() => setShowLiveVoice(true)}
-              className="flex items-center gap-1.5 px-3 py-1.5 bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 hover:from-blue-500 hover:to-purple-500 text-white rounded-xl transition-all text-xs font-bold shadow-md shadow-blue-950/40"
+              className="flex items-center gap-1.5 px-2.5 py-1.5 bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 hover:from-blue-500 hover:to-purple-500 text-white rounded-xl transition-all text-xs font-bold shadow-md shadow-blue-950/40 shrink-0"
               title="Launch Live Voice Call with AI"
             >
               <Mic size={14} className="animate-pulse text-blue-200" />
-              <span className="hidden sm:inline">Live Voice</span>
+              <span className="hidden md:inline">Voice</span>
             </button>
 
             <button
               onClick={() => setShowCampaignGenerator(true)}
-              className="flex items-center gap-1.5 px-3 py-1.5 bg-gradient-to-r from-red-600 to-red-700 hover:from-red-500 hover:to-red-600 text-white rounded-xl transition-all text-xs font-bold shadow-md shadow-red-950/40"
+              className="flex items-center gap-1.5 px-2.5 py-1.5 bg-gradient-to-r from-red-600 to-red-700 hover:from-red-500 hover:to-red-600 text-white rounded-xl transition-all text-xs font-bold shadow-md shadow-red-950/40 shrink-0"
+              title="Email Campaign Studio"
             >
               <Mail size={14} />
-              <span className="hidden sm:inline">Campaign Studio</span>
+              <span className="hidden xl:inline">Campaigns</span>
             </button>
 
             {profile && profile.isAdmin && (
               <button
                 onClick={() => setShowAdminPanel(true)}
-                className="flex items-center gap-1.5 px-3 py-1.5 bg-red-950/40 text-red-400 rounded-xl hover:bg-red-900/40 transition-colors text-xs font-bold border border-red-800/40"
+                className="flex items-center gap-1.5 px-2.5 py-1.5 bg-red-950/40 text-red-400 rounded-xl hover:bg-red-900/40 transition-colors text-xs font-bold border border-red-800/40 shrink-0"
               >
                 <Shield size={14} />
-                <span className="hidden sm:inline">Admin</span>
+                <span className="hidden lg:inline">Admin</span>
               </button>
             )}
 
             {profile && (
               <button
                 onClick={() => setShowSubscription(true)}
-                className="px-3 py-1.5 bg-[#161B22] border border-[#30363D] hover:border-amber-500/50 rounded-xl text-xs font-semibold flex items-center gap-2 text-slate-200 transition-all cursor-pointer"
+                className="px-2.5 py-1.5 bg-[#161B22] border border-[#30363D] hover:border-amber-500/50 rounded-xl text-xs font-semibold flex items-center gap-1.5 text-slate-200 transition-all cursor-pointer shrink-0"
               >
                 <Crown size={14} className="text-amber-400" />
                 <span className="capitalize text-amber-400 font-bold">{profile.tier}</span>
-                <span className="w-1 h-1 rounded-full bg-slate-600"></span>
-                <span className="text-slate-400 font-mono text-[11px]">{profile.messageCount} msgs</span>
+                <span className="w-1 h-1 rounded-full bg-slate-600 hidden sm:inline-block"></span>
+                <span className="text-slate-400 font-mono text-[11px] hidden sm:inline-block">{profile.messageCount} msgs</span>
               </button>
             )}
           </div>

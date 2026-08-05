@@ -5,7 +5,7 @@ import Groq from "groq-sdk";
 import helmet from "helmet";
 import rateLimit from "express-rate-limit";
 import dotenv from "dotenv";
-import { doc, getDoc } from "firebase/firestore";
+import { doc, getDoc, setDoc } from "firebase/firestore";
 import { db } from "./src/config/firebase.js";
 
 dotenv.config();
@@ -283,6 +283,25 @@ async function executeCohereWithRotation(messages: any[], systemPrompt: string, 
   throw lastError || new Error(`All Cohere keys failed`);
 }
 
+async function incrementUserMessageCountServer(userId: string) {
+  if (!userId) return;
+  try {
+    const userRef = doc(db, "users", userId);
+    const userSnap = await getDoc(userRef);
+    if (userSnap.exists()) {
+      const uData = userSnap.data();
+      const today = new Date().toISOString().split('T')[0];
+      let newCount = (uData.messageCount || 0) + 1;
+      if (uData.lastMessageDate !== today) {
+        newCount = 1;
+      }
+      await setDoc(userRef, { messageCount: newCount, lastMessageDate: today }, { merge: true });
+    }
+  } catch (err) {
+    console.warn("Error incrementing message count in backend:", err);
+  }
+}
+
 async function startServer() {
   const app = express();
   app.set("trust proxy", 1);
@@ -331,12 +350,17 @@ async function startServer() {
         : tier === 'pro' ? brainSettings.proLimit 
         : brainSettings.freeLimit;
 
-      if (!isAdmin && lastMessageDate === today && messageCount >= limitForTier) {
+      const currentCount = lastMessageDate === today ? (messageCount || 0) : 0;
+
+      if (tier !== 'vip' && currentCount >= limitForTier) {
         res.write(`data: ${JSON.stringify({ text: `\n\n**Tier Limit Exceeded:** You have reached your daily limit of ${limitForTier} messages on the ${tier.toUpperCase()} plan. Please upgrade your plan to continue.` })}\n\n`);
         res.write("data: [DONE]\n\n");
         res.end();
         return;
       }
+
+      // Increment message count on server side
+      await incrementUserMessageCountServer(userId);
 
       const maxTokens = 4096;
       const combinedSystemPrompt = systemPrompt ? systemPrompt.trim() : "";

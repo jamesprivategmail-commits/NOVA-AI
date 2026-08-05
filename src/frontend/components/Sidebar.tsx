@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Plus, MessageSquare, Trash2, Edit2, Settings, LogOut, Shield, Crown, Mail, Search, Sparkles, X } from 'lucide-react';
+import { Plus, MessageSquare, Trash2, Edit2, Settings, LogOut, Shield, Crown, Mail, Search, Sparkles, X, Send } from 'lucide-react';
 import { Chat } from '../../models/types';
 import { clsx } from 'clsx';
 
@@ -61,6 +61,21 @@ export function Sidebar({
           </div>
           <Sparkles size={16} className="text-red-200 group-hover:rotate-12 transition-transform" />
         </button>
+
+        <a
+          href="https://t.me/novatechco"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="w-full flex items-center gap-2.5 bg-[#0088cc]/15 border border-[#0088cc]/35 hover:border-[#0088cc]/60 hover:bg-[#0088cc]/25 text-[#38bdf8] py-2 px-3 rounded-xl transition-all font-semibold text-xs shadow-sm group"
+        >
+          <div className="p-1 bg-[#0088cc]/30 rounded-lg text-white">
+            <Send size={14} className="-rotate-45" />
+          </div>
+          <div className="flex flex-col text-left overflow-hidden">
+            <span className="truncate text-[11px] font-bold text-slate-100">Join Telegram Channel</span>
+            <span className="truncate text-[10px] text-[#38bdf8] font-mono">@novatechco</span>
+          </div>
+        </a>
 
         <button
           onClick={onOpenCampaignGenerator}
