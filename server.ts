@@ -189,18 +189,17 @@ async function startServer() {
 
   app.use("/api/", apiLimiter);
 
-  // Handle AI API streaming proxy with tier limits & behavior enforcement
+  // Handle AI API streaming proxy
   app.post("/api/chat", async (req, res) => {
     try {
-      const { messages = [], systemPrompt = "", userId = "", userTier: clientTier = "" } = req.body;
+      const { messages = [], systemPrompt = "", userId = "" } = req.body;
       
       res.setHeader("Content-Type", "text/event-stream");
       res.setHeader("Cache-Control", "no-cache");
       res.setHeader("Connection", "keep-alive");
 
-      // Retrieve user profile and brain settings directly from Firestore backend
-      const { userTier: dbTier, isBanned, isAdmin, messageCount, lastMessageDate, brainSettings } = await fetchUserAndTierSettings(userId);
-      const tier = dbTier || clientTier || 'free';
+      // Retrieve user profile directly from Firestore backend
+      const { isBanned } = await fetchUserAndTierSettings(userId);
 
       if (isBanned) {
         res.write(`data: ${JSON.stringify({ text: "\n\n**Error:** Your account has been restricted by an administrator." })}\n\n`);
@@ -209,45 +208,9 @@ async function startServer() {
         return;
       }
 
-      // Check daily message limits enforced per tier
-      const today = new Date().toISOString().split('T')[0];
-      const limitForTier = tier === 'vip' ? brainSettings.vipLimit 
-        : tier === 'premium' ? brainSettings.premiumLimit 
-        : tier === 'pro' ? brainSettings.proLimit 
-        : brainSettings.freeLimit;
-
-      if (!isAdmin && lastMessageDate === today && messageCount >= limitForTier) {
-        res.write(`data: ${JSON.stringify({ text: `\n\n**Tier Limit Exceeded:** You have reached your daily limit of ${limitForTier} messages on the ${tier.toUpperCase()} plan. Please upgrade your plan to continue.` })}\n\n`);
-        res.write("data: [DONE]\n\n");
-        res.end();
-        return;
-      }
-
-      // Determine AI System Persona and Limits for effective Tier
-      let combinedSystemPrompt = brainSettings.globalPrompt;
-      let tierSpecificPrompt = "";
-      let maxTokens = 1024;
-
-      if (tier === 'free') {
-        tierSpecificPrompt = brainSettings.freePrompt;
-        maxTokens = brainSettings.freeMaxTokens;
-      } else if (tier === 'pro') {
-        tierSpecificPrompt = brainSettings.proPrompt;
-        maxTokens = brainSettings.proMaxTokens;
-      } else if (tier === 'premium') {
-        tierSpecificPrompt = brainSettings.premiumPrompt;
-        maxTokens = brainSettings.premiumMaxTokens;
-      } else if (tier === 'vip') {
-        tierSpecificPrompt = brainSettings.vipPrompt;
-        maxTokens = brainSettings.vipMaxTokens;
-      }
-
-      if (tierSpecificPrompt) {
-        combinedSystemPrompt += `\n\n[ENFORCED TIER BEHAVIOR: ${tier.toUpperCase()}]\n${tierSpecificPrompt}`;
-      }
-      if (systemPrompt && !systemPrompt.includes(brainSettings.globalPrompt)) {
-        combinedSystemPrompt += `\n\n${systemPrompt}`;
-      }
+      // Execute with user prompt directly, with maximum tokens and no artificial brain constraints or tier holds
+      const maxTokens = 4096;
+      const combinedSystemPrompt = systemPrompt ? systemPrompt.trim() : "";
 
       await executeGroqWithFallback(messages, combinedSystemPrompt, maxTokens, res);
       

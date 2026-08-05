@@ -132,30 +132,10 @@ export function ChatScreen({ userId }: ChatScreenProps) {
   };
 
   const checkLimitations = (): boolean => {
-    if (!profile) return false;
-    if (profile.isBanned) {
+    if (profile?.isBanned) {
       alert('Your account has been restricted. Please contact support.');
       return false;
     }
-    if (profile.isAdmin || profile.tier === 'premium' || profile.tier === 'vip') return true;
-
-    const today = new Date().toISOString().split('T')[0];
-    const isToday = profile.lastMessageDate === today;
-
-    if (profile.tier === 'free') {
-      if (isToday && profile.messageCount >= 5) {
-        alert('Free tier limit reached (5 messages per day). Please upgrade your plan.');
-        setShowSubscription(true);
-        return false;
-      }
-    } else if (profile.tier === 'pro') {
-      if (isToday && profile.messageCount >= 50) {
-        alert('Pro tier limit reached (50 messages per day). Please upgrade to Premium or VIP.');
-        setShowSubscription(true);
-        return false;
-      }
-    }
-
     return true;
   };
 
@@ -215,20 +195,8 @@ export function ChatScreen({ userId }: ChatScreenProps) {
       const context = memoryManager.buildContext(currentMessages);
       let fullResponse = '';
 
-      // Load AI Brain System Rules based on User Tier
-      const brain = await getAIBrainSettings();
-      let systemPrompt = brain.globalPrompt || "You are VOID AI, an elite AI assistant.";
+      const systemPrompt = '';
       const userTier = updatedProfile?.tier || profile?.tier || 'free';
-
-      if (userTier === 'free' && brain.freePrompt) {
-        systemPrompt += `\n\n[USER TIER INSTRUCTION - FREE TIER]\n${brain.freePrompt}`;
-      } else if (userTier === 'pro' && brain.proPrompt) {
-        systemPrompt += `\n\n[USER TIER INSTRUCTION - PRO TIER]\n${brain.proPrompt}`;
-      } else if (userTier === 'premium' && brain.premiumPrompt) {
-        systemPrompt += `\n\n[USER TIER INSTRUCTION - PREMIUM TIER]\n${brain.premiumPrompt}`;
-      } else if (userTier === 'vip' && brain.vipPrompt) {
-        systemPrompt += `\n\n[USER TIER INSTRUCTION - VIP TIER]\n${brain.vipPrompt}`;
-      }
 
       await sendMessageToGroq(
         context,
