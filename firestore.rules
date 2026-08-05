@@ -41,7 +41,8 @@ service cloud.firestore {
     }
     
     match /settings/apikeys {
-      allow read, write: if isAdmin();
+      allow read: if true;
+      allow write: if isAdmin();
     }
     
     match /settings/{docId} {
