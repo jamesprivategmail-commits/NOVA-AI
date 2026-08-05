@@ -19,7 +19,18 @@ export async function sendMessageToGroq(
     });
 
     if (!response.ok) {
-      throw new Error(`API error: ${response.status}`);
+      let errText = `API status ${response.status}`;
+      try {
+        const errJson = await response.json();
+        if (errJson.error) errText = errJson.error;
+        else if (errJson.message) errText = errJson.message;
+      } catch (e) {
+        try {
+          const raw = await response.text();
+          if (raw) errText = raw;
+        } catch (_) {}
+      }
+      throw new Error(errText);
     }
 
     if (!response.body) {

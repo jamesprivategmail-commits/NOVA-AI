@@ -315,8 +315,8 @@ async function startServer() {
 
   const apiLimiter = rateLimit({
     windowMs: 15 * 60 * 1000,
-    max: 100,
-    message: { error: "Too many requests, please try again later." }
+    max: 500,
+    message: { error: "Too many requests. Please wait a minute before sending more messages." }
   });
 
   app.use("/api/", apiLimiter);

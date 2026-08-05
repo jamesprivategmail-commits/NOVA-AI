@@ -255,7 +255,11 @@ export function ChatScreen({ userId }: ChatScreenProps) {
         console.log('Stream aborted by user');
       } else {
         console.error('Failed to get response', error);
-        alert('Error communicating with VOID AI server.');
+        const errorText = error?.message || 'Error communicating with VOID AI server.';
+        const errNotice = `⚠️ **Connection Error:** ${errorText}\n\nPlease try again or select another model from the dropdown at the top bar.`;
+        const modelMsg = await saveMessage(activeChatId, 'model', errNotice);
+        setMessages([...currentMessages, modelMsg]);
+        setStreamingMessage('');
       }
     } finally {
       setIsLoading(false);
