@@ -4,7 +4,9 @@ export async function sendMessageToGroq(
   onChunk: (text: string) => void,
   signal?: AbortSignal,
   userId?: string,
-  userTier?: string
+  userTier?: string,
+  provider: 'groq' | 'cohere' = 'groq',
+  model?: string
 ) {
   try {
     const response = await fetch("/api/chat", {
@@ -12,7 +14,7 @@ export async function sendMessageToGroq(
       headers: {
         "Content-Type": "application/json",
       },
-      body: JSON.stringify({ messages, systemPrompt, userId, userTier }),
+      body: JSON.stringify({ messages, systemPrompt, userId, userTier, provider, model }),
       signal
     });
 

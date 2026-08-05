@@ -7,7 +7,10 @@ export interface PricingSettings {
 }
 
 export interface SystemAPIKeys {
-  groqApiKey: string;
+  groqApiKey?: string;
+  groqApiKeys?: string[];
+  cohereApiKey?: string;
+  cohereApiKeys?: string[];
 }
 
 export interface AIBrainSettings {

@@ -21,8 +21,9 @@ export function AdminDashboard({ onClose }: AdminDashboardProps) {
   const [pricing, setPricing] = useState<PricingSettings>({ premium: 5000, pro: 7000, vip: 10000 });
   const [savingPricing, setSavingPricing] = useState(false);
 
-  const [groqKey, setGroqKey] = useState<string>('');
-  const [showGroqKey, setShowGroqKey] = useState(false);
+  const [groqKeysText, setGroqKeysText] = useState<string>('');
+  const [cohereKeysText, setCohereKeysText] = useState<string>('');
+  const [showKeys, setShowKeys] = useState(false);
   const [savingKey, setSavingKey] = useState(false);
   const [keySaveSuccess, setKeySaveSuccess] = useState(false);
 
@@ -58,7 +59,12 @@ export function AdminDashboard({ onClose }: AdminDashboardProps) {
     
     getPricingSettings().then(setPricing);
     getAIBrainSettings().then(setBrain);
-    getSystemAPIKeys().then(keys => setGroqKey(keys.groqApiKey || ''));
+    getSystemAPIKeys().then(keys => {
+      const gKeys = keys.groqApiKeys && keys.groqApiKeys.length > 0 ? keys.groqApiKeys : (keys.groqApiKey ? [keys.groqApiKey] : []);
+      const cKeys = keys.cohereApiKeys && keys.cohereApiKeys.length > 0 ? keys.cohereApiKeys : (keys.cohereApiKey ? [keys.cohereApiKey] : []);
+      setGroqKeysText(gKeys.join('\n'));
+      setCohereKeysText(cKeys.join('\n'));
+    });
     
     return () => {
       unsubUsers();
@@ -70,11 +76,19 @@ export function AdminDashboard({ onClose }: AdminDashboardProps) {
     e.preventDefault();
     setSavingKey(true);
     try {
-      await updateSystemAPIKeys({ groqApiKey: groqKey.trim() });
+      const parsedGroq = groqKeysText.split('\n').map(k => k.trim()).filter(Boolean);
+      const parsedCohere = cohereKeysText.split('\n').map(k => k.trim()).filter(Boolean);
+
+      await updateSystemAPIKeys({ 
+        groqApiKey: parsedGroq[0] || '',
+        groqApiKeys: parsedGroq,
+        cohereApiKey: parsedCohere[0] || '',
+        cohereApiKeys: parsedCohere
+      });
       setKeySaveSuccess(true);
       setTimeout(() => setKeySaveSuccess(false), 3000);
     } catch (err) {
-      console.error("Failed to save API key", err);
+      console.error("Failed to save API keys", err);
     } finally {
       setSavingKey(false);
     }
@@ -709,65 +723,94 @@ export function AdminDashboard({ onClose }: AdminDashboardProps) {
               </form>
             </div>
           ) : activeTab === 'apikeys' ? (
-            <div className="max-w-2xl mx-auto space-y-6">
+            <div className="max-w-3xl mx-auto space-y-6">
               <form onSubmit={handleSaveApiKey} className="bg-zinc-950/60 border border-zinc-800 rounded-2xl p-6 relative overflow-hidden">
-                <div className="flex items-center gap-3 mb-4">
-                  <div className="p-2 bg-red-950/80 border border-red-800/60 rounded-xl text-red-400">
-                    <Key size={20} />
+                <div className="flex items-center justify-between mb-4">
+                  <div className="flex items-center gap-3">
+                    <div className="p-2 bg-red-950/80 border border-red-800/60 rounded-xl text-red-400">
+                      <Key size={20} />
+                    </div>
+                    <div>
+                      <h3 className="text-lg font-bold text-zinc-100">Multi-Key Load Balancer & Key Pool Settings</h3>
+                      <p className="text-xs text-zinc-400">Configure multiple Groq and Cohere API keys. The system auto-rotates and falls back across your keys on rate limits.</p>
+                    </div>
                   </div>
-                  <div>
-                    <h3 className="text-lg font-bold text-zinc-100">Global Groq API Key Config</h3>
-                    <p className="text-xs text-zinc-400">Configure your system-wide Groq AI provider credentials.</p>
-                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setShowKeys(!showKeys)}
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-zinc-900 border border-zinc-800 text-xs font-mono text-zinc-300 hover:text-white transition-colors"
+                  >
+                    {showKeys ? <EyeOff size={14} /> : <Eye size={14} />}
+                    <span>{showKeys ? 'Mask Keys' : 'Show Keys'}</span>
+                  </button>
                 </div>
 
                 {/* Security Vault Banner */}
                 <div className="mb-6 p-4 bg-zinc-900/90 border border-zinc-800 rounded-xl space-y-2">
                   <div className="flex items-center gap-2 text-emerald-400 text-xs font-mono font-bold">
                     <ShieldCheck size={16} />
-                    <span>SECURE BACKEND STORAGE</span>
+                    <span>SECURE BACKEND ROTATION ENGINE</span>
                   </div>
                   <p className="text-xs text-zinc-400 leading-relaxed">
-                    This key is stored securely in your private database setting (`/settings/apikeys`) with strict Admin-only permissions.
-                    All users consume AI through the backend proxy (`/api/chat`). <strong className="text-zinc-200">Regular users cannot view, extract, or inspect your API key.</strong>
+                    Enter as many Groq and Cohere API keys as you like (<strong className="text-zinc-200">one key per line</strong>). Users only choose their AI model, while you control all API key pools on the server.
                   </p>
                 </div>
 
-                <div className="space-y-4">
-                  <div>
-                    <label className="block text-xs font-bold font-mono text-zinc-300 uppercase tracking-wider mb-2">
-                      Groq API Key (gsk_...)
-                    </label>
-                    <div className="relative">
-                      <input 
-                        type={showGroqKey ? "text" : "password"} 
-                        value={groqKey}
-                        onChange={(e) => setGroqKey(e.target.value)}
-                        placeholder="gsk_xxxxxxxxxxxxxxxxxxxxxxxx"
-                        className="w-full bg-zinc-900 border border-zinc-700 focus:border-red-500 rounded-xl pl-4 pr-12 py-3 text-zinc-100 focus:outline-none font-mono text-xs transition-colors"
-                      />
-                      <button
-                        type="button"
-                        onClick={() => setShowGroqKey(!showGroqKey)}
-                        className="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-zinc-200 p-1"
-                      >
-                        {showGroqKey ? <EyeOff size={16} /> : <Eye size={16} />}
-                      </button>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  {/* Groq Keys Pool */}
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between">
+                      <label className="block text-xs font-bold font-mono text-zinc-300 uppercase tracking-wider">
+                        Groq API Keys Pool
+                      </label>
+                      <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-red-950 text-red-400 border border-red-800/50">
+                        {groqKeysText.split('\n').filter(k => k.trim()).length} Keys Active
+                      </span>
                     </div>
+                    <textarea 
+                      rows={6}
+                      value={groqKeysText}
+                      onChange={(e) => setGroqKeysText(e.target.value)}
+                      placeholder="gsk_key1...\ngsk_key2...\ngsk_key3..."
+                      style={{ WebkitTextSecurity: showKeys ? 'none' : 'disc' } as any}
+                      className="w-full bg-zinc-900 border border-zinc-700 focus:border-red-500 rounded-xl p-3.5 text-zinc-100 focus:outline-none font-mono text-xs transition-colors resize-y leading-relaxed"
+                    />
+                    <p className="text-[11px] text-zinc-500">Enter multiple Groq keys (one per line). Tested against Llama 3.3 70B, DeepSeek R1, etc.</p>
+                  </div>
+
+                  {/* Cohere Keys Pool */}
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between">
+                      <label className="block text-xs font-bold font-mono text-zinc-300 uppercase tracking-wider">
+                        Cohere API Keys Pool
+                      </label>
+                      <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-blue-950 text-blue-400 border border-blue-800/50">
+                        {cohereKeysText.split('\n').filter(k => k.trim()).length} Keys Active
+                      </span>
+                    </div>
+                    <textarea 
+                      rows={6}
+                      value={cohereKeysText}
+                      onChange={(e) => setCohereKeysText(e.target.value)}
+                      placeholder="cohere_key1...\ncohere_key2...\ncohere_key3..."
+                      style={{ WebkitTextSecurity: showKeys ? 'none' : 'disc' } as any}
+                      className="w-full bg-zinc-900 border border-zinc-700 focus:border-blue-500 rounded-xl p-3.5 text-zinc-100 focus:outline-none font-mono text-xs transition-colors resize-y leading-relaxed"
+                    />
+                    <p className="text-[11px] text-zinc-500">Enter multiple Cohere keys (one per line). Powers Command R+, Command R, Command Light.</p>
                   </div>
                 </div>
 
                 {keySaveSuccess && (
-                  <div className="mt-4 p-3 bg-emerald-950/50 border border-emerald-800/60 rounded-xl text-emerald-400 text-xs flex items-center gap-2">
+                  <div className="mt-6 p-3 bg-emerald-950/50 border border-emerald-800/60 rounded-xl text-emerald-400 text-xs flex items-center gap-2">
                     <CheckCircle size={16} />
-                    <span>API key successfully updated and saved securely! All user AI requests now use this key.</span>
+                    <span>API Key pools successfully updated and saved securely! Automatic rotation is active.</span>
                   </div>
                 )}
 
                 <div className="mt-6 flex items-center justify-between pt-4 border-t border-zinc-800">
                   <div className="text-[11px] font-mono text-zinc-500 flex items-center gap-1.5">
                     <Lock size={12} className="text-zinc-400" />
-                    <span>Admin Only Access</span>
+                    <span>Admin Controls All Keys</span>
                   </div>
                   <button 
                     type="submit"
@@ -775,7 +818,7 @@ export function AdminDashboard({ onClose }: AdminDashboardProps) {
                     className="px-6 py-2.5 bg-red-600 hover:bg-red-500 text-white text-xs font-mono font-bold rounded-xl transition-all shadow-lg shadow-red-950/50 flex items-center gap-2 disabled:opacity-50"
                   >
                     <Save size={14} />
-                    <span>{savingKey ? 'SAVING...' : 'SAVE API KEY'}</span>
+                    <span>{savingKey ? 'SAVING POOLS...' : 'SAVE ALL API KEYS'}</span>
                   </button>
                 </div>
               </form>

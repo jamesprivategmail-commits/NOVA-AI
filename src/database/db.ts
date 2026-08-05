@@ -334,9 +334,25 @@ export async function getSystemAPIKeys(): Promise<SystemAPIKeys> {
   const docRef = doc(db, 'settings', 'apikeys');
   const snap = await getDoc(docRef);
   if (snap.exists()) {
-    return snap.data() as SystemAPIKeys;
+    const data = snap.data() as SystemAPIKeys;
+    let groqApiKeys: string[] = Array.isArray(data.groqApiKeys) ? data.groqApiKeys.filter(k => typeof k === 'string' && k.trim()) : [];
+    if (groqApiKeys.length === 0 && data.groqApiKey && data.groqApiKey.trim()) {
+      groqApiKeys = [data.groqApiKey.trim()];
+    }
+
+    let cohereApiKeys: string[] = Array.isArray(data.cohereApiKeys) ? data.cohereApiKeys.filter(k => typeof k === 'string' && k.trim()) : [];
+    if (cohereApiKeys.length === 0 && data.cohereApiKey && data.cohereApiKey.trim()) {
+      cohereApiKeys = [data.cohereApiKey.trim()];
+    }
+
+    return {
+      groqApiKey: data.groqApiKey || (groqApiKeys[0] || ''),
+      groqApiKeys,
+      cohereApiKey: data.cohereApiKey || (cohereApiKeys[0] || ''),
+      cohereApiKeys
+    };
   }
-  return { groqApiKey: '' };
+  return { groqApiKey: '', groqApiKeys: [], cohereApiKey: '', cohereApiKeys: [] };
 }
 
 export async function updateSystemAPIKeys(keys: SystemAPIKeys): Promise<void> {

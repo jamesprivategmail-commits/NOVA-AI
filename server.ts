@@ -12,25 +12,41 @@ dotenv.config();
 
 import { AI_CONFIG } from "./src/config/ai.js";
 
-async function getActiveApiKey(): Promise<string> {
+async function getSystemKeys(): Promise<{ groqKeys: string[]; cohereKeys: string[] }> {
+  let groqKeys: string[] = [];
+  let cohereKeys: string[] = [];
+
   try {
     const keysRef = doc(db, "settings", "apikeys");
     const keysSnap = await getDoc(keysRef);
     if (keysSnap.exists()) {
       const data = keysSnap.data();
-      if (data && data.groqApiKey && typeof data.groqApiKey === 'string' && data.groqApiKey.trim()) {
-        return data.groqApiKey.trim();
+      if (Array.isArray(data.groqApiKeys)) {
+        groqKeys = data.groqApiKeys.filter((k: any) => typeof k === 'string' && k.trim());
+      }
+      if (groqKeys.length === 0 && data.groqApiKey && typeof data.groqApiKey === 'string' && data.groqApiKey.trim()) {
+        groqKeys = [data.groqApiKey.trim()];
+      }
+
+      if (Array.isArray(data.cohereApiKeys)) {
+        cohereKeys = data.cohereApiKeys.filter((k: any) => typeof k === 'string' && k.trim());
+      }
+      if (cohereKeys.length === 0 && data.cohereApiKey && typeof data.cohereApiKey === 'string' && data.cohereApiKey.trim()) {
+        cohereKeys = [data.cohereApiKey.trim()];
       }
     }
   } catch (err) {
     console.warn("Could not fetch API keys from Firestore in backend:", err);
   }
 
-  if (process.env.GROQ_API_KEY && process.env.GROQ_API_KEY.trim()) {
-    return process.env.GROQ_API_KEY.trim();
+  if (groqKeys.length === 0 && process.env.GROQ_API_KEY && process.env.GROQ_API_KEY.trim()) {
+    groqKeys = [process.env.GROQ_API_KEY.trim()];
+  }
+  if (cohereKeys.length === 0 && process.env.COHERE_API_KEY && process.env.COHERE_API_KEY.trim()) {
+    cohereKeys = [process.env.COHERE_API_KEY.trim()];
   }
 
-  return "";
+  return { groqKeys, cohereKeys };
 }
 
 async function fetchUserAndTierSettings(userId?: string) {
@@ -110,64 +126,161 @@ async function fetchUserAndTierSettings(userId?: string) {
   };
 }
 
-async function executeGroqWithFallback(messages: any[], systemPrompt: string, maxTokens: number = 1024, res: any) {
-  const apiKey = await getActiveApiKey();
-  if (!apiKey) {
-    res.write(`data: ${JSON.stringify({ text: "\n\n**System Error:** No Groq API Key configured. Please go to Admin Dashboard > System API Keys and save your API key." })}\n\n`);
-    res.write("data: [DONE]\n\n");
-    res.end();
-    return;
+async function executeGroqWithRotation(messages: any[], systemPrompt: string, maxTokens: number = 1024, requestedModel: string | undefined, groqKeys: string[], res: any) {
+  if (!groqKeys || groqKeys.length === 0) {
+    throw new Error("No Groq API keys configured");
   }
 
-  const models = AI_CONFIG.providers.groq.models;
+  const defaultModels = AI_CONFIG.providers.groq.models;
+  const models = requestedModel && defaultModels.includes(requestedModel) 
+    ? [requestedModel, ...defaultModels.filter(m => m !== requestedModel)] 
+    : defaultModels;
+
   let lastError: any = null;
 
-  for (let i = 0; i < models.length; i++) {
-    const model = models[i];
-    try {
-      console.log(`Executing Groq model: ${model} (max_tokens: ${maxTokens})`);
-      
-      const groq = new Groq({ apiKey });
-      const formattedMessages: { role: "system" | "user" | "assistant"; content: string }[] = [];
-      
-      if (systemPrompt && systemPrompt.trim()) {
-        formattedMessages.push({
-          role: "system",
-          content: systemPrompt.trim()
-        });
-      }
+  for (let keyIdx = 0; keyIdx < groqKeys.length; keyIdx++) {
+    const apiKey = groqKeys[keyIdx];
+    const groq = new Groq({ apiKey });
 
-      for (const m of messages) {
-        formattedMessages.push({
-          role: (m.role === "user" ? "user" : "assistant") as "user" | "assistant",
-          content: m.text || m.content || ""
-        });
-      }
-
-      const stream = await groq.chat.completions.create({
-        model: model,
-        messages: formattedMessages,
-        max_tokens: maxTokens,
-        stream: true,
-      });
-
-      for await (const chunk of stream) {
-        const content = chunk.choices[0]?.delta?.content || "";
-        if (content) {
-          res.write(`data: ${JSON.stringify({ text: content })}\n\n`);
+    for (let modelIdx = 0; modelIdx < models.length; modelIdx++) {
+      const model = models[modelIdx];
+      try {
+        console.log(`[Groq Multi-Key] Key #${keyIdx + 1}/${groqKeys.length} -> Model: ${model}`);
+        
+        const formattedMessages: { role: "system" | "user" | "assistant"; content: string }[] = [];
+        if (systemPrompt && systemPrompt.trim()) {
+          formattedMessages.push({ role: "system", content: systemPrompt.trim() });
         }
-      }
-      return; // Success
-    } catch (err: any) {
-      console.warn(`Groq model ${model} failed:`, err.message);
-      lastError = err;
-      if (err.status === 401 || err.statusCode === 401 || err.message.includes("API key")) {
-        throw err;
+
+        for (const m of messages) {
+          formattedMessages.push({
+            role: (m.role === "user" ? "user" : "assistant") as "user" | "assistant",
+            content: m.text || m.content || ""
+          });
+        }
+
+        const stream = await groq.chat.completions.create({
+          model: model,
+          messages: formattedMessages,
+          max_tokens: maxTokens,
+          stream: true,
+        });
+
+        for await (const chunk of stream) {
+          const content = chunk.choices[0]?.delta?.content || "";
+          if (content) {
+            res.write(`data: ${JSON.stringify({ text: content })}\n\n`);
+          }
+        }
+        return; // Execution succeeded!
+      } catch (err: any) {
+        console.warn(`[Groq] Key #${keyIdx + 1} with model ${model} failed:`, err.message);
+        lastError = err;
+        // If 429 rate limit or 401 unauthorized, break model loop to rotate key!
+        if (err.status === 429 || err.status === 401 || err.statusCode === 429 || err.statusCode === 401) {
+          break;
+        }
       }
     }
   }
 
-  throw lastError || new Error(`All Groq models failed`);
+  throw lastError || new Error(`All Groq keys and models failed`);
+}
+
+async function executeCohereWithRotation(messages: any[], systemPrompt: string, maxTokens: number = 1024, requestedModel: string | undefined, cohereKeys: string[], res: any) {
+  if (!cohereKeys || cohereKeys.length === 0) {
+    throw new Error("No Cohere API keys configured");
+  }
+
+  const defaultModels = AI_CONFIG.providers.cohere.models;
+  const model = requestedModel && defaultModels.includes(requestedModel) ? requestedModel : defaultModels[0] || "command-r-plus";
+  let lastError: any = null;
+
+  const formattedMessages: { role: string; content: string }[] = [];
+  if (systemPrompt && systemPrompt.trim()) {
+    formattedMessages.push({ role: "system", content: systemPrompt.trim() });
+  }
+
+  for (const m of messages) {
+    formattedMessages.push({
+      role: m.role === "user" ? "user" : "assistant",
+      content: m.text || m.content || ""
+    });
+  }
+
+  for (let keyIdx = 0; keyIdx < cohereKeys.length; keyIdx++) {
+    const apiKey = cohereKeys[keyIdx];
+    try {
+      console.log(`[Cohere Multi-Key] Key #${keyIdx + 1}/${cohereKeys.length} -> Model: ${model}`);
+
+      const response = await fetch("https://api.cohere.com/v2/chat", {
+        method: "POST",
+        headers: {
+          "Authorization": `Bearer ${apiKey}`,
+          "Content-Type": "application/json",
+          "Accept": "text/event-stream"
+        },
+        body: JSON.stringify({
+          model,
+          messages: formattedMessages,
+          stream: true
+        })
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.warn(`[Cohere] Key #${keyIdx + 1} failed (${response.status}): ${errorText}`);
+        lastError = new Error(`Cohere API status ${response.status}: ${errorText}`);
+        continue; // Try next key
+      }
+
+      if (!response.body) {
+        throw new Error("No response body received from Cohere API");
+      }
+
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = "";
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split("\n");
+        buffer = lines.pop() || "";
+
+        for (const line of lines) {
+          const trimmed = line.trim();
+          if (trimmed.startsWith("data: ")) {
+            const dataStr = trimmed.slice(6);
+            if (dataStr === "[DONE]") continue;
+            try {
+              const parsed = JSON.parse(dataStr);
+              let chunkText = "";
+              if (parsed.type === "content-delta" && parsed.delta?.message?.content?.text) {
+                chunkText = parsed.delta.message.content.text;
+              } else if (parsed.text) {
+                chunkText = parsed.text;
+              }
+
+              if (chunkText) {
+                res.write(`data: ${JSON.stringify({ text: chunkText })}\n\n`);
+              }
+            } catch (e) {
+              // Non-JSON SSE line or parse event
+            }
+          }
+        }
+      }
+      return; // Cohere succeeded!
+    } catch (err: any) {
+      console.warn(`[Cohere] Key #${keyIdx + 1} execution failed:`, err.message);
+      lastError = err;
+    }
+  }
+
+  throw lastError || new Error(`All Cohere keys failed`);
 }
 
 async function startServer() {
@@ -192,14 +305,17 @@ async function startServer() {
   // Handle AI API streaming proxy
   app.post("/api/chat", async (req, res) => {
     try {
-      const { messages = [], systemPrompt = "", userId = "" } = req.body;
+      const { messages = [], systemPrompt = "", userId = "", provider = "groq", model } = req.body;
       
       res.setHeader("Content-Type", "text/event-stream");
       res.setHeader("Cache-Control", "no-cache");
       res.setHeader("Connection", "keep-alive");
 
+      const { groqKeys, cohereKeys } = await getSystemKeys();
+
       // Retrieve user profile directly from Firestore backend
-      const { isBanned } = await fetchUserAndTierSettings(userId);
+      const { userTier: dbTier, isBanned, isAdmin, messageCount, lastMessageDate, brainSettings } = await fetchUserAndTierSettings(userId);
+      const tier = dbTier || 'free';
 
       if (isBanned) {
         res.write(`data: ${JSON.stringify({ text: "\n\n**Error:** Your account has been restricted by an administrator." })}\n\n`);
@@ -208,22 +324,54 @@ async function startServer() {
         return;
       }
 
-      // Execute with user prompt directly, with maximum tokens and no artificial brain constraints or tier holds
+      // Enforce daily message limits per tier
+      const today = new Date().toISOString().split('T')[0];
+      const limitForTier = tier === 'vip' ? brainSettings.vipLimit 
+        : tier === 'premium' ? brainSettings.premiumLimit 
+        : tier === 'pro' ? brainSettings.proLimit 
+        : brainSettings.freeLimit;
+
+      if (!isAdmin && lastMessageDate === today && messageCount >= limitForTier) {
+        res.write(`data: ${JSON.stringify({ text: `\n\n**Tier Limit Exceeded:** You have reached your daily limit of ${limitForTier} messages on the ${tier.toUpperCase()} plan. Please upgrade your plan to continue.` })}\n\n`);
+        res.write("data: [DONE]\n\n");
+        res.end();
+        return;
+      }
+
       const maxTokens = 4096;
       const combinedSystemPrompt = systemPrompt ? systemPrompt.trim() : "";
 
-      await executeGroqWithFallback(messages, combinedSystemPrompt, maxTokens, res);
+      const providersToTry = provider === "cohere" ? ["cohere", "groq"] : ["groq", "cohere"];
+      let executedSuccessfully = false;
+      let lastProviderError: any = null;
+
+      for (const p of providersToTry) {
+        try {
+          if (p === "groq") {
+            await executeGroqWithRotation(messages, combinedSystemPrompt, maxTokens, provider === "groq" ? model : undefined, groqKeys, res);
+            executedSuccessfully = true;
+            break;
+          } else if (p === "cohere") {
+            await executeCohereWithRotation(messages, combinedSystemPrompt, maxTokens, provider === "cohere" ? model : undefined, cohereKeys, res);
+            executedSuccessfully = true;
+            break;
+          }
+        } catch (err: any) {
+          console.warn(`[Failover Engine] Provider ${p.toUpperCase()} failed:`, err?.message || err);
+          lastProviderError = err;
+        }
+      }
+
+      if (!executedSuccessfully) {
+        const errNotice = lastProviderError?.message || "All configured AI providers (Groq & Cohere) failed or are exhausted.";
+        res.write(`data: ${JSON.stringify({ text: `\n\n**System Failover Notice:** ${errNotice}` })}\n\n`);
+      }
       
       res.write("data: [DONE]\n\n");
       res.end();
     } catch (error: any) {
-      console.error("Error calling Groq API:", error);
-      
-      let friendlyError = "I'm having trouble connecting to Groq right now. Please try again later.";
-      if (error.status === 429 || error.statusCode === 429) friendlyError = "Groq rate limit exceeded. Please wait a moment and try again.";
-      else if (error.status === 401 || error.statusCode === 401 || String(error.message).includes("API key")) friendlyError = "Groq API key error. Please check system credentials.";
-      
-      res.write(`data: ${JSON.stringify({ text: `\n\n**Error:** ${friendlyError}` })}\n\n`);
+      console.error("Error calling AI API:", error);
+      res.write(`data: ${JSON.stringify({ text: `\n\n**System Error:** ${error?.message || "Unexpected failure in AI proxy."}` })}\n\n`);
       res.write("data: [DONE]\n\n");
       res.end();
     }

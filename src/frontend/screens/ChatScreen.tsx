@@ -26,7 +26,7 @@ import {
 } from '../../database/db';
 import { sendMessageToGroq } from '../../api/client';
 import { memoryManager } from '../../memory/context';
-import { Menu, Shield, Crown, Mail, ArrowDown, Sparkles, Code, Target, Binary, Zap, Bot, Mic } from 'lucide-react';
+import { Menu, Shield, Crown, Mail, ArrowDown, Sparkles, Code, Target, Binary, Zap, Bot, Mic, ChevronDown } from 'lucide-react';
 import { getAuth, signOut } from 'firebase/auth';
 import { clsx } from 'clsx';
 import { motion } from 'motion/react';
@@ -43,6 +43,10 @@ export function ChatScreen({ userId }: ChatScreenProps) {
   const [isLoading, setIsLoading] = useState(false);
   const [streamingMessage, setStreamingMessage] = useState<string>('');
   const [profile, setProfile] = useState<UserProfile | null>(null);
+
+  // AI Model Selection state
+  const [selectedProvider, setSelectedProvider] = useState<'groq' | 'cohere'>('groq');
+  const [selectedModel, setSelectedModel] = useState<string>('llama-3.3-70b-versatile');
 
   // Modals state
   const [showAdminPanel, setShowAdminPanel] = useState(false);
@@ -132,10 +136,36 @@ export function ChatScreen({ userId }: ChatScreenProps) {
   };
 
   const checkLimitations = (): boolean => {
-    if (profile?.isBanned) {
+    if (!profile) return false;
+    if (profile.isBanned) {
       alert('Your account has been restricted. Please contact support.');
       return false;
     }
+    if (profile.isAdmin || profile.tier === 'vip') return true;
+
+    const today = new Date().toISOString().split('T')[0];
+    const isToday = profile.lastMessageDate === today;
+
+    if (profile.tier === 'free') {
+      if (isToday && profile.messageCount >= 5) {
+        alert('Free tier limit reached (5 messages per day). Please upgrade your plan.');
+        setShowSubscription(true);
+        return false;
+      }
+    } else if (profile.tier === 'pro') {
+      if (isToday && profile.messageCount >= 50) {
+        alert('Pro tier limit reached (50 messages per day). Please upgrade your plan.');
+        setShowSubscription(true);
+        return false;
+      }
+    } else if (profile.tier === 'premium') {
+      if (isToday && profile.messageCount >= 250) {
+        alert('Premium tier limit reached (250 messages per day). Please upgrade your plan.');
+        setShowSubscription(true);
+        return false;
+      }
+    }
+
     return true;
   };
 
@@ -207,7 +237,9 @@ export function ChatScreen({ userId }: ChatScreenProps) {
         },
         abortControllerRef.current.signal,
         userId,
-        userTier
+        userTier,
+        selectedProvider,
+        selectedModel
       );
 
       // Save complete model message
@@ -291,6 +323,35 @@ export function ChatScreen({ userId }: ChatScreenProps) {
           </div>
 
           <div className="flex items-center gap-2 md:gap-3">
+            {/* Model Selector Dropdown */}
+            <div className="relative">
+              <select
+                value={`${selectedProvider}:${selectedModel}`}
+                onChange={(e) => {
+                  const [prov, mod] = e.target.value.split(':');
+                  setSelectedProvider(prov as 'groq' | 'cohere');
+                  setSelectedModel(mod);
+                }}
+                className="bg-[#161B22] border border-[#30363D] hover:border-red-500/50 text-slate-200 text-xs font-mono font-bold py-1.5 pl-3 pr-7 rounded-xl focus:outline-none focus:border-red-500 cursor-pointer appearance-none shadow-sm transition-all"
+                title="Select AI Model"
+              >
+                <optgroup label="Groq Engine">
+                  <option value="groq:llama-3.3-70b-versatile">Llama 3.3 70B (Fast & Intelligent)</option>
+                  <option value="groq:llama-3.1-8b-instant">Llama 3.1 8B Instant (Ultra Fast)</option>
+                  <option value="groq:mixtral-8x7b-32768">Mixtral 8x7B (MoE Architecture)</option>
+                  <option value="groq:deepseek-r1-distill-llama-70b">DeepSeek R1 Distill 70B</option>
+                </optgroup>
+                <optgroup label="Cohere Engine">
+                  <option value="cohere:command-r-plus">Cohere Command R+ (Elite RAG)</option>
+                  <option value="cohere:command-r">Cohere Command R (High Performance)</option>
+                  <option value="cohere:command-light">Cohere Command Light (Lightweight)</option>
+                </optgroup>
+              </select>
+              <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-slate-400">
+                <ChevronDown size={14} />
+              </div>
+            </div>
+
             <button
               onClick={() => setShowLiveVoice(true)}
               className="flex items-center gap-1.5 px-3 py-1.5 bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 hover:from-blue-500 hover:to-purple-500 text-white rounded-xl transition-all text-xs font-bold shadow-md shadow-blue-950/40"
