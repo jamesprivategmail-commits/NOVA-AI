@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { UserProfile, SupportChat, PricingSettings, AIBrainSettings } from '../../models/types';
-import { listenToAllUsers, updateUserTier, updateUserStatus, updateUserVerification, listenToAllSupportChats, getPricingSettings, updatePricingSettings, getAIBrainSettings, updateAIBrainSettings } from '../../database/db';
-import { X, ArrowLeft, Shield, Crown, User, RefreshCw, Ban, CheckCircle, BadgeCheck, MessageSquare, ChevronUp, ChevronDown, DollarSign, Cpu, Save, Sparkles } from 'lucide-react';
+import { UserProfile, SupportChat, PricingSettings, AIBrainSettings, SystemAPIKeys } from '../../models/types';
+import { listenToAllUsers, updateUserTier, updateUserStatus, updateUserVerification, listenToAllSupportChats, getPricingSettings, updatePricingSettings, getAIBrainSettings, updateAIBrainSettings, getSystemAPIKeys, updateSystemAPIKeys } from '../../database/db';
+import { X, ArrowLeft, Shield, Crown, User, RefreshCw, Ban, CheckCircle, BadgeCheck, MessageSquare, ChevronUp, ChevronDown, DollarSign, Cpu, Save, Sparkles, Key, Eye, EyeOff, Lock, ShieldCheck } from 'lucide-react';
 import { clsx } from 'clsx';
 import { SupportChatScreen } from './SupportChatScreen';
 
@@ -12,7 +12,7 @@ interface AdminDashboardProps {
 export function AdminDashboard({ onClose }: AdminDashboardProps) {
   const [users, setUsers] = useState<UserProfile[]>([]);
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState<'users' | 'support' | 'pricing' | 'brain'>('users');
+  const [activeTab, setActiveTab] = useState<'users' | 'support' | 'pricing' | 'brain' | 'apikeys'>('users');
   
   const [supportChats, setSupportChats] = useState<SupportChat[]>([]);
   const [activeSupportUserId, setActiveSupportUserId] = useState<string | null>(null);
@@ -20,6 +20,11 @@ export function AdminDashboard({ onClose }: AdminDashboardProps) {
 
   const [pricing, setPricing] = useState<PricingSettings>({ premium: 5000, pro: 7000, vip: 10000 });
   const [savingPricing, setSavingPricing] = useState(false);
+
+  const [groqKey, setGroqKey] = useState<string>('');
+  const [showGroqKey, setShowGroqKey] = useState(false);
+  const [savingKey, setSavingKey] = useState(false);
+  const [keySaveSuccess, setKeySaveSuccess] = useState(false);
 
   const [brain, setBrain] = useState<AIBrainSettings>({
     globalPrompt: "You are VOID AI, an elite, hyper-intelligent, dangerous AI assistant and master email marketing campaign strategist.",
@@ -53,12 +58,27 @@ export function AdminDashboard({ onClose }: AdminDashboardProps) {
     
     getPricingSettings().then(setPricing);
     getAIBrainSettings().then(setBrain);
+    getSystemAPIKeys().then(keys => setGroqKey(keys.groqApiKey || ''));
     
     return () => {
       unsubUsers();
       unsubChats();
     };
   }, []);
+
+  const handleSaveApiKey = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setSavingKey(true);
+    try {
+      await updateSystemAPIKeys({ groqApiKey: groqKey.trim() });
+      setKeySaveSuccess(true);
+      setTimeout(() => setKeySaveSuccess(false), 3000);
+    } catch (err) {
+      console.error("Failed to save API key", err);
+    } finally {
+      setSavingKey(false);
+    }
+  };
 
   const handleSavePricing = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -189,6 +209,13 @@ export function AdminDashboard({ onClose }: AdminDashboardProps) {
                 className={clsx("px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors", activeTab === 'pricing' ? "bg-red-600 text-white shadow" : "text-zinc-400 hover:text-zinc-200")}
               >
                 Pricing (₦)
+              </button>
+              <button 
+                onClick={() => setActiveTab('apikeys')}
+                className={clsx("px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors flex items-center gap-1.5", activeTab === 'apikeys' ? "bg-red-600 text-white shadow" : "text-zinc-400 hover:text-zinc-200")}
+              >
+                <Key size={14} />
+                API Keys
               </button>
             </div>
           </div>
@@ -677,6 +704,78 @@ export function AdminDashboard({ onClose }: AdminDashboardProps) {
                     className="px-5 py-2.5 bg-red-600 hover:bg-red-500 text-white font-semibold rounded-xl transition-colors disabled:opacity-50"
                   >
                     {savingPricing ? 'Saving...' : 'Save Pricing'}
+                  </button>
+                </div>
+              </form>
+            </div>
+          ) : activeTab === 'apikeys' ? (
+            <div className="max-w-2xl mx-auto space-y-6">
+              <form onSubmit={handleSaveApiKey} className="bg-zinc-950/60 border border-zinc-800 rounded-2xl p-6 relative overflow-hidden">
+                <div className="flex items-center gap-3 mb-4">
+                  <div className="p-2 bg-red-950/80 border border-red-800/60 rounded-xl text-red-400">
+                    <Key size={20} />
+                  </div>
+                  <div>
+                    <h3 className="text-lg font-bold text-zinc-100">Global Groq API Key Config</h3>
+                    <p className="text-xs text-zinc-400">Configure your system-wide Groq AI provider credentials.</p>
+                  </div>
+                </div>
+
+                {/* Security Vault Banner */}
+                <div className="mb-6 p-4 bg-zinc-900/90 border border-zinc-800 rounded-xl space-y-2">
+                  <div className="flex items-center gap-2 text-emerald-400 text-xs font-mono font-bold">
+                    <ShieldCheck size={16} />
+                    <span>SECURE BACKEND STORAGE</span>
+                  </div>
+                  <p className="text-xs text-zinc-400 leading-relaxed">
+                    This key is stored securely in your private database setting (`/settings/apikeys`) with strict Admin-only permissions.
+                    All users consume AI through the backend proxy (`/api/chat`). <strong className="text-zinc-200">Regular users cannot view, extract, or inspect your API key.</strong>
+                  </p>
+                </div>
+
+                <div className="space-y-4">
+                  <div>
+                    <label className="block text-xs font-bold font-mono text-zinc-300 uppercase tracking-wider mb-2">
+                      Groq API Key (gsk_...)
+                    </label>
+                    <div className="relative">
+                      <input 
+                        type={showGroqKey ? "text" : "password"} 
+                        value={groqKey}
+                        onChange={(e) => setGroqKey(e.target.value)}
+                        placeholder="gsk_xxxxxxxxxxxxxxxxxxxxxxxx"
+                        className="w-full bg-zinc-900 border border-zinc-700 focus:border-red-500 rounded-xl pl-4 pr-12 py-3 text-zinc-100 focus:outline-none font-mono text-xs transition-colors"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowGroqKey(!showGroqKey)}
+                        className="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-zinc-200 p-1"
+                      >
+                        {showGroqKey ? <EyeOff size={16} /> : <Eye size={16} />}
+                      </button>
+                    </div>
+                  </div>
+                </div>
+
+                {keySaveSuccess && (
+                  <div className="mt-4 p-3 bg-emerald-950/50 border border-emerald-800/60 rounded-xl text-emerald-400 text-xs flex items-center gap-2">
+                    <CheckCircle size={16} />
+                    <span>API key successfully updated and saved securely! All user AI requests now use this key.</span>
+                  </div>
+                )}
+
+                <div className="mt-6 flex items-center justify-between pt-4 border-t border-zinc-800">
+                  <div className="text-[11px] font-mono text-zinc-500 flex items-center gap-1.5">
+                    <Lock size={12} className="text-zinc-400" />
+                    <span>Admin Only Access</span>
+                  </div>
+                  <button 
+                    type="submit"
+                    disabled={savingKey}
+                    className="px-6 py-2.5 bg-red-600 hover:bg-red-500 text-white text-xs font-mono font-bold rounded-xl transition-all shadow-lg shadow-red-950/50 flex items-center gap-2 disabled:opacity-50"
+                  >
+                    <Save size={14} />
+                    <span>{savingKey ? 'SAVING...' : 'SAVE API KEY'}</span>
                   </button>
                 </div>
               </form>

@@ -6,6 +6,10 @@ export interface PricingSettings {
   vip: number;
 }
 
+export interface SystemAPIKeys {
+  groqApiKey: string;
+}
+
 export interface AIBrainSettings {
   globalPrompt: string;
   freePrompt: string;

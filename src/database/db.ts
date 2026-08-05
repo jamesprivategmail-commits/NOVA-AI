@@ -328,3 +328,19 @@ export function listenToAIBrainSettings(callback: (brain: AIBrainSettings) => vo
   });
 }
 
+import { SystemAPIKeys } from "../models/types";
+
+export async function getSystemAPIKeys(): Promise<SystemAPIKeys> {
+  const docRef = doc(db, 'settings', 'apikeys');
+  const snap = await getDoc(docRef);
+  if (snap.exists()) {
+    return snap.data() as SystemAPIKeys;
+  }
+  return { groqApiKey: '' };
+}
+
+export async function updateSystemAPIKeys(keys: SystemAPIKeys): Promise<void> {
+  const docRef = doc(db, 'settings', 'apikeys');
+  await setDoc(docRef, keys, { merge: true });
+}
+

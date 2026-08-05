@@ -12,7 +12,26 @@ dotenv.config();
 
 import { AI_CONFIG } from "./src/config/ai.js";
 
-const HARDCODED_GROQ_KEY = process.env.GROQ_API_KEY || "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";
+async function getActiveApiKey(): Promise<string> {
+  try {
+    const keysRef = doc(db, "settings", "apikeys");
+    const keysSnap = await getDoc(keysRef);
+    if (keysSnap.exists()) {
+      const data = keysSnap.data();
+      if (data.groqApiKey && typeof data.groqApiKey === 'string' && data.groqApiKey.trim()) {
+        return data.groqApiKey.trim();
+      }
+    }
+  } catch (err) {
+    console.warn("Could not fetch API keys from Firestore in backend:", err);
+  }
+
+  if (process.env.GROQ_API_KEY && process.env.GROQ_API_KEY.trim()) {
+    return process.env.GROQ_API_KEY.trim();
+  }
+
+  return "";
+}
 
 async function fetchUserAndTierSettings(userId?: string) {
   let userTier: 'free' | 'pro' | 'premium' | 'vip' = 'free';
@@ -92,6 +111,12 @@ async function fetchUserAndTierSettings(userId?: string) {
 }
 
 async function executeGroqWithFallback(messages: any[], systemPrompt: string, maxTokens: number = 1024, res: any) {
+  const apiKey = await getActiveApiKey();
+  if (!apiKey) {
+    res.write(`data: ${JSON.stringify({ text: "\n\n**System Error:** No Groq API Key configured. Please go to Admin Dashboard > System API Keys and save your API key." })}\n\n`);
+    return;
+  }
+
   const models = AI_CONFIG.providers.groq.models;
   let lastError: any = null;
 
@@ -100,7 +125,7 @@ async function executeGroqWithFallback(messages: any[], systemPrompt: string, ma
     try {
       console.log(`Executing Groq model: ${model} (max_tokens: ${maxTokens})`);
       
-      const groq = new Groq({ apiKey: HARDCODED_GROQ_KEY });
+      const groq = new Groq({ apiKey });
       const formattedMessages: { role: "system" | "user" | "assistant"; content: string }[] = [];
       
       if (systemPrompt && systemPrompt.trim()) {
