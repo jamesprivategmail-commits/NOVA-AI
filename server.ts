@@ -7,12 +7,40 @@ import rateLimit from "express-rate-limit";
 import dotenv from "dotenv";
 import { doc, getDoc } from "firebase/firestore";
 import { db } from "./src/config/firebase.js";
+import { initializeApp as initAdminApp, getApps as getAdminApps } from "firebase-admin/app";
+import { getFirestore as getAdminFirestore } from "firebase-admin/firestore";
 
 dotenv.config();
 
 import { AI_CONFIG } from "./src/config/ai.js";
 
+let adminDb: any = null;
+try {
+  const adminApp = getAdminApps().length === 0 
+    ? initAdminApp({ projectId: "gen-lang-client-0664700327" }) 
+    : getAdminApps()[0];
+  adminDb = getAdminFirestore(adminApp, "ai-studio-novaai-27b8f5cb-ed0e-4b02-82b3-535e76f52e4d");
+} catch (e) {
+  console.warn("Failed to initialize Firebase Admin SDK in server.ts:", e);
+}
+
 async function getActiveApiKey(): Promise<string> {
+  // 1. Try Firebase Admin DB first (bypasses security rules)
+  if (adminDb) {
+    try {
+      const snap = await adminDb.doc("settings/apikeys").get();
+      if (snap.exists) {
+        const data = snap.data();
+        if (data && data.groqApiKey && typeof data.groqApiKey === 'string' && data.groqApiKey.trim()) {
+          return data.groqApiKey.trim();
+        }
+      }
+    } catch (err: any) {
+      console.warn("Could not fetch API keys using Admin SDK:", err?.message || err);
+    }
+  }
+
+  // 2. Fallback to Client SDK
   try {
     const keysRef = doc(db, "settings", "apikeys");
     const keysSnap = await getDoc(keysRef);
@@ -23,9 +51,10 @@ async function getActiveApiKey(): Promise<string> {
       }
     }
   } catch (err) {
-    console.warn("Could not fetch API keys from Firestore in backend:", err);
+    // Suppress verbose error
   }
 
+  // 3. Fallback to process.env
   if (process.env.GROQ_API_KEY && process.env.GROQ_API_KEY.trim()) {
     return process.env.GROQ_API_KEY.trim();
   }
@@ -42,10 +71,21 @@ async function fetchUserAndTierSettings(userId?: string) {
 
   if (userId) {
     try {
-      const userRef = doc(db, "users", userId);
-      const userSnap = await getDoc(userRef);
-      if (userSnap.exists()) {
-        const uData = userSnap.data();
+      let uData: any = null;
+      if (adminDb) {
+        const uSnap = await adminDb.doc(`users/${userId}`).get();
+        if (uSnap.exists) {
+          uData = uSnap.data();
+        }
+      } else {
+        const userRef = doc(db, "users", userId);
+        const userSnap = await getDoc(userRef);
+        if (userSnap.exists()) {
+          uData = userSnap.data();
+        }
+      }
+
+      if (uData) {
         userTier = (uData.tier as any) || 'free';
         isBanned = !!uData.isBanned;
         isAdmin = !!uData.isAdmin;
@@ -74,10 +114,21 @@ async function fetchUserAndTierSettings(userId?: string) {
   };
 
   try {
-    const brainRef = doc(db, "settings", "brain");
-    const brainSnap = await getDoc(brainRef);
-    if (brainSnap.exists()) {
-      const bData = brainSnap.data();
+    let bData: any = null;
+    if (adminDb) {
+      const bSnap = await adminDb.doc("settings/brain").get();
+      if (bSnap.exists) {
+        bData = bSnap.data();
+      }
+    } else {
+      const brainRef = doc(db, "settings", "brain");
+      const brainSnap = await getDoc(brainRef);
+      if (brainSnap.exists()) {
+        bData = brainSnap.data();
+      }
+    }
+
+    if (bData) {
       brainSettings = {
         globalPrompt: bData.globalPrompt || brainSettings.globalPrompt,
         freePrompt: bData.freePrompt || brainSettings.freePrompt,
