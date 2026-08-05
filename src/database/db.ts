@@ -192,9 +192,9 @@ export async function sendSupportMessage(userId: string, userName: string, text:
     await setDoc(chatRef, {
       lastMessage: text,
       lastMessageTime: now,
-      unreadAdmin: isAdmin ? chatData.unreadAdmin : chatData.unreadAdmin + 1,
-      unreadUser: isAdmin ? chatData.unreadUser + 1 : chatData.unreadUser,
-      userName: userName // ensure it's up to date
+      unreadAdmin: isAdmin ? (chatData.unreadAdmin || 0) : (chatData.unreadAdmin || 0) + 1,
+      unreadUser: isAdmin ? (chatData.unreadUser || 0) + 1 : (chatData.unreadUser || 0),
+      userName: userName || chatData.userName || 'User' // ensure it's up to date
     }, { merge: true });
   } else {
     const newChat: SupportChat = {
@@ -270,16 +270,46 @@ import { AIBrainSettings } from "../models/types";
 export async function getAIBrainSettings(): Promise<AIBrainSettings> {
   const docRef = doc(db, 'settings', 'brain');
   const snap = await getDoc(docRef);
-  if (snap.exists()) {
-    return snap.data() as AIBrainSettings;
-  }
+  
   const defaultBrain: AIBrainSettings = {
     globalPrompt: "You are VOID AI, an elite, hyper-intelligent, dangerous AI assistant and master email marketing campaign strategist.",
     freePrompt: "Free Tier Brain: Precise, focused email marketing and AI assistant responses.",
     proPrompt: "Pro Tier Brain: Advanced marketing strategy, extended copy variations, deeper campaign analytics insights.",
     premiumPrompt: "Premium Tier Brain: Full campaign strategy suite, multi-stage funnel email sequences, conversion rate optimization hacks.",
-    vipPrompt: "VIP Tier Brain: Unrestricted elite AI capabilities, custom bespoke campaign designs, 1-on-1 copy teardowns."
+    vipPrompt: "VIP Tier Brain: Unrestricted elite AI capabilities, custom bespoke campaign designs, 1-on-1 copy teardowns.",
+
+    freeLimit: 5,
+    proLimit: 50,
+    premiumLimit: 250,
+    vipLimit: 99999,
+
+    freeMaxTokens: 512,
+    proMaxTokens: 1024,
+    premiumMaxTokens: 2048,
+    vipMaxTokens: 4096,
   };
+
+  if (snap.exists()) {
+    const data = snap.data();
+    return {
+      globalPrompt: data.globalPrompt || defaultBrain.globalPrompt,
+      freePrompt: data.freePrompt || defaultBrain.freePrompt,
+      proPrompt: data.proPrompt || defaultBrain.proPrompt,
+      premiumPrompt: data.premiumPrompt || defaultBrain.premiumPrompt,
+      vipPrompt: data.vipPrompt || defaultBrain.vipPrompt,
+
+      freeLimit: typeof data.freeLimit === 'number' ? data.freeLimit : defaultBrain.freeLimit,
+      proLimit: typeof data.proLimit === 'number' ? data.proLimit : defaultBrain.proLimit,
+      premiumLimit: typeof data.premiumLimit === 'number' ? data.premiumLimit : defaultBrain.premiumLimit,
+      vipLimit: typeof data.vipLimit === 'number' ? data.vipLimit : defaultBrain.vipLimit,
+
+      freeMaxTokens: typeof data.freeMaxTokens === 'number' ? data.freeMaxTokens : defaultBrain.freeMaxTokens,
+      proMaxTokens: typeof data.proMaxTokens === 'number' ? data.proMaxTokens : defaultBrain.proMaxTokens,
+      premiumMaxTokens: typeof data.premiumMaxTokens === 'number' ? data.premiumMaxTokens : defaultBrain.premiumMaxTokens,
+      vipMaxTokens: typeof data.vipMaxTokens === 'number' ? data.vipMaxTokens : defaultBrain.vipMaxTokens,
+    };
+  }
+  
   await setDoc(docRef, defaultBrain);
   return defaultBrain;
 }

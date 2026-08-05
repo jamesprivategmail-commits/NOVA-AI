@@ -36,126 +36,168 @@ export function SubscriptionModal({ onClose, currentTier, onRequestUpgrade }: Su
 
   const plans = [
     {
-      id: 'premium' as UserTier,
-      name: 'Premium',
-      price: pricing ? `₦${pricing.premium.toLocaleString()}` : '₦5,000',
-      interval: '/month',
-      description: 'Perfect for professionals needing more power.',
+      id: 'free' as UserTier,
+      name: 'Free',
+      price: '₦0',
+      interval: '/forever',
+      description: 'Standard AI assistant access for casual everyday tasks.',
       features: [
-        'Higher message limits',
-        'Faster response times',
-        'Priority support',
-        'Access to new features'
+        '5 messages per day',
+        'Standard response speed',
+        'Basic email marketing assistance',
+        'Community support'
       ],
-      color: 'bg-zinc-800 border-zinc-700 text-zinc-100',
-      buttonColor: 'bg-zinc-700 hover:bg-zinc-600 text-white'
+      color: 'bg-zinc-900/90 border-zinc-800 text-zinc-200',
+      buttonColor: 'bg-zinc-800 hover:bg-zinc-700 text-zinc-300'
     },
     {
       id: 'pro' as UserTier,
       name: 'Pro',
       price: pricing ? `₦${pricing.pro.toLocaleString()}` : '₦7,000',
       interval: '/month',
-      description: 'For power users who need the best performance.',
+      description: 'Enhanced speeds and 50 messages/day for power users.',
       features: [
-        'Unlimited messages',
-        'Fastest response times',
-        '24/7 dedicated support',
-        'Advanced customization',
-        'API access'
+        '50 messages per day',
+        'Fast response times',
+        'Extended token output (1,024 tokens)',
+        'Email campaign generator suite',
+        'Live Voice Mode access'
       ],
-      color: 'bg-blue-900/20 border-blue-800 text-blue-100',
+      color: 'bg-blue-950/40 border-blue-800/80 text-blue-100',
       buttonColor: 'bg-blue-600 hover:bg-blue-500 text-white',
       popular: true
+    },
+    {
+      id: 'premium' as UserTier,
+      name: 'Premium',
+      price: pricing ? `₦${pricing.premium.toLocaleString()}` : '₦5,000',
+      interval: '/month',
+      description: 'High volume limits & advanced multi-stage strategy suite.',
+      features: [
+        '250 messages per day',
+        'Priority high-speed generation',
+        '2,048 token max output limit',
+        'Custom file exporter (PDF/CSV/Code)',
+        '24/7 Priority Support Desk'
+      ],
+      color: 'bg-amber-950/40 border-amber-800/80 text-amber-100',
+      buttonColor: 'bg-amber-600 hover:bg-amber-500 text-amber-950 font-bold'
     },
     {
       id: 'vip' as UserTier,
       name: 'VIP',
       price: pricing ? `₦${pricing.vip.toLocaleString()}` : '₦10,000',
       interval: '/month',
-      description: 'The ultimate experience for enterprise needs.',
+      description: 'Unrestricted elite AI capabilities and maximum power.',
       features: [
-        'Everything in Pro',
-        'Dedicated account manager',
-        'Custom model fine-tuning',
-        'White-glove onboarding',
-        'SLA guarantee'
+        'Unlimited daily messages',
+        'Maximum output length (4,096 tokens)',
+        'Custom fine-tuned system prompt',
+        'Dedicated VIP Account Manager',
+        'Instant direct admin chat line'
       ],
-      color: 'bg-amber-900/20 border-amber-800 text-amber-100',
-      buttonColor: 'bg-amber-600 hover:bg-amber-500 text-white'
+      color: 'bg-purple-950/40 border-purple-800/80 text-purple-100',
+      buttonColor: 'bg-purple-600 hover:bg-purple-500 text-white font-bold'
     }
   ];
 
   return (
-    <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4 overflow-y-auto">
-      <div className="bg-zinc-900 border border-zinc-800 rounded-3xl w-full max-w-5xl relative shadow-2xl my-8">
-        <div className="flex items-center p-6 pb-0">
+    <div className="fixed inset-0 bg-black/85 backdrop-blur-md z-50 overflow-y-auto p-3 sm:p-5 flex items-center justify-center">
+      <div className="bg-zinc-950 border border-zinc-800 rounded-2xl md:rounded-3xl w-full max-w-6xl relative shadow-2xl my-auto overflow-hidden flex flex-col max-h-[92vh]">
+        {/* Header */}
+        <div className="flex items-center justify-between p-4 sm:p-6 border-b border-zinc-800/80 bg-zinc-900/60 shrink-0">
+          <div className="flex items-center gap-2">
+            <div className="w-8 h-8 rounded-lg bg-red-950/60 border border-red-800/50 flex items-center justify-center text-red-400 font-bold text-xs">
+              <Check size={18} />
+            </div>
+            <div>
+              <h2 className="text-base sm:text-lg font-bold text-zinc-100">
+                Subscription & Pricing Tiers
+              </h2>
+              <p className="text-xs text-zinc-400">
+                Current active plan: <span className="font-bold text-red-400 uppercase">{currentTier}</span>
+              </p>
+            </div>
+          </div>
           <button 
             onClick={onClose}
-            className="flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-zinc-800 text-zinc-400 hover:text-zinc-100 transition-colors z-10"
+            className="p-2 rounded-lg hover:bg-zinc-800 text-zinc-400 hover:text-zinc-100 transition-colors"
+            title="Close"
           >
-            <ArrowLeft size={20} />
-            <span className="font-medium text-sm">Back to Chat</span>
+            <X size={20} />
           </button>
         </div>
         
-        <div className="px-6 pb-12 pt-6 md:px-12 text-center">
-          <h2 className="text-3xl md:text-4xl font-semibold text-zinc-100 mb-4 tracking-tight">
-            Upgrade your plan
-          </h2>
-          <p className="text-lg text-zinc-400 max-w-2xl mx-auto mb-12">
-            Get more out of your AI assistant with our premium subscription plans. Choose the tier that best fits your needs.
-          </p>
+        {/* Body */}
+        <div className="p-4 sm:p-6 md:p-8 overflow-y-auto space-y-6">
+          <div className="text-center max-w-xl mx-auto space-y-2">
+            <h3 className="text-xl sm:text-2xl md:text-3xl font-extrabold text-zinc-100 tracking-tight">
+              Supercharge your VOID AI Experience
+            </h3>
+            <p className="text-xs sm:text-sm text-zinc-400 leading-relaxed">
+              Upgrade your account to unlock higher message caps, maximum context outputs, faster processing speeds, and live direct admin support.
+            </p>
+          </div>
           
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 text-left">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 items-stretch">
             {plans.map((plan) => (
               <div 
                 key={plan.id}
                 className={clsx(
-                  "relative rounded-2xl p-6 md:p-8 border flex flex-col h-full transition-transform hover:-translate-y-1",
+                  "relative rounded-2xl p-4 sm:p-5 border flex flex-col justify-between transition-all duration-200 hover:border-zinc-500/50 shadow-lg",
                   plan.color,
-                  currentTier === plan.id ? "ring-2 ring-white" : ""
+                  currentTier === plan.id ? "ring-2 ring-red-500 border-red-500/80 bg-red-950/20" : ""
                 )}
               >
                 {plan.popular && (
-                  <div className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-blue-500 text-white text-xs font-bold uppercase tracking-widest py-1 px-3 rounded-full">
+                  <div className="absolute -top-3 left-1/2 -translate-x-1/2 bg-blue-600 text-white text-[10px] font-extrabold uppercase tracking-widest py-0.5 px-3 rounded-full shadow-md">
                     Most Popular
                   </div>
                 )}
                 
-                <div className="mb-6">
-                  <h3 className="text-xl font-semibold mb-2">{plan.name}</h3>
-                  <div className="flex items-baseline gap-1 mb-3">
-                    <span className="text-4xl font-bold tracking-tight">{plan.price}</span>
-                    <span className="text-sm opacity-80 font-medium">{plan.interval}</span>
+                <div>
+                  <div className="mb-4">
+                    <div className="flex items-center justify-between mb-1">
+                      <h3 className="text-base font-extrabold tracking-wide">{plan.name}</h3>
+                      {currentTier === plan.id && (
+                        <span className="text-[10px] font-bold uppercase bg-red-500/20 text-red-400 border border-red-500/30 px-2 py-0.5 rounded-full">
+                          Active
+                        </span>
+                      )}
+                    </div>
+                    <div className="flex items-baseline gap-1 mb-2">
+                      <span className="text-2xl sm:text-3xl font-black tracking-tight">{plan.price}</span>
+                      <span className="text-xs opacity-70 font-mono">{plan.interval}</span>
+                    </div>
+                    <p className="text-xs opacity-80 min-h-[36px] leading-snug">{plan.description}</p>
                   </div>
-                  <p className="text-sm opacity-80 min-h-[40px]">{plan.description}</p>
-                </div>
-                
-                <div className="flex-1">
-                  <ul className="space-y-4 mb-8">
-                    {plan.features.map((feature, i) => (
-                      <li key={i} className="flex items-start gap-3 text-sm font-medium">
-                        <Check size={18} className="shrink-0 opacity-80 mt-0.5" />
-                        <span>{feature}</span>
-                      </li>
-                    ))}
-                  </ul>
+                  
+                  <div className="pt-2 border-t border-white/10 mb-6">
+                    <ul className="space-y-2.5">
+                      {plan.features.map((feature, i) => (
+                        <li key={i} className="flex items-start gap-2 text-xs font-medium">
+                          <Check size={14} className="shrink-0 opacity-80 mt-0.5 text-emerald-400" />
+                          <span className="leading-tight">{feature}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
                 </div>
                 
                 <button
                   onClick={() => handleSubscribe(plan.id)}
                   disabled={currentTier === plan.id || loadingTier !== null}
                   className={clsx(
-                    "w-full py-3.5 px-4 rounded-xl font-semibold transition-colors flex items-center justify-center",
+                    "w-full py-2.5 px-3 rounded-xl text-xs font-bold transition-all flex items-center justify-center shadow-md",
                     plan.buttonColor,
-                    currentTier === plan.id ? "opacity-50 cursor-not-allowed" : "",
+                    currentTier === plan.id ? "opacity-40 cursor-not-allowed" : "hover:scale-[1.02] active:scale-[0.98]",
                     loadingTier === plan.id ? "animate-pulse" : ""
                   )}
                 >
                   {loadingTier === plan.id 
                     ? 'Processing...' 
                     : currentTier === plan.id 
-                      ? 'Current Plan' 
+                      ? 'Current Active Plan' 
                       : 'Upgrade to ' + plan.name}
                 </button>
               </div>

@@ -94,7 +94,7 @@ Best regards,
 
     try {
       let fullText = '';
-      await sendMessageToGemini([{ role: 'user', content: prompt }], 'gemini', '', (chunk) => {
+      await sendMessageToGemini([{ role: 'user', text: prompt }], 'gemini', '', (chunk) => {
         fullText += chunk;
         setGeneratedCampaign(fullText);
       });

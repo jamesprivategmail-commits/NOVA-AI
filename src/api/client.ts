@@ -1,8 +1,10 @@
-export async function sendMessageToGemini(
-  messages: {role: string, text: string}[], 
-  provider: string = 'gemini',
-  customKey: string = '',
-  onChunk: (text: string) => void
+export async function sendMessageToGroq(
+  messages: { role: string; text: string }[], 
+  systemPrompt: string = '',
+  onChunk: (text: string) => void,
+  signal?: AbortSignal,
+  userId?: string,
+  userTier?: string
 ) {
   try {
     const response = await fetch("/api/chat", {
@@ -10,7 +12,8 @@ export async function sendMessageToGemini(
       headers: {
         "Content-Type": "application/json",
       },
-      body: JSON.stringify({ messages, provider, customKey }),
+      body: JSON.stringify({ messages, systemPrompt, userId, userTier }),
+      signal
     });
 
     if (!response.ok) {
@@ -34,7 +37,6 @@ export async function sendMessageToGemini(
       
       // Process SSE format: "data: {...}\n\n"
       const parts = buffer.split("\n\n");
-      // The last part might be incomplete, so keep it in buffer
       buffer = parts.pop() || "";
       
       for (const part of parts) {
@@ -55,7 +57,20 @@ export async function sendMessageToGemini(
       }
     }
   } catch (error) {
-    console.error("Error in sendMessageToGemini:", error);
+    console.error("Error in sendMessageToGroq:", error);
     throw error;
   }
 }
+
+// Backwards compatibility wrapper
+export async function sendMessageToGemini(
+  messages: { role: string; text: string }[],
+  _provider: string = 'groq',
+  _customKey: string = '',
+  onChunk: (text: string) => void,
+  signal?: AbortSignal,
+  systemPrompt: string = ''
+) {
+  return sendMessageToGroq(messages, systemPrompt, onChunk, signal);
+}
+

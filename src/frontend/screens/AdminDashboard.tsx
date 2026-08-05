@@ -1,15 +1,4 @@
 import React, { useState, useEffect } from 'react';
-import { UserProfile, SupportChat, PricingSettings } from '../../models/types';
-import { listenToAllUsers, updateUserTier, updateUserStatus, updateUserVerification, listenToAllSupportChats, getPricingSettings, updatePricingSettings } from '../../database/db';
-import { X, ArrowLeft, Shield, Crown, User, RefreshCw, Ban, CheckCircle, BadgeCheck, MessageSquare, ChevronUp, ChevronDown, DollarSign } from 'lucide-react';
-import { clsx } from 'clsx';
-import { SupportChatScreen } from './SupportChatScreen';
-
-interface AdminDashboardProps {
-  onClose: () => void;
-}
-
-import React, { useState, useEffect } from 'react';
 import { UserProfile, SupportChat, PricingSettings, AIBrainSettings } from '../../models/types';
 import { listenToAllUsers, updateUserTier, updateUserStatus, updateUserVerification, listenToAllSupportChats, getPricingSettings, updatePricingSettings, getAIBrainSettings, updateAIBrainSettings } from '../../database/db';
 import { X, ArrowLeft, Shield, Crown, User, RefreshCw, Ban, CheckCircle, BadgeCheck, MessageSquare, ChevronUp, ChevronDown, DollarSign, Cpu, Save, Sparkles } from 'lucide-react';
@@ -37,7 +26,15 @@ export function AdminDashboard({ onClose }: AdminDashboardProps) {
     freePrompt: "Free Tier Brain: Precise, focused email marketing and AI assistant responses.",
     proPrompt: "Pro Tier Brain: Advanced marketing strategy, extended copy variations, deeper campaign analytics insights.",
     premiumPrompt: "Premium Tier Brain: Full campaign strategy suite, multi-stage funnel email sequences, conversion rate optimization hacks.",
-    vipPrompt: "VIP Tier Brain: Unrestricted elite AI capabilities, custom bespoke campaign designs, 1-on-1 copy teardowns."
+    vipPrompt: "VIP Tier Brain: Unrestricted elite AI capabilities, custom bespoke campaign designs, 1-on-1 copy teardowns.",
+    freeLimit: 5,
+    proLimit: 50,
+    premiumLimit: 250,
+    vipLimit: 99999,
+    freeMaxTokens: 512,
+    proMaxTokens: 1024,
+    premiumMaxTokens: 2048,
+    vipMaxTokens: 4096,
   });
   const [savingBrain, setSavingBrain] = useState(false);
   const [brainSaveSuccess, setBrainSaveSuccess] = useState(false);
@@ -111,6 +108,12 @@ export function AdminDashboard({ onClose }: AdminDashboardProps) {
     } catch (e) {
       console.error("Failed to update verify status", e);
     }
+  };
+
+  const handleMessageUserDirectly = (targetUser: UserProfile) => {
+    setActiveSupportUserId(targetUser.uid);
+    setActiveSupportUserName(targetUser.displayName || targetUser.email || 'User');
+    setActiveTab('support');
   };
 
   const handleSort = (field: SortField) => {
@@ -314,6 +317,14 @@ export function AdminDashboard({ onClose }: AdminDashboardProps) {
                               {user.isBanned ? <CheckCircle size={12} /> : <Ban size={12} />}
                               {user.isBanned ? 'Unban' : 'Ban'}
                             </button>
+                            <button
+                              onClick={() => handleMessageUserDirectly(user)}
+                              className="px-2.5 py-1 rounded-md text-xs font-bold transition-all border bg-red-600 hover:bg-red-500 text-white border-red-500 flex items-center gap-1 shadow-sm"
+                              title={`Send direct message to ${user.displayName || user.email || 'user'}`}
+                            >
+                              <MessageSquare size={12} />
+                              <span>Message</span>
+                            </button>
                           </div>
                         </td>
                       </tr>
@@ -335,7 +346,7 @@ export function AdminDashboard({ onClose }: AdminDashboardProps) {
                   </span>
                 </div>
                 <p className="text-xs text-zinc-400">
-                  Only your admin account (<span className="text-zinc-200 font-mono">mrnovatech4@gmail.com</span>) can configure the AI brain instructions for each tier.
+                  Only authorized system admin accounts can configure the AI brain instructions for each tier.
                 </p>
 
                 {brainSaveSuccess && (
@@ -359,52 +370,148 @@ export function AdminDashboard({ onClose }: AdminDashboardProps) {
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2">
-                  <div>
-                    <label className="block text-xs font-semibold text-zinc-400 mb-1 uppercase tracking-wider">
-                      Free Tier Brain Prompt
+                  {/* Free Tier */}
+                  <div className="p-4 bg-zinc-900/60 border border-zinc-800 rounded-xl space-y-3">
+                    <label className="block text-xs font-bold text-zinc-400 uppercase tracking-wider">
+                      Free Tier Config
                     </label>
-                    <textarea
-                      rows={3}
-                      value={brain.freePrompt}
-                      onChange={(e) => setBrain({ ...brain, freePrompt: e.target.value })}
-                      className="w-full bg-zinc-900 border border-zinc-700 rounded-lg p-3 text-zinc-100 text-sm focus:border-red-500 outline-none"
-                    />
+                    <div>
+                      <span className="text-[11px] text-zinc-500 block mb-1">System Behavior Prompt</span>
+                      <textarea
+                        rows={3}
+                        value={brain.freePrompt}
+                        onChange={(e) => setBrain({ ...brain, freePrompt: e.target.value })}
+                        className="w-full bg-zinc-950 border border-zinc-700/80 rounded-lg p-2.5 text-zinc-100 text-xs focus:border-red-500 outline-none"
+                      />
+                    </div>
+                    <div className="grid grid-cols-2 gap-2">
+                      <div>
+                        <span className="text-[11px] text-zinc-400 block mb-1">Daily Msgs Limit</span>
+                        <input
+                          type="number"
+                          value={brain.freeLimit}
+                          onChange={(e) => setBrain({ ...brain, freeLimit: parseInt(e.target.value) || 0 })}
+                          className="w-full bg-zinc-950 border border-zinc-700/80 rounded-lg px-3 py-1.5 text-zinc-100 text-xs outline-none focus:border-red-500"
+                        />
+                      </div>
+                      <div>
+                        <span className="text-[11px] text-zinc-400 block mb-1">Max Output Tokens</span>
+                        <input
+                          type="number"
+                          value={brain.freeMaxTokens}
+                          onChange={(e) => setBrain({ ...brain, freeMaxTokens: parseInt(e.target.value) || 0 })}
+                          className="w-full bg-zinc-950 border border-zinc-700/80 rounded-lg px-3 py-1.5 text-zinc-100 text-xs outline-none focus:border-red-500"
+                        />
+                      </div>
+                    </div>
                   </div>
 
-                  <div>
-                    <label className="block text-xs font-semibold text-blue-400 mb-1 uppercase tracking-wider">
-                      Pro Tier Brain Prompt
+                  {/* Pro Tier */}
+                  <div className="p-4 bg-zinc-900/60 border border-blue-950/60 rounded-xl space-y-3">
+                    <label className="block text-xs font-bold text-blue-400 uppercase tracking-wider">
+                      Pro Tier Config
                     </label>
-                    <textarea
-                      rows={3}
-                      value={brain.proPrompt}
-                      onChange={(e) => setBrain({ ...brain, proPrompt: e.target.value })}
-                      className="w-full bg-zinc-900 border border-zinc-700 rounded-lg p-3 text-zinc-100 text-sm focus:border-blue-500 outline-none"
-                    />
+                    <div>
+                      <span className="text-[11px] text-zinc-500 block mb-1">System Behavior Prompt</span>
+                      <textarea
+                        rows={3}
+                        value={brain.proPrompt}
+                        onChange={(e) => setBrain({ ...brain, proPrompt: e.target.value })}
+                        className="w-full bg-zinc-950 border border-zinc-700/80 rounded-lg p-2.5 text-zinc-100 text-xs focus:border-blue-500 outline-none"
+                      />
+                    </div>
+                    <div className="grid grid-cols-2 gap-2">
+                      <div>
+                        <span className="text-[11px] text-zinc-400 block mb-1">Daily Msgs Limit</span>
+                        <input
+                          type="number"
+                          value={brain.proLimit}
+                          onChange={(e) => setBrain({ ...brain, proLimit: parseInt(e.target.value) || 0 })}
+                          className="w-full bg-zinc-950 border border-zinc-700/80 rounded-lg px-3 py-1.5 text-zinc-100 text-xs outline-none focus:border-blue-500"
+                        />
+                      </div>
+                      <div>
+                        <span className="text-[11px] text-zinc-400 block mb-1">Max Output Tokens</span>
+                        <input
+                          type="number"
+                          value={brain.proMaxTokens}
+                          onChange={(e) => setBrain({ ...brain, proMaxTokens: parseInt(e.target.value) || 0 })}
+                          className="w-full bg-zinc-950 border border-zinc-700/80 rounded-lg px-3 py-1.5 text-zinc-100 text-xs outline-none focus:border-blue-500"
+                        />
+                      </div>
+                    </div>
                   </div>
 
-                  <div>
-                    <label className="block text-xs font-semibold text-amber-400 mb-1 uppercase tracking-wider">
-                      Premium Tier Brain Prompt
+                  {/* Premium Tier */}
+                  <div className="p-4 bg-zinc-900/60 border border-amber-950/60 rounded-xl space-y-3">
+                    <label className="block text-xs font-bold text-amber-400 uppercase tracking-wider">
+                      Premium Tier Config
                     </label>
-                    <textarea
-                      rows={3}
-                      value={brain.premiumPrompt}
-                      onChange={(e) => setBrain({ ...brain, premiumPrompt: e.target.value })}
-                      className="w-full bg-zinc-900 border border-zinc-700 rounded-lg p-3 text-zinc-100 text-sm focus:border-amber-500 outline-none"
-                    />
+                    <div>
+                      <span className="text-[11px] text-zinc-500 block mb-1">System Behavior Prompt</span>
+                      <textarea
+                        rows={3}
+                        value={brain.premiumPrompt}
+                        onChange={(e) => setBrain({ ...brain, premiumPrompt: e.target.value })}
+                        className="w-full bg-zinc-950 border border-zinc-700/80 rounded-lg p-2.5 text-zinc-100 text-xs focus:border-amber-500 outline-none"
+                      />
+                    </div>
+                    <div className="grid grid-cols-2 gap-2">
+                      <div>
+                        <span className="text-[11px] text-zinc-400 block mb-1">Daily Msgs Limit</span>
+                        <input
+                          type="number"
+                          value={brain.premiumLimit}
+                          onChange={(e) => setBrain({ ...brain, premiumLimit: parseInt(e.target.value) || 0 })}
+                          className="w-full bg-zinc-950 border border-zinc-700/80 rounded-lg px-3 py-1.5 text-zinc-100 text-xs outline-none focus:border-amber-500"
+                        />
+                      </div>
+                      <div>
+                        <span className="text-[11px] text-zinc-400 block mb-1">Max Output Tokens</span>
+                        <input
+                          type="number"
+                          value={brain.premiumMaxTokens}
+                          onChange={(e) => setBrain({ ...brain, premiumMaxTokens: parseInt(e.target.value) || 0 })}
+                          className="w-full bg-zinc-950 border border-zinc-700/80 rounded-lg px-3 py-1.5 text-zinc-100 text-xs outline-none focus:border-amber-500"
+                        />
+                      </div>
+                    </div>
                   </div>
 
-                  <div>
-                    <label className="block text-xs font-semibold text-purple-400 mb-1 uppercase tracking-wider">
-                      VIP Tier Brain Prompt
+                  {/* VIP Tier */}
+                  <div className="p-4 bg-zinc-900/60 border border-purple-950/60 rounded-xl space-y-3">
+                    <label className="block text-xs font-bold text-purple-400 uppercase tracking-wider">
+                      VIP Tier Config
                     </label>
-                    <textarea
-                      rows={3}
-                      value={brain.vipPrompt}
-                      onChange={(e) => setBrain({ ...brain, vipPrompt: e.target.value })}
-                      className="w-full bg-zinc-900 border border-zinc-700 rounded-lg p-3 text-zinc-100 text-sm focus:border-purple-500 outline-none"
-                    />
+                    <div>
+                      <span className="text-[11px] text-zinc-500 block mb-1">System Behavior Prompt</span>
+                      <textarea
+                        rows={3}
+                        value={brain.vipPrompt}
+                        onChange={(e) => setBrain({ ...brain, vipPrompt: e.target.value })}
+                        className="w-full bg-zinc-950 border border-zinc-700/80 rounded-lg p-2.5 text-zinc-100 text-xs focus:border-purple-500 outline-none"
+                      />
+                    </div>
+                    <div className="grid grid-cols-2 gap-2">
+                      <div>
+                        <span className="text-[11px] text-zinc-400 block mb-1">Daily Msgs Limit</span>
+                        <input
+                          type="number"
+                          value={brain.vipLimit}
+                          onChange={(e) => setBrain({ ...brain, vipLimit: parseInt(e.target.value) || 0 })}
+                          className="w-full bg-zinc-950 border border-zinc-700/80 rounded-lg px-3 py-1.5 text-zinc-100 text-xs outline-none focus:border-purple-500"
+                        />
+                      </div>
+                      <div>
+                        <span className="text-[11px] text-zinc-400 block mb-1">Max Output Tokens</span>
+                        <input
+                          type="number"
+                          value={brain.vipMaxTokens}
+                          onChange={(e) => setBrain({ ...brain, vipMaxTokens: parseInt(e.target.value) || 0 })}
+                          className="w-full bg-zinc-950 border border-zinc-700/80 rounded-lg px-3 py-1.5 text-zinc-100 text-xs outline-none focus:border-purple-500"
+                        />
+                      </div>
+                    </div>
                   </div>
                 </div>
 
@@ -420,44 +527,114 @@ export function AdminDashboard({ onClose }: AdminDashboardProps) {
                 </div>
               </div>
             </form>
-          ) : activeTab === 'support' ? (
-            <div className="space-y-2">
-              {supportChats.length === 0 ? (
-                <div className="text-center py-12 text-zinc-500">No support tickets found.</div>
-              ) : (
-                supportChats.map(chat => (
-                  <div 
-                    key={chat.id}
-                    onClick={() => {
-                      setActiveSupportUserId(chat.userId);
-                      setActiveSupportUserName(chat.userName);
-                    }}
-                    className="bg-zinc-950/60 border border-zinc-800 hover:border-red-900/50 rounded-xl p-4 cursor-pointer transition-all flex items-center justify-between group shadow-sm"
-                  >
-                    <div>
-                      <div className="flex items-center gap-2 mb-1">
-                        <h3 className="font-semibold text-zinc-100">{chat.userName}</h3>
-                        {chat.unreadAdmin > 0 && (
-                          <span className="bg-red-600 text-white text-[10px] px-2 py-0.5 rounded-full font-bold">
-                            {chat.unreadAdmin} New
-                          </span>
-                        )}
-                      </div>
-                      <p className="text-sm text-zinc-400 truncate max-w-xl">{chat.lastMessage}</p>
-                    </div>
-                    <div className="flex items-center gap-4">
-                      <span className="text-xs text-zinc-500">
-                        {new Date(chat.lastMessageTime).toLocaleString()}
-                      </span>
-                      <button className="text-red-400 font-semibold text-sm opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-1">
-                        Reply <MessageSquare size={14} />
-                      </button>
-                    </div>
+          ) : activeTab === 'support' ? (() => {
+            const displaySupportChats = [...supportChats];
+            if (activeSupportUserId && !displaySupportChats.some(c => c.userId === activeSupportUserId)) {
+              displaySupportChats.unshift({
+                id: activeSupportUserId,
+                userId: activeSupportUserId,
+                userName: activeSupportUserName || 'User',
+                lastMessage: 'Direct Admin Chat initiated...',
+                lastMessageTime: Date.now(),
+                unreadAdmin: 0,
+                unreadUser: 0
+              });
+            }
+            return (
+              <div className="flex flex-col md:flex-row h-[600px] border border-zinc-800 rounded-2xl overflow-hidden bg-zinc-950/80">
+                {/* Left Pane: Ticket Directory */}
+                <div className={clsx(
+                  "w-full md:w-80 shrink-0 border-b md:border-b-0 md:border-r border-zinc-800 flex flex-col h-full bg-zinc-950",
+                  activeSupportUserId && "hidden md:flex"
+                )}>
+                  <div className="p-3.5 border-b border-zinc-800 flex items-center justify-between">
+                    <span className="text-xs font-bold font-mono text-zinc-400 uppercase tracking-wider">
+                      Support Tickets ({displaySupportChats.length})
+                    </span>
+                    <span className="px-2 py-0.5 rounded-full bg-red-950/80 text-red-400 border border-red-800/40 text-[10px] font-bold">
+                      LIVE DESK
+                    </span>
                   </div>
-                ))
-              )}
-            </div>
-          ) : activeTab === 'pricing' ? (
+                  
+                  <div className="flex-1 overflow-y-auto p-2 space-y-1.5">
+                    {displaySupportChats.length === 0 ? (
+                      <div className="p-8 text-center text-xs text-zinc-500 font-mono">
+                        No active support tickets found.
+                      </div>
+                    ) : (
+                      displaySupportChats.map(chat => {
+                        const isActive = activeSupportUserId === chat.userId;
+                        return (
+                          <div
+                            key={chat.id}
+                            onClick={() => {
+                              setActiveSupportUserId(chat.userId);
+                              setActiveSupportUserName(chat.userName);
+                            }}
+                            className={clsx(
+                              "p-3 rounded-xl cursor-pointer transition-all border text-left",
+                              isActive
+                                ? "bg-red-950/40 border-red-600/60 text-white shadow-lg shadow-red-950/30"
+                                : "bg-zinc-900/60 border-zinc-800/80 hover:bg-zinc-900 hover:border-zinc-700 text-zinc-300"
+                            )}
+                          >
+                            <div className="flex items-center justify-between mb-1">
+                              <h4 className="font-bold text-xs truncate max-w-[140px] text-zinc-100">
+                                {chat.userName}
+                              </h4>
+                              {chat.unreadAdmin > 0 && (
+                                <span className="bg-red-600 text-white text-[10px] px-1.5 py-0.5 rounded-full font-bold shadow-sm">
+                                  {chat.unreadAdmin} New
+                                </span>
+                              )}
+                            </div>
+                            <p className="text-[11px] text-zinc-400 truncate mb-1">
+                              {chat.lastMessage}
+                            </p>
+                            <span className="text-[10px] text-zinc-500 font-mono">
+                              {new Date(chat.lastMessageTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                            </span>
+                          </div>
+                        );
+                      })
+                    )}
+                  </div>
+                </div>
+
+                {/* Right Pane: Live Interactive Support Chat */}
+                <div className={clsx(
+                  "flex-1 h-full relative bg-zinc-900/40 flex flex-col",
+                  !activeSupportUserId && "hidden md:flex"
+                )}>
+                  {activeSupportUserId ? (
+                    <SupportChatScreen 
+                      userId=""
+                      userName=""
+                      isAdminView={true}
+                      targetUserId={activeSupportUserId}
+                      targetUserName={activeSupportUserName || 'User'}
+                      onClose={() => {
+                        setActiveSupportUserId(null);
+                        setActiveSupportUserName(null);
+                      }}
+                    />
+                  ) : (
+                    <div className="flex-1 flex flex-col items-center justify-center p-8 text-center space-y-4">
+                      <div className="w-16 h-16 rounded-2xl bg-red-950/40 border border-red-800/40 flex items-center justify-center text-red-400">
+                        <MessageSquare size={32} />
+                      </div>
+                      <div className="max-w-sm space-y-1">
+                        <h3 className="text-base font-bold text-zinc-100">Real-Time Support Desk</h3>
+                        <p className="text-xs text-zinc-400 leading-relaxed">
+                          Select a support ticket or click "Message" next to any user in User Control to send them a direct message.
+                        </p>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+            );
+          })() : activeTab === 'pricing' ? (
             <div className="max-w-2xl mx-auto space-y-6">
               <form onSubmit={handleSavePricing} className="bg-zinc-950/60 border border-zinc-800 rounded-2xl p-6">
                 <div className="flex items-center gap-2 mb-6">
@@ -507,24 +684,6 @@ export function AdminDashboard({ onClose }: AdminDashboardProps) {
           ) : null}
         </div>
       </div>
-      
-      {activeSupportUserId && (
-        <div className="fixed inset-0 z-[60] bg-black/80 backdrop-blur-md flex items-center justify-center p-4">
-          <div className="bg-zinc-900 border border-red-900/40 rounded-2xl w-full max-w-2xl h-[80vh] relative overflow-hidden shadow-2xl">
-            <SupportChatScreen 
-              userId=""
-              userName=""
-              isAdminView={true}
-              targetUserId={activeSupportUserId}
-              targetUserName={activeSupportUserName || 'User'}
-              onClose={() => {
-                setActiveSupportUserId(null);
-                setActiveSupportUserName(null);
-              }}
-            />
-          </div>
-        </div>
-      )}
     </div>
   );
 }

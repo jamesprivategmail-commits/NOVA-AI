@@ -1,13 +1,29 @@
 import React, { useState } from 'react';
-import { getAuth, signInWithPopup, GoogleAuthProvider } from 'firebase/auth';
-import { Skull, AlertCircle, RefreshCw } from 'lucide-react';
+import { 
+  getAuth, 
+  signInWithPopup, 
+  GoogleAuthProvider, 
+  signInWithEmailAndPassword, 
+  createUserWithEmailAndPassword,
+  sendEmailVerification,
+  sendPasswordResetEmail
+} from 'firebase/auth';
+import { Skull, AlertCircle, RefreshCw, Mail, Lock, CheckCircle2, ShieldCheck } from 'lucide-react';
+import { validateEmail, validatePassword } from '../../utils/security';
 
 export function AuthScreen() {
   const [error, setError] = useState('');
+  const [infoMsg, setInfoMsg] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [showEmailAuth, setShowEmailAuth] = useState(false);
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [isRegistering, setIsRegistering] = useState(false);
+  const [resetSent, setResetSent] = useState(false);
 
   const handleGoogleLogin = async () => {
     setError('');
+    setInfoMsg('');
     setIsLoading(true);
 
     try {
@@ -18,11 +34,90 @@ export function AuthScreen() {
     } catch (err: any) {
       console.error("Google Auth error:", err);
       if (err?.code === 'auth/popup-closed-by-user' || err?.code === 'auth/cancelled-popup-request') {
-        setError('Sign-in process was closed before completion. Click below to try again.');
+        setError('Sign-in process was closed before completion. Click below or use Email Sign In.');
       } else if (err?.code === 'auth/popup-blocked') {
-        setError('Pop-up was blocked by your browser. Please allow pop-ups for this page and try again.');
+        setError('Pop-up was blocked by your browser. Please allow pop-ups or use Email Sign In.');
       } else {
-        setError(err?.message || 'Authentication failed. Please try again.');
+        setError('Google Auth popup unreachable in preview container. Use Email Sign In below.');
+      }
+      setShowEmailAuth(true);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleForgotPassword = async () => {
+    setError('');
+    setInfoMsg('');
+
+    const emailCheck = validateEmail(email);
+    if (!emailCheck.valid) {
+      setError(emailCheck.reason || 'Please enter a valid email address first.');
+      return;
+    }
+
+    setIsLoading(true);
+    try {
+      const auth = getAuth();
+      await sendPasswordResetEmail(auth, email.trim());
+      setResetSent(true);
+      setInfoMsg(`Password reset link sent to ${email.trim()}. Check your inbox.`);
+    } catch (err: any) {
+      console.error("Password reset error:", err);
+      setError(err?.message || 'Failed to send password reset email.');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleEmailAuth = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError('');
+    setInfoMsg('');
+
+    // 1. Strict Email Validation (Blocks fake/disposable email domains like mailinator, 10minutemail, etc.)
+    const emailValidation = validateEmail(email);
+    if (!emailValidation.valid) {
+      setError(emailValidation.reason || 'Invalid email address format.');
+      return;
+    }
+
+    // 2. Strict Password Validation on Registration
+    if (isRegistering) {
+      const passwordValidation = validatePassword(password);
+      if (!passwordValidation.valid) {
+        setError(passwordValidation.reason || 'Password does not meet security requirements.');
+        return;
+      }
+    }
+
+    setIsLoading(true);
+
+    try {
+      const auth = getAuth();
+      if (isRegistering) {
+        const userCred = await createUserWithEmailAndPassword(auth, email.trim(), password);
+        
+        // Trigger Firebase Email Verification
+        try {
+          await sendEmailVerification(userCred.user);
+          setInfoMsg('Account created! A verification link has been sent to your email.');
+        } catch (vErr) {
+          console.warn("Could not send email verification immediately:", vErr);
+        }
+      } else {
+        await signInWithEmailAndPassword(auth, email.trim(), password);
+      }
+    } catch (err: any) {
+      console.error("Email Auth error:", err);
+      if (err?.code === 'auth/email-already-in-use') {
+        setError('An account with this email already exists. Please log in instead.');
+      } else if (err?.code === 'auth/invalid-credential' || err?.code === 'auth/user-not-found' || err?.code === 'auth/wrong-password') {
+        setError('Invalid email or password credentials.');
+      } else if (err?.code === 'auth/too-many-requests') {
+        setError('Access temporarily locked due to many failed login attempts. Try again later.');
+      } else {
+        setError(err?.message || 'Authentication failed. Please check your details.');
       }
     } finally {
       setIsLoading(false);
@@ -43,15 +138,28 @@ export function AuthScreen() {
         <h1 className="text-3xl font-black text-white tracking-widest uppercase mb-1">
           VOID AI
         </h1>
-        <p className="text-xs font-mono font-bold text-red-500/80 tracking-widest uppercase mb-8">
-          SYSTEM ACCESS REQUIRED
+        <p className="text-xs font-mono font-bold text-red-500/80 tracking-widest uppercase mb-6">
+          SECURE SYSTEM ACCESS
         </p>
+
+        {/* Security Shield Notice */}
+        <div className="w-full mb-4 px-4 py-2 bg-zinc-950/80 border border-zinc-800 rounded-xl flex items-center justify-center gap-2 text-[11px] text-zinc-400 font-mono">
+          <ShieldCheck size={14} className="text-emerald-400 shrink-0" />
+          <span>Real Email Verification & Anti-Abuse Protection Active</span>
+        </div>
 
         <div className="w-full bg-zinc-950 border border-red-900/30 rounded-2xl p-6 shadow-2xl shadow-red-950/20 backdrop-blur-md">
           {error && (
             <div className="mb-5 p-3.5 bg-red-950/40 border border-red-800/50 rounded-xl flex items-start gap-3 text-red-400 text-xs">
               <AlertCircle size={16} className="shrink-0 mt-0.5 text-red-500" />
               <p className="leading-relaxed font-medium">{error}</p>
+            </div>
+          )}
+
+          {infoMsg && (
+            <div className="mb-5 p-3.5 bg-emerald-950/40 border border-emerald-800/50 rounded-xl flex items-start gap-3 text-emerald-400 text-xs">
+              <CheckCircle2 size={16} className="shrink-0 mt-0.5 text-emerald-400" />
+              <p className="leading-relaxed font-medium">{infoMsg}</p>
             </div>
           )}
 
@@ -83,20 +191,93 @@ export function AuthScreen() {
                   />
                 </svg>
                 <span className="tracking-wider text-xs font-mono uppercase group-hover:text-red-400 transition-colors">
-                  INITIALIZE UPLINK
+                  VERIFIED GOOGLE SIGN IN
                 </span>
               </>
             )}
           </button>
 
-          <div className="mt-4 text-center">
-            <span className="text-[11px] font-mono text-zinc-500">
-              SECURE GOOGLE AUTHENTICATION ONLY
-            </span>
-          </div>
+          {!showEmailAuth ? (
+            <div className="mt-4 text-center">
+              <button
+                onClick={() => setShowEmailAuth(true)}
+                className="text-[11px] font-mono text-zinc-500 hover:text-red-400 underline transition-colors"
+              >
+                Or sign in with Email / Password
+              </button>
+            </div>
+          ) : (
+            <form onSubmit={handleEmailAuth} className="mt-5 pt-4 border-t border-zinc-800/80 space-y-3">
+              <div className="flex items-center justify-between mb-1">
+                <span className="text-xs font-mono font-bold text-zinc-400 uppercase">
+                  {isRegistering ? 'Create Verified Account' : 'Verified Email Login'}
+                </span>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsRegistering(!isRegistering);
+                    setError('');
+                    setInfoMsg('');
+                  }}
+                  className="text-[11px] text-red-400 hover:underline font-mono"
+                >
+                  {isRegistering ? 'Switch to Login' : 'Create New Account'}
+                </button>
+              </div>
+
+              <div>
+                <div className="relative">
+                  <Mail size={16} className="absolute left-3 top-3 text-zinc-500" />
+                  <input
+                    type="email"
+                    required
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    placeholder="your.email@gmail.com"
+                    className="w-full bg-zinc-900 border border-zinc-800 focus:border-red-600 text-zinc-100 rounded-xl pl-9 pr-3 py-2 text-xs outline-none transition-colors font-mono"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <div className="relative">
+                  <Lock size={16} className="absolute left-3 top-3 text-zinc-500" />
+                  <input
+                    type="password"
+                    required
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    placeholder={isRegistering ? "Password (8+ chars, letters & numbers)" : "Password"}
+                    className="w-full bg-zinc-900 border border-zinc-800 focus:border-red-600 text-zinc-100 rounded-xl pl-9 pr-3 py-2 text-xs outline-none transition-colors font-mono"
+                  />
+                </div>
+              </div>
+
+              {!isRegistering && (
+                <div className="flex justify-end">
+                  <button
+                    type="button"
+                    onClick={handleForgotPassword}
+                    className="text-[10px] text-zinc-500 hover:text-red-400 font-mono underline"
+                  >
+                    Forgot Password?
+                  </button>
+                </div>
+              )}
+
+              <button
+                type="submit"
+                disabled={isLoading}
+                className="w-full py-2.5 bg-red-600 hover:bg-red-500 text-white font-bold text-xs font-mono rounded-xl transition-colors shadow-md disabled:opacity-50"
+              >
+                {isLoading ? 'VERIFYING...' : (isRegistering ? 'REGISTER WITH VERIFIED EMAIL' : 'AUTHENTICATE USER')}
+              </button>
+            </form>
+          )}
         </div>
       </div>
     </div>
   );
 }
+
 

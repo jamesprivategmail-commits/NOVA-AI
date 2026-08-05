@@ -6,6 +6,24 @@ export interface PricingSettings {
   vip: number;
 }
 
+export interface AIBrainSettings {
+  globalPrompt: string;
+  freePrompt: string;
+  proPrompt: string;
+  premiumPrompt: string;
+  vipPrompt: string;
+
+  freeLimit: number;
+  proLimit: number;
+  premiumLimit: number;
+  vipLimit: number;
+
+  freeMaxTokens: number;
+  proMaxTokens: number;
+  premiumMaxTokens: number;
+  vipMaxTokens: number;
+}
+
 
 export interface UserProfile {
   uid: string;
