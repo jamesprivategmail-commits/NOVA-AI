@@ -6,11 +6,12 @@ import { AdminDashboard } from './AdminDashboard';
 import { SubscriptionModal } from './SubscriptionModal';
 import { SettingsModal } from './SettingsModal';
 import { SupportChatScreen } from './SupportChatScreen';
+import { EmailCampaignGenerator } from '../components/EmailCampaignGenerator';
 import { Chat, Message, UserProfile } from '../../models/types';
 import { createChat, getUserChats, deleteChat, updateChatTitle, saveMessage, getChatMessages, getUserProfile, incrementMessageCount, deleteMessage, updateMessage, sendSupportMessage } from '../../database/db';
 import { sendMessageToGemini } from '../../api/client';
 import { memoryManager } from '../../memory/context';
-import { Menu, Bot, Shield, BadgeCheck } from 'lucide-react';
+import { Menu, Bot, Shield, BadgeCheck, Mail, Zap } from 'lucide-react';
 import { getAuth, signOut } from 'firebase/auth';
 
 interface ChatScreenProps {
@@ -29,6 +30,7 @@ export function ChatScreen({ userId }: ChatScreenProps) {
   const [showSettings, setShowSettings] = useState(false);
   const [showSupport, setShowSupport] = useState(false);
   const [showSubscription, setShowSubscription] = useState(false);
+  const [showCampaignGenerator, setShowCampaignGenerator] = useState(false);
   
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
@@ -94,19 +96,19 @@ export function ChatScreen({ userId }: ChatScreenProps) {
       alert("Your account has been banned. Please contact support.");
       return false;
     }
-    if (profile.isAdmin || profile.tier === 'premium') return true;
+    if (profile.isAdmin || profile.tier === 'premium' || profile.tier === 'vip') return true;
     
     const today = new Date().toISOString().split('T')[0];
     const isToday = profile.lastMessageDate === today;
     
     if (profile.tier === 'free') {
       if (isToday && profile.messageCount >= 5) {
-        alert("Free tier limit reached (5 messages per day). Please upgrade to Pro or Premium.");
+        alert("Free tier limit reached (5 messages per day). Please upgrade to Pro, Premium, or VIP.");
         return false;
       }
     } else if (profile.tier === 'pro') {
       if (isToday && profile.messageCount >= 50) {
-        alert("Pro tier limit reached (50 messages per day). Please upgrade to Premium.");
+        alert("Pro tier limit reached (50 messages per day). Please upgrade to Premium or VIP.");
         return false;
       }
     }
@@ -175,7 +177,7 @@ export function ChatScreen({ userId }: ChatScreenProps) {
       setStreamingMessage('');
     } catch (error) {
       console.error("Failed to get response", error);
-      alert("Error communicating with NOVA AI.");
+      alert("Error communicating with VOID AI.");
     } finally {
       setIsLoading(false);
     }
@@ -186,7 +188,7 @@ export function ChatScreen({ userId }: ChatScreenProps) {
   };
 
   return (
-    <div className="flex h-screen bg-[#212121] text-zinc-100 overflow-hidden font-sans">
+    <div className="flex h-screen bg-[#18181b] text-zinc-100 overflow-hidden font-sans">
       <Sidebar 
         chats={chats}
         currentChatId={currentChatId}
@@ -198,13 +200,14 @@ export function ChatScreen({ userId }: ChatScreenProps) {
         onOpenSupport={() => setShowSupport(true)}
         onOpenSubscription={() => setShowSubscription(true)}
         onOpenAdmin={() => setShowAdminPanel(true)}
+        onOpenCampaignGenerator={() => setShowCampaignGenerator(true)}
         onLogout={handleLogout}
         isOpen={isSidebarOpen}
         isAdmin={profile?.isAdmin || false}
       />
       
       <div className="flex-1 flex flex-col h-full relative min-w-0">
-        <header className="h-14 flex items-center justify-between px-4 sticky top-0 z-10">
+        <header className="h-14 flex items-center justify-between px-4 sticky top-0 z-10 bg-zinc-950/80 border-b border-zinc-800/80 backdrop-blur-md">
           <div className="flex items-center">
             <button 
               onClick={() => setIsSidebarOpen(!isSidebarOpen)}
@@ -212,26 +215,34 @@ export function ChatScreen({ userId }: ChatScreenProps) {
             >
               <Menu size={20} />
             </button>
-            <div className="font-semibold text-lg flex items-center gap-2 text-zinc-200">
-              NOVA AI <span className="px-1.5 py-0.5 rounded-full bg-blue-500/10 text-blue-400 text-[10px] uppercase font-bold tracking-wider">v1</span>
+            <div className="font-bold text-lg flex items-center gap-2 text-zinc-100 tracking-wider">
+              VOID AI <span className="px-2 py-0.5 rounded-full bg-red-600/20 text-red-400 border border-red-500/30 text-[10px] uppercase font-bold tracking-wider">DANGEROUS AI</span>
             </div>
           </div>
           
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2.5">
+            <button
+              onClick={() => setShowCampaignGenerator(true)}
+              className="flex items-center gap-1.5 px-3 py-1.5 bg-gradient-to-r from-red-600 to-red-800 hover:from-red-500 hover:to-red-700 text-white rounded-lg transition-all text-xs font-bold shadow-md shadow-red-950/50"
+            >
+              <Mail size={14} />
+              <span className="hidden sm:inline">Campaign Generator</span>
+            </button>
+
             {profile && profile.isAdmin && (
               <button
                 onClick={() => setShowAdminPanel(true)}
-                className="flex items-center gap-2 px-3 py-1.5 bg-red-500/10 text-red-400 rounded-lg hover:bg-red-500/20 transition-colors text-sm font-medium border border-red-500/20"
+                className="flex items-center gap-1.5 px-3 py-1.5 bg-red-500/10 text-red-400 rounded-lg hover:bg-red-500/20 transition-colors text-xs font-bold border border-red-500/30"
               >
-                <Shield size={16} />
+                <Shield size={14} />
                 <span className="hidden sm:inline">Admin</span>
               </button>
             )}
             {profile && (
-              <div className="px-3 py-1.5 bg-zinc-800 rounded-lg text-sm font-medium border border-zinc-700/50 flex items-center gap-2 text-zinc-300">
-                <span className="capitalize text-zinc-100">{profile.tier}</span>
-                <span className="w-1 h-1 rounded-full bg-zinc-600"></span>
-                <span>{profile.messageCount} msgs today</span>
+              <div className="px-3 py-1.5 bg-zinc-900 rounded-lg text-xs font-semibold border border-zinc-800 flex items-center gap-2 text-zinc-300">
+                <span className="capitalize text-red-400 font-bold">{profile.tier}</span>
+                <span className="w-1 h-1 rounded-full bg-zinc-700"></span>
+                <span>{profile.messageCount} msgs</span>
               </div>
             )}
           </div>
@@ -240,17 +251,23 @@ export function ChatScreen({ userId }: ChatScreenProps) {
         <div className="flex-1 overflow-y-auto">
           {messages.length === 0 ? (
             <div className="h-full flex flex-col items-center justify-center p-8 text-center max-w-3xl mx-auto">
-              <div className="w-16 h-16 bg-white rounded-full flex items-center justify-center mb-6 shadow-sm">
-                <Bot size={32} className="text-black" />
+              <div className="w-16 h-16 bg-gradient-to-br from-red-600 to-red-900 rounded-2xl flex items-center justify-center mb-6 shadow-xl shadow-red-950/50 border border-red-500/30">
+                <Bot size={32} className="text-white" />
               </div>
-              <h1 className="text-[28px] font-semibold mb-8 tracking-tight text-zinc-100">How can I help you today?</h1>
+              <h1 className="text-[28px] font-bold mb-2 tracking-wide text-zinc-100">VOID AI CAMPAIGN STUDIO</h1>
+              <p className="text-zinc-400 text-sm mb-8 max-w-md">Generate high-converting email marketing copy, custom subject lines, and multi-stage sequences in seconds.</p>
               
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3 w-full max-w-2xl">
-                {["Write an email to my boss", "Explain quantum computing", "Help me debug this React code", "Plan a weekend itinerary"].map((suggestion, i) => (
+                {[
+                  "🚀 Generate a 5-email flash sale marketing sequence",
+                  "✉️ Write 10 high open-rate email subject lines for SaaS",
+                  "💻 Write an email campaign for a new AI product launch",
+                  "🔥 Re-engage inactive newsletter subscribers with urgency"
+                ].map((suggestion, i) => (
                   <button 
                     key={i}
                     onClick={() => handleSend(suggestion)}
-                    className="p-4 bg-transparent hover:bg-[#2f2f2f] border border-zinc-700/50 rounded-xl text-left transition-colors text-zinc-300 hover:text-zinc-100 text-[14px]"
+                    className="p-4 bg-zinc-900/60 hover:bg-zinc-800/80 border border-zinc-800 hover:border-red-900/50 rounded-xl text-left transition-all text-zinc-300 hover:text-white text-[13px] font-medium shadow-sm"
                   >
                     {suggestion}
                   </button>
@@ -281,14 +298,14 @@ export function ChatScreen({ userId }: ChatScreenProps) {
               {isLoading && !streamingMessage && (
                 <div className="flex w-full py-6 px-4 md:px-6 lg:px-8 bg-transparent">
                   <div className="max-w-4xl mx-auto flex w-full gap-4 md:gap-6">
-                    <div className="w-8 h-8 rounded-full bg-blue-600 flex items-center justify-center shrink-0 mt-0.5">
+                    <div className="w-8 h-8 rounded-full bg-red-600 flex items-center justify-center shrink-0 mt-0.5">
                       <Bot size={18} className="text-white" />
                     </div>
                     <div className="flex items-center">
                       <div className="flex space-x-1.5">
-                        <div className="w-2 h-2 bg-zinc-500 rounded-full animate-bounce [animation-delay:-0.3s]"></div>
-                        <div className="w-2 h-2 bg-zinc-500 rounded-full animate-bounce [animation-delay:-0.15s]"></div>
-                        <div className="w-2 h-2 bg-zinc-500 rounded-full animate-bounce"></div>
+                        <div className="w-2 h-2 bg-red-500 rounded-full animate-bounce [animation-delay:-0.3s]"></div>
+                        <div className="w-2 h-2 bg-red-500 rounded-full animate-bounce [animation-delay:-0.15s]"></div>
+                        <div className="w-2 h-2 bg-red-500 rounded-full animate-bounce"></div>
                       </div>
                     </div>
                   </div>
@@ -299,7 +316,7 @@ export function ChatScreen({ userId }: ChatScreenProps) {
           )}
         </div>
 
-        <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-[#212121] via-[#212121] to-transparent pt-10">
+        <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-[#18181b] via-[#18181b] to-transparent pt-10">
           <InputArea 
             onSend={handleSend} 
             isLoading={isLoading} 
@@ -310,9 +327,18 @@ export function ChatScreen({ userId }: ChatScreenProps) {
       {showAdminPanel && (
         <AdminDashboard onClose={() => setShowAdminPanel(false)} />
       )}
+
+      {showCampaignGenerator && (
+        <EmailCampaignGenerator 
+          onClose={() => setShowCampaignGenerator(false)} 
+        />
+      )}
       
       {showSettings && (
-        <SettingsModal onClose={() => setShowSettings(false)} />
+        <SettingsModal 
+          onClose={() => setShowSettings(false)} 
+          isAdmin={profile?.isAdmin || false}
+        />
       )}
       
       {showSubscription && profile && (

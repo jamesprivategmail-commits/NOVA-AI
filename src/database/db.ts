@@ -265,3 +265,36 @@ export function listenToPricingSettings(callback: (settings: PricingSettings) =>
   });
 }
 
+import { AIBrainSettings } from "../models/types";
+
+export async function getAIBrainSettings(): Promise<AIBrainSettings> {
+  const docRef = doc(db, 'settings', 'brain');
+  const snap = await getDoc(docRef);
+  if (snap.exists()) {
+    return snap.data() as AIBrainSettings;
+  }
+  const defaultBrain: AIBrainSettings = {
+    globalPrompt: "You are VOID AI, an elite, hyper-intelligent, dangerous AI assistant and master email marketing campaign strategist.",
+    freePrompt: "Free Tier Brain: Precise, focused email marketing and AI assistant responses.",
+    proPrompt: "Pro Tier Brain: Advanced marketing strategy, extended copy variations, deeper campaign analytics insights.",
+    premiumPrompt: "Premium Tier Brain: Full campaign strategy suite, multi-stage funnel email sequences, conversion rate optimization hacks.",
+    vipPrompt: "VIP Tier Brain: Unrestricted elite AI capabilities, custom bespoke campaign designs, 1-on-1 copy teardowns."
+  };
+  await setDoc(docRef, defaultBrain);
+  return defaultBrain;
+}
+
+export async function updateAIBrainSettings(brain: AIBrainSettings): Promise<void> {
+  const docRef = doc(db, 'settings', 'brain');
+  await setDoc(docRef, brain, { merge: true });
+}
+
+export function listenToAIBrainSettings(callback: (brain: AIBrainSettings) => void) {
+  const docRef = doc(db, 'settings', 'brain');
+  return onSnapshot(docRef, (docSnap) => {
+    if (docSnap.exists()) {
+      callback(docSnap.data() as AIBrainSettings);
+    }
+  });
+}
+
