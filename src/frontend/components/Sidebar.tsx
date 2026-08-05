@@ -45,7 +45,7 @@ export function Sidebar({
   return (
     <aside
       className={clsx(
-        "fixed inset-y-0 left-0 z-40 md:relative md:z-30 flex flex-col h-full bg-[#0D1117] transition-all duration-300 w-72 shrink-0 border-r border-[#30363D]",
+        "fixed inset-y-0 left-0 z-40 md:relative md:z-30 flex flex-col h-full bg-[#0D1117]/85 backdrop-blur-md transition-all duration-300 w-72 shrink-0 border-r border-[#30363D]",
         !isOpen && "-translate-x-full md:w-0 md:-translate-x-full overflow-hidden opacity-0 pointer-events-none"
       )}
     >

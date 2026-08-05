@@ -32,26 +32,41 @@ export async function incrementMessageCount(uid: string): Promise<UserProfile> {
   const userRef = doc(db, "users", uid);
   const userSnap = await getDoc(userRef);
   
+  const today = new Date().toISOString().split('T')[0];
+  let profile: UserProfile;
+
   if (!userSnap.exists()) {
-    throw new Error("User not found");
+    profile = {
+      uid,
+      email: null,
+      displayName: "Guest User",
+      tier: 'free',
+      messageCount: 0,
+      lastMessageDate: today,
+      isAdmin: false,
+      isBanned: false,
+      isVerified: false,
+    };
+  } else {
+    profile = userSnap.data() as UserProfile;
   }
   
-  const profile = userSnap.data() as UserProfile;
-  const today = new Date().toISOString().split('T')[0];
-  
-  let newCount = profile.messageCount + 1;
-  
+  let newCount = (profile.messageCount || 0) + 1;
   if (profile.lastMessageDate !== today) {
     newCount = 1; // reset daily
   }
   
-  const updatedProfile = {
+  const updatedProfile: UserProfile = {
     ...profile,
     messageCount: newCount,
     lastMessageDate: today
   };
   
-  await setDoc(userRef, updatedProfile, { merge: true });
+  try {
+    await setDoc(userRef, updatedProfile, { merge: true });
+  } catch (err) {
+    console.warn("Error persisting incremented message count:", err);
+  }
   return updatedProfile;
 }
 

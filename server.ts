@@ -12,6 +12,11 @@ dotenv.config();
 
 import { AI_CONFIG } from "./src/config/ai.js";
 
+function cleanKey(k: any): string {
+  if (typeof k !== 'string') return '';
+  return k.replace(/^["']|["']$/g, '').trim();
+}
+
 async function getSystemKeys(): Promise<{ groqKeys: string[]; cohereKeys: string[] }> {
   let groqKeys: string[] = [];
   let cohereKeys: string[] = [];
@@ -22,28 +27,32 @@ async function getSystemKeys(): Promise<{ groqKeys: string[]; cohereKeys: string
     if (keysSnap.exists()) {
       const data = keysSnap.data();
       if (Array.isArray(data.groqApiKeys)) {
-        groqKeys = data.groqApiKeys.filter((k: any) => typeof k === 'string' && k.trim());
+        groqKeys = data.groqApiKeys.map(cleanKey).filter(Boolean);
       }
-      if (groqKeys.length === 0 && data.groqApiKey && typeof data.groqApiKey === 'string' && data.groqApiKey.trim()) {
-        groqKeys = [data.groqApiKey.trim()];
+      if (groqKeys.length === 0 && data.groqApiKey) {
+        const cleaned = cleanKey(data.groqApiKey);
+        if (cleaned) groqKeys = [cleaned];
       }
 
       if (Array.isArray(data.cohereApiKeys)) {
-        cohereKeys = data.cohereApiKeys.filter((k: any) => typeof k === 'string' && k.trim());
+        cohereKeys = data.cohereApiKeys.map(cleanKey).filter(Boolean);
       }
-      if (cohereKeys.length === 0 && data.cohereApiKey && typeof data.cohereApiKey === 'string' && data.cohereApiKey.trim()) {
-        cohereKeys = [data.cohereApiKey.trim()];
+      if (cohereKeys.length === 0 && data.cohereApiKey) {
+        const cleaned = cleanKey(data.cohereApiKey);
+        if (cleaned) cohereKeys = [cleaned];
       }
     }
   } catch (err) {
     console.warn("Could not fetch API keys from Firestore in backend:", err);
   }
 
-  if (groqKeys.length === 0 && process.env.GROQ_API_KEY && process.env.GROQ_API_KEY.trim()) {
-    groqKeys = [process.env.GROQ_API_KEY.trim()];
+  if (groqKeys.length === 0 && process.env.GROQ_API_KEY) {
+    const cleaned = cleanKey(process.env.GROQ_API_KEY);
+    if (cleaned) groqKeys = [cleaned];
   }
-  if (cohereKeys.length === 0 && process.env.COHERE_API_KEY && process.env.COHERE_API_KEY.trim()) {
-    cohereKeys = [process.env.COHERE_API_KEY.trim()];
+  if (cohereKeys.length === 0 && process.env.COHERE_API_KEY) {
+    const cleaned = cleanKey(process.env.COHERE_API_KEY);
+    if (cleaned) cohereKeys = [cleaned];
   }
 
   return { groqKeys, cohereKeys };
@@ -126,9 +135,85 @@ async function fetchUserAndTierSettings(userId?: string) {
   };
 }
 
+// API Key Validation & Health Cache Layer
+interface BadKeyInfo {
+  reason: string;
+  expiresAt: number;
+}
+
+class KeyHealthManager {
+  private badKeysMap = new Map<string, BadKeyInfo>();
+
+  private getKeyHash(apiKey: string): string {
+    return apiKey.trim();
+  }
+
+  // Format validation check without making network request
+  isKeyFormatValid(apiKey: string, provider: 'groq' | 'cohere'): boolean {
+    if (!apiKey || typeof apiKey !== 'string') return false;
+    const clean = apiKey.replace(/^["']|["']$/g, '').trim();
+    if (clean.length < 10) return false;
+    if (clean.includes(" ") || clean.includes("YOUR_") || clean.includes("...") || clean.toLowerCase().includes("placeholder")) {
+      return false;
+    }
+    return true;
+  }
+
+  markKeyAsBad(apiKey: string, reason: string, ttlMs: number = 10 * 60 * 1000) {
+    const keyHash = this.getKeyHash(apiKey);
+    const masked = apiKey.length > 8 ? `${apiKey.slice(0, 4)}...${apiKey.slice(-4)}` : '***';
+    console.warn(`[Key Health Manager] Flagging key (${masked}) as BAD for ${Math.round(ttlMs / 60000)}m. Reason: ${reason}`);
+    this.badKeysMap.set(keyHash, {
+      reason,
+      expiresAt: Date.now() + ttlMs,
+    });
+  }
+
+  isKeyHealthy(apiKey: string, provider: 'groq' | 'cohere'): { healthy: boolean; reason?: string } {
+    if (!this.isKeyFormatValid(apiKey, provider)) {
+      return { healthy: false, reason: "Invalid key format or placeholder text" };
+    }
+
+    const keyHash = this.getKeyHash(apiKey);
+    const info = this.badKeysMap.get(keyHash);
+    if (info) {
+      if (Date.now() < info.expiresAt) {
+        return { healthy: false, reason: info.reason };
+      }
+      // Expired, clear from map to allow re-validation
+      this.badKeysMap.delete(keyHash);
+    }
+    return { healthy: true };
+  }
+
+  filterHealthyKeys(keys: string[], provider: 'groq' | 'cohere'): { healthyKeys: string[]; skippedReasons: string[] } {
+    const healthyKeys: string[] = [];
+    const skippedReasons: string[] = [];
+
+    for (const k of keys) {
+      const check = this.isKeyHealthy(k, provider);
+      if (check.healthy) {
+        healthyKeys.push(k.trim());
+      } else {
+        const masked = k.length > 8 ? `${k.slice(0, 4)}...${k.slice(-4)}` : '***';
+        skippedReasons.push(`${masked}: ${check.reason}`);
+      }
+    }
+
+    return { healthyKeys, skippedReasons };
+  }
+}
+
+const keyHealthManager = new KeyHealthManager();
+
 async function executeGroqWithRotation(messages: any[], systemPrompt: string, maxTokens: number = 1024, requestedModel: string | undefined, groqKeys: string[], res: any) {
-  if (!groqKeys || groqKeys.length === 0) {
-    throw new Error("No Groq API keys configured");
+  const { healthyKeys, skippedReasons } = keyHealthManager.filterHealthyKeys(groqKeys, 'groq');
+  
+  if (healthyKeys.length === 0) {
+    if (skippedReasons.length > 0) {
+      console.warn(`[Groq Validation] Skipped invalid/bad keys: ${skippedReasons.join(', ')}`);
+    }
+    throw new Error("No healthy or valid Groq API keys available");
   }
 
   const defaultModels = AI_CONFIG.providers.groq.models;
@@ -138,14 +223,14 @@ async function executeGroqWithRotation(messages: any[], systemPrompt: string, ma
 
   let lastError: any = null;
 
-  for (let keyIdx = 0; keyIdx < groqKeys.length; keyIdx++) {
-    const apiKey = groqKeys[keyIdx];
+  for (let keyIdx = 0; keyIdx < healthyKeys.length; keyIdx++) {
+    const apiKey = healthyKeys[keyIdx];
     const groq = new Groq({ apiKey });
 
     for (let modelIdx = 0; modelIdx < models.length; modelIdx++) {
       const model = models[modelIdx];
       try {
-        console.log(`[Groq Multi-Key] Key #${keyIdx + 1}/${groqKeys.length} -> Model: ${model}`);
+        console.log(`[Groq Multi-Key] Key #${keyIdx + 1}/${healthyKeys.length} -> Model: ${model}`);
         
         const formattedMessages: { role: "system" | "user" | "assistant"; content: string }[] = [];
         if (systemPrompt && systemPrompt.trim()) {
@@ -174,12 +259,21 @@ async function executeGroqWithRotation(messages: any[], systemPrompt: string, ma
         }
         return; // Execution succeeded!
       } catch (err: any) {
-        console.warn(`[Groq] Key #${keyIdx + 1} with model ${model} failed:`, err.message);
+        console.warn(`[Groq] Key #${keyIdx + 1} with model ${model} failed:`, err?.message || err);
         lastError = err;
-        // If 429 rate limit or 401 unauthorized, break model loop to rotate key!
-        if (err.status === 429 || err.status === 401 || err.statusCode === 429 || err.statusCode === 401) {
-          break;
+        
+        const msg = String(err?.message || "").toLowerCase();
+        const status = err?.status || err?.statusCode || 0;
+        
+        if (status === 401 || msg.includes("invalid api key") || msg.includes("unauthorized")) {
+          keyHealthManager.markKeyAsBad(apiKey, "401 Invalid Groq API Key", 60 * 60 * 1000);
+          console.warn(`[Groq] Key #${keyIdx + 1} invalid. Rotating to next key...`);
+          break; // Key itself is invalid, skip to next key
         }
+        
+        // If model is rate limited (429) or not available, try next model on this key!
+        console.warn(`[Groq] Model ${model} unavailable/rate-limited on key #${keyIdx + 1}. Trying next model...`);
+        continue;
       }
     }
   }
@@ -188,12 +282,20 @@ async function executeGroqWithRotation(messages: any[], systemPrompt: string, ma
 }
 
 async function executeCohereWithRotation(messages: any[], systemPrompt: string, maxTokens: number = 1024, requestedModel: string | undefined, cohereKeys: string[], res: any) {
-  if (!cohereKeys || cohereKeys.length === 0) {
-    throw new Error("No Cohere API keys configured");
+  const { healthyKeys, skippedReasons } = keyHealthManager.filterHealthyKeys(cohereKeys, 'cohere');
+  
+  if (healthyKeys.length === 0) {
+    if (skippedReasons.length > 0) {
+      console.warn(`[Cohere Validation] Skipped invalid/bad keys: ${skippedReasons.join(', ')}`);
+    }
+    throw new Error("No healthy or valid Cohere API keys available");
   }
 
   const defaultModels = AI_CONFIG.providers.cohere.models;
-  const model = requestedModel && defaultModels.includes(requestedModel) ? requestedModel : defaultModels[0] || "command-r-plus";
+  const models = requestedModel && defaultModels.includes(requestedModel) 
+    ? [requestedModel, ...defaultModels.filter(m => m !== requestedModel)] 
+    : defaultModels;
+
   let lastError: any = null;
 
   const formattedMessages: { role: string; content: string }[] = [];
@@ -208,79 +310,88 @@ async function executeCohereWithRotation(messages: any[], systemPrompt: string, 
     });
   }
 
-  for (let keyIdx = 0; keyIdx < cohereKeys.length; keyIdx++) {
-    const apiKey = cohereKeys[keyIdx];
-    try {
-      console.log(`[Cohere Multi-Key] Key #${keyIdx + 1}/${cohereKeys.length} -> Model: ${model}`);
+  for (let keyIdx = 0; keyIdx < healthyKeys.length; keyIdx++) {
+    const apiKey = healthyKeys[keyIdx];
 
-      const response = await fetch("https://api.cohere.com/v2/chat", {
-        method: "POST",
-        headers: {
-          "Authorization": `Bearer ${apiKey}`,
-          "Content-Type": "application/json",
-          "Accept": "text/event-stream"
-        },
-        body: JSON.stringify({
-          model,
-          messages: formattedMessages,
-          stream: true
-        })
-      });
+    for (let modelIdx = 0; modelIdx < models.length; modelIdx++) {
+      const model = models[modelIdx];
+      try {
+        console.log(`[Cohere Multi-Key] Key #${keyIdx + 1}/${healthyKeys.length} -> Model: ${model}`);
 
-      if (!response.ok) {
-        const errorText = await response.text();
-        console.warn(`[Cohere] Key #${keyIdx + 1} failed (${response.status}): ${errorText}`);
-        lastError = new Error(`Cohere API status ${response.status}: ${errorText}`);
-        continue; // Try next key
-      }
+        const response = await fetch("https://api.cohere.com/v2/chat", {
+          method: "POST",
+          headers: {
+            "Authorization": `Bearer ${apiKey}`,
+            "Content-Type": "application/json",
+            "Accept": "text/event-stream"
+          },
+          body: JSON.stringify({
+            model,
+            messages: formattedMessages,
+            stream: true
+          })
+        });
 
-      if (!response.body) {
-        throw new Error("No response body received from Cohere API");
-      }
+        if (!response.ok) {
+          const errorText = await response.text();
+          console.warn(`[Cohere] Key #${keyIdx + 1} model ${model} failed (${response.status}): ${errorText}`);
+          lastError = new Error(`Cohere status ${response.status}: ${errorText}`);
+          
+          if (response.status === 401) {
+            keyHealthManager.markKeyAsBad(apiKey, "401 Invalid Cohere API Key", 60 * 60 * 1000);
+            break; // Skip to next key
+          }
+          continue; // Try next model on this key
+        }
 
-      const reader = response.body.getReader();
-      const decoder = new TextDecoder();
-      let buffer = "";
+        if (!response.body) {
+          throw new Error("No response body received from Cohere API");
+        }
 
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
+        const reader = response.body.getReader();
+        const decoder = new TextDecoder();
+        let buffer = "";
 
-        buffer += decoder.decode(value, { stream: true });
-        const lines = buffer.split("\n");
-        buffer = lines.pop() || "";
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
 
-        for (const line of lines) {
-          const trimmed = line.trim();
-          if (trimmed.startsWith("data: ")) {
-            const dataStr = trimmed.slice(6);
-            if (dataStr === "[DONE]") continue;
-            try {
-              const parsed = JSON.parse(dataStr);
-              let chunkText = "";
-              if (parsed.type === "content-delta" && parsed.delta?.message?.content?.text) {
-                chunkText = parsed.delta.message.content.text;
-              } else if (parsed.text) {
-                chunkText = parsed.text;
+          buffer += decoder.decode(value, { stream: true });
+          const lines = buffer.split("\n");
+          buffer = lines.pop() || "";
+
+          for (const line of lines) {
+            const trimmed = line.trim();
+            if (trimmed.startsWith("data: ")) {
+              const dataStr = trimmed.slice(6);
+              if (dataStr === "[DONE]") continue;
+              try {
+                const parsed = JSON.parse(dataStr);
+                let chunkText = "";
+                if (parsed.type === "content-delta" && parsed.delta?.message?.content?.text) {
+                  chunkText = parsed.delta.message.content.text;
+                } else if (parsed.text) {
+                  chunkText = parsed.text;
+                }
+
+                if (chunkText) {
+                  res.write(`data: ${JSON.stringify({ text: chunkText })}\n\n`);
+                }
+              } catch (e) {
+                // Non-JSON SSE line or parse event
               }
-
-              if (chunkText) {
-                res.write(`data: ${JSON.stringify({ text: chunkText })}\n\n`);
-              }
-            } catch (e) {
-              // Non-JSON SSE line or parse event
             }
           }
         }
+        return; // Cohere succeeded!
+      } catch (err: any) {
+        console.warn(`[Cohere] Key #${keyIdx + 1} with model ${model} execution failed:`, err?.message || err);
+        lastError = err;
       }
-      return; // Cohere succeeded!
-    } catch (err: any) {
-      console.warn(`[Cohere] Key #${keyIdx + 1} execution failed:`, err.message);
-      lastError = err;
     }
   }
 
-  throw lastError || new Error(`All Cohere keys failed`);
+  throw lastError || new Error(`All Cohere keys and models failed`);
 }
 
 async function incrementUserMessageCountServer(userId: string) {
@@ -387,17 +498,59 @@ async function startServer() {
       }
 
       if (!executedSuccessfully) {
-        const errNotice = lastProviderError?.message || "All configured AI providers (Groq & Cohere) failed or are exhausted.";
-        res.write(`data: ${JSON.stringify({ text: `\n\n**System Failover Notice:** ${errNotice}` })}\n\n`);
+        console.warn("[Failover Engine] All providers failed:", lastProviderError?.message);
+        const errMessage = String(lastProviderError?.message || "");
+        let errNotice = "⚡ **VOID AI Traffic Notice:** Our AI connection pool is undergoing high demand or slot updates. Please re-send your message in a moment or select a different model engine from the top bar.";
+        if (errMessage.toLowerCase().includes("healthy") || errMessage.toLowerCase().includes("valid")) {
+          errNotice = "⚡ **API Key Validation Notice:** Configured AI provider keys are currently invalid or depleted. Please check system API key configuration in Admin Settings.";
+        }
+        res.write(`data: ${JSON.stringify({ text: `\n\n${errNotice}` })}\n\n`);
       }
       
       res.write("data: [DONE]\n\n");
       res.end();
     } catch (error: any) {
       console.error("Error calling AI API:", error);
-      res.write(`data: ${JSON.stringify({ text: `\n\n**System Error:** ${error?.message || "Unexpected failure in AI proxy."}` })}\n\n`);
+      const errNotice = "⚡ **VOID AI Traffic Notice:** System temporarily busy. Please re-send your message or select an alternate model.";
+      res.write(`data: ${JSON.stringify({ text: `\n\n${errNotice}` })}\n\n`);
       res.write("data: [DONE]\n\n");
       res.end();
+    }
+  });
+
+  // Pre-flight key validation endpoint
+  app.post("/api/admin/validate-key", async (req, res) => {
+    try {
+      const { provider, apiKey } = req.body;
+      if (!apiKey || typeof apiKey !== 'string' || !apiKey.trim()) {
+        return res.status(400).json({ valid: false, error: "API key is required" });
+      }
+
+      const trimmedKey = apiKey.trim();
+      const formatValid = keyHealthManager.isKeyFormatValid(trimmedKey, provider);
+      if (!formatValid) {
+        return res.json({ valid: false, error: "Invalid API key format or placeholder detected." });
+      }
+
+      if (provider === "groq") {
+        const groq = new Groq({ apiKey: trimmedKey });
+        await groq.models.list();
+        return res.json({ valid: true, message: "Groq API key is valid and connected!" });
+      } else if (provider === "cohere") {
+        const response = await fetch("https://api.cohere.com/v2/models", {
+          headers: { "Authorization": `Bearer ${trimmedKey}` }
+        });
+        if (response.ok) {
+          return res.json({ valid: true, message: "Cohere API key is valid and connected!" });
+        } else {
+          const text = await response.text();
+          return res.json({ valid: false, error: `Cohere API error (${response.status}): ${text}` });
+        }
+      } else {
+        return res.status(400).json({ valid: false, error: "Unsupported provider" });
+      }
+    } catch (err: any) {
+      return res.json({ valid: false, error: err?.message || "Key validation failed" });
     }
   });
 

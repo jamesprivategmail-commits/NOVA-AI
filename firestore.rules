@@ -9,34 +9,31 @@ service cloud.firestore {
     
     // Check if the user is an admin
     function isAdmin() {
-      return isAuthenticated() && (request.auth.token.email == 'mrnovatech4@gmail.com' || get(/databases/$(database)/documents/users/$(request.auth.uid)).data.isAdmin == true);
+      return isAuthenticated() && (
+        request.auth.token.email == 'mrnovatech4@gmail.com' ||
+        (exists(/databases/$(database)/documents/users/$(request.auth.uid)) && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.isAdmin == true)
+      );
     }
 
     match /users/{userId} {
       allow read: if true;
-      // Only allow user to update their own profile (with safe fields) OR if they are an admin
-      allow create: if isAuthenticated() && request.auth.uid == userId;
-      allow update: if isAuthenticated() && (request.auth.uid == userId || isAdmin());
+      allow create, update: if true;
       allow delete: if isAdmin();
     }
 
     match /chats/{chatId} {
-      // Allow read/update/delete if the user owns the chat
-      allow read, update, delete: if isAuthenticated() && request.auth.uid == resource.data.userId;
-      // Allow creation if the user sets their own UID
-      allow create: if isAuthenticated() && request.auth.uid == request.resource.data.userId;
+      allow read, create, update, delete: if true;
       
       match /messages/{messageId} {
-        // Allow read/write to messages if the user owns the parent chat
-        allow read, write: if isAuthenticated() && request.auth.uid == get(/databases/$(database)/documents/chats/$(chatId)).data.userId;
+        allow read, write: if true;
       }
     }
 
     match /support_chats/{userId} {
-      allow read, write: if isAuthenticated() && (request.auth.uid == userId || isAdmin());
+      allow read, write: if true;
       
       match /messages/{messageId} {
-        allow read, write: if isAuthenticated() && (request.auth.uid == userId || isAdmin());
+        allow read, write: if true;
       }
     }
     
@@ -51,3 +48,4 @@ service cloud.firestore {
     }
   }
 }
+

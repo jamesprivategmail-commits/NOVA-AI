@@ -46,7 +46,7 @@ export function ChatScreen({ userId }: ChatScreenProps) {
 
   // AI Model Selection state
   const [selectedProvider, setSelectedProvider] = useState<'groq' | 'cohere'>('groq');
-  const [selectedModel, setSelectedModel] = useState<string>('llama-3.3-70b-versatile');
+  const [selectedModel, setSelectedModel] = useState<string>('auto');
 
   // Modals state
   const [showAdminPanel, setShowAdminPanel] = useState(false);
@@ -80,7 +80,7 @@ export function ChatScreen({ userId }: ChatScreenProps) {
     if (!container) return;
     const isAtBottom = container.scrollHeight - container.scrollTop <= container.clientHeight + 150;
     if (isAtBottom || streamingMessage) {
-      scrollToBottom();
+      scrollToBottom(!!streamingMessage);
     }
   }, [messages, streamingMessage]);
 
@@ -91,8 +91,14 @@ export function ChatScreen({ userId }: ChatScreenProps) {
     setShowScrollBottom(!isAtBottom);
   };
 
-  const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  const scrollToBottom = (instant = false) => {
+    const container = chatContainerRef.current;
+    if (!container) return;
+    if (instant) {
+      container.scrollTop = container.scrollHeight;
+    } else {
+      messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    }
   };
 
   const loadProfileAndChats = async () => {
@@ -210,10 +216,21 @@ export function ChatScreen({ userId }: ChatScreenProps) {
       }
     }
 
-    // Add user message
-    const userMsg = await saveMessage(activeChatId, 'user', text);
-    const currentMessages = [...messages, userMsg];
+    // Optimistic user message for 0ms input lag
+    const tempUserMsgId = 'user-' + Date.now();
+    const optimisticUserMsg: Message = {
+      id: tempUserMsgId,
+      chatId: activeChatId,
+      role: 'user',
+      text,
+      createdAt: Date.now()
+    };
+
+    const currentMessages = [...messages, optimisticUserMsg];
     setMessages(currentMessages);
+
+    // Persist user message to db asynchronously
+    saveMessage(activeChatId, 'user', text).catch((err) => console.error('Failed async message save:', err));
 
     setIsLoading(true);
     setStreamingMessage('');
@@ -226,6 +243,7 @@ export function ChatScreen({ userId }: ChatScreenProps) {
 
       const context = memoryManager.buildContext(currentMessages);
       let fullResponse = '';
+      let lastStreamUpdate = 0;
 
       const systemPrompt = '';
       const userTier = updatedProfile?.tier || profile?.tier || 'free';
@@ -235,7 +253,11 @@ export function ChatScreen({ userId }: ChatScreenProps) {
         systemPrompt,
         (chunk) => {
           fullResponse += chunk;
-          setStreamingMessage(fullResponse);
+          const now = Date.now();
+          if (now - lastStreamUpdate > 35) { // Throttle stream updates to ~28 FPS max for smooth mobile frame rates
+            lastStreamUpdate = now;
+            setStreamingMessage(fullResponse);
+          }
         },
         abortControllerRef.current.signal,
         userId,
@@ -255,8 +277,7 @@ export function ChatScreen({ userId }: ChatScreenProps) {
         console.log('Stream aborted by user');
       } else {
         console.error('Failed to get response', error);
-        const errorText = error?.message || 'Error communicating with VOID AI server.';
-        const errNotice = `⚠️ **Connection Error:** ${errorText}\n\nPlease try again or select another model from the dropdown at the top bar.`;
+        const errNotice = `⚡ **VOID AI Connection Notice:** Unable to reach AI server temporarily. Please re-send your message or select another model from the header bar.`;
         const modelMsg = await saveMessage(activeChatId, 'model', errNotice);
         setMessages([...currentMessages, modelMsg]);
         setStreamingMessage('');
@@ -272,7 +293,7 @@ export function ChatScreen({ userId }: ChatScreenProps) {
   };
 
   return (
-    <div className="flex h-screen bg-[#0D1117] text-[#F8FAFC] overflow-hidden font-sans relative">
+    <div className="flex h-screen bg-transparent text-[#F8FAFC] overflow-hidden font-sans relative">
       {/* Mobile Backdrop Overlay when Sidebar is expanded */}
       {isSidebarOpen && (
         <div
@@ -307,7 +328,7 @@ export function ChatScreen({ userId }: ChatScreenProps) {
       />
 
       {/* Main Chat Workspace */}
-      <div className="flex-1 flex flex-col h-full relative min-w-0 bg-[#0D1117]">
+      <div className="flex-1 flex flex-col h-full relative min-w-0 bg-[#0D1117]/60 backdrop-blur-sm">
         {/* Header Bar */}
         <header className="min-h-[3.5rem] py-2 px-3 sm:px-4 md:px-6 sticky top-0 z-10 bg-[#0D1117]/90 border-b border-[#30363D] backdrop-blur-md flex items-center justify-between gap-2 overflow-x-auto">
           <div className="flex items-center gap-2 sm:gap-3 shrink-0">
@@ -336,21 +357,25 @@ export function ChatScreen({ userId }: ChatScreenProps) {
                 onChange={(e) => {
                   const [prov, mod] = e.target.value.split(':');
                   setSelectedProvider(prov as 'groq' | 'cohere');
-                  setSelectedModel(mod);
+                  setSelectedModel(mod || 'auto');
                 }}
                 className="w-full bg-[#161B22] border border-[#30363D] hover:border-red-500/50 text-slate-200 text-xs font-mono font-bold py-1.5 pl-2.5 pr-6 rounded-xl focus:outline-none focus:border-red-500 cursor-pointer appearance-none shadow-sm transition-all truncate"
-                title="Select AI Model"
+                title="Select AI Engine"
               >
-                <optgroup label="Groq Engine">
-                  <option value="groq:llama-3.3-70b-versatile">Llama 3.3 70B (Fast)</option>
-                  <option value="groq:llama-3.1-8b-instant">Llama 3.1 8B (Instant)</option>
-                  <option value="groq:mixtral-8x7b-32768">Mixtral 8x7B (MoE)</option>
-                  <option value="groq:deepseek-r1-distill-llama-70b">DeepSeek R1 70B</option>
+                <option value="groq:auto">Groq Engine</option>
+                <option value="cohere:auto">Cohere Engine</option>
+                <optgroup label="Groq Specific Models">
+                  <option value="groq:llama-3.3-70b-versatile">Groq: Llama 3.3 70B</option>
+                  <option value="groq:llama-3.1-8b-instant">Groq: Llama 3.1 8B</option>
+                  <option value="groq:mixtral-8x7b-32768">Groq: Mixtral 8x7B</option>
+                  <option value="groq:gemma2-9b-it">Groq: Gemma 2 9B</option>
+                  <option value="groq:deepseek-r1-distill-llama-70b">Groq: DeepSeek R1 70B</option>
                 </optgroup>
-                <optgroup label="Cohere Engine">
-                  <option value="cohere:command-r-plus">Cohere Command R+</option>
-                  <option value="cohere:command-r">Cohere Command R</option>
-                  <option value="cohere:command-light">Cohere Command Light</option>
+                <optgroup label="Cohere Specific Models">
+                  <option value="cohere:command-r-08-2024">Cohere: Command R</option>
+                  <option value="cohere:command-r-plus-08-2024">Cohere: Command R+</option>
+                  <option value="cohere:command-r7b-12-2024">Cohere: Command R7B</option>
+                  <option value="cohere:command-light">Cohere: Command Light</option>
                 </optgroup>
               </select>
               <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-1.5 text-slate-400">
@@ -522,7 +547,7 @@ export function ChatScreen({ userId }: ChatScreenProps) {
         {/* Floating Scroll to Bottom button */}
         {showScrollBottom && (
           <button
-            onClick={scrollToBottom}
+            onClick={() => scrollToBottom(false)}
             className="absolute bottom-28 right-6 p-2.5 bg-[#161B22] border border-[#30363D] hover:border-red-500 text-slate-200 rounded-full shadow-2xl transition-all z-20 flex items-center gap-1.5 text-xs font-semibold"
           >
             <ArrowDown size={15} />

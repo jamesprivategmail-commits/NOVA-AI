@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { UserProfile, SupportChat, PricingSettings, AIBrainSettings, SystemAPIKeys } from '../../models/types';
 import { listenToAllUsers, updateUserTier, updateUserStatus, updateUserVerification, listenToAllSupportChats, getPricingSettings, updatePricingSettings, getAIBrainSettings, updateAIBrainSettings, getSystemAPIKeys, updateSystemAPIKeys } from '../../database/db';
-import { X, ArrowLeft, Shield, Crown, User, RefreshCw, Ban, CheckCircle, BadgeCheck, MessageSquare, ChevronUp, ChevronDown, DollarSign, Cpu, Save, Sparkles, Key, Eye, EyeOff, Lock, ShieldCheck } from 'lucide-react';
+import { X, ArrowLeft, Shield, Crown, User, RefreshCw, Ban, CheckCircle, BadgeCheck, MessageSquare, ChevronUp, ChevronDown, DollarSign, Cpu, Save, Sparkles, Key, Eye, EyeOff, Lock, ShieldCheck, Trash2 } from 'lucide-react';
 import { clsx } from 'clsx';
 import { SupportChatScreen } from './SupportChatScreen';
 
@@ -21,8 +21,8 @@ export function AdminDashboard({ onClose }: AdminDashboardProps) {
   const [pricing, setPricing] = useState<PricingSettings>({ premium: 5000, pro: 7000, vip: 10000 });
   const [savingPricing, setSavingPricing] = useState(false);
 
-  const [groqKeysText, setGroqKeysText] = useState<string>('');
-  const [cohereKeysText, setCohereKeysText] = useState<string>('');
+  const [groqKeysList, setGroqKeysList] = useState<string[]>(Array(10).fill(''));
+  const [cohereKeysList, setCohereKeysList] = useState<string[]>(Array(10).fill(''));
   const [showKeys, setShowKeys] = useState(false);
   const [savingKey, setSavingKey] = useState(false);
   const [keySaveSuccess, setKeySaveSuccess] = useState(false);
@@ -62,8 +62,14 @@ export function AdminDashboard({ onClose }: AdminDashboardProps) {
     getSystemAPIKeys().then(keys => {
       const gKeys = keys.groqApiKeys && keys.groqApiKeys.length > 0 ? keys.groqApiKeys : (keys.groqApiKey ? [keys.groqApiKey] : []);
       const cKeys = keys.cohereApiKeys && keys.cohereApiKeys.length > 0 ? keys.cohereApiKeys : (keys.cohereApiKey ? [keys.cohereApiKey] : []);
-      setGroqKeysText(gKeys.join('\n'));
-      setCohereKeysText(cKeys.join('\n'));
+
+      const gList = Array(10).fill('');
+      gKeys.slice(0, 10).forEach((k, idx) => { gList[idx] = k; });
+      setGroqKeysList(gList);
+
+      const cList = Array(10).fill('');
+      cKeys.slice(0, 10).forEach((k, idx) => { cList[idx] = k; });
+      setCohereKeysList(cList);
     });
     
     return () => {
@@ -76,8 +82,8 @@ export function AdminDashboard({ onClose }: AdminDashboardProps) {
     e.preventDefault();
     setSavingKey(true);
     try {
-      const parsedGroq = groqKeysText.split('\n').map(k => k.trim()).filter(Boolean);
-      const parsedCohere = cohereKeysText.split('\n').map(k => k.trim()).filter(Boolean);
+      const parsedGroq = groqKeysList.map(k => k.trim()).filter(Boolean);
+      const parsedCohere = cohereKeysList.map(k => k.trim()).filter(Boolean);
 
       await updateSystemAPIKeys({ 
         groqApiKey: parsedGroq[0] || '',
@@ -92,6 +98,18 @@ export function AdminDashboard({ onClose }: AdminDashboardProps) {
     } finally {
       setSavingKey(false);
     }
+  };
+
+  const updateGroqKeySlot = (index: number, val: string) => {
+    const updated = [...groqKeysList];
+    updated[index] = val;
+    setGroqKeysList(updated);
+  };
+
+  const updateCohereKeySlot = (index: number, val: string) => {
+    const updated = [...cohereKeysList];
+    updated[index] = val;
+    setCohereKeysList(updated);
   };
 
   const handleSavePricing = async (e: React.FormEvent) => {
@@ -229,7 +247,7 @@ export function AdminDashboard({ onClose }: AdminDashboardProps) {
                 className={clsx("px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors flex items-center gap-1.5", activeTab === 'apikeys' ? "bg-red-600 text-white shadow" : "text-zinc-400 hover:text-zinc-200")}
               >
                 <Key size={14} />
-                API Keys
+                API Room Vault
               </button>
             </div>
           </div>
@@ -723,94 +741,193 @@ export function AdminDashboard({ onClose }: AdminDashboardProps) {
               </form>
             </div>
           ) : activeTab === 'apikeys' ? (
-            <div className="max-w-3xl mx-auto space-y-6">
-              <form onSubmit={handleSaveApiKey} className="bg-zinc-950/60 border border-zinc-800 rounded-2xl p-6 relative overflow-hidden">
-                <div className="flex items-center justify-between mb-4">
+            <div className="max-w-5xl mx-auto space-y-6">
+              <form onSubmit={handleSaveApiKey} className="bg-zinc-950/80 border border-zinc-800 rounded-2xl p-6 relative overflow-hidden shadow-2xl space-y-6">
+                {/* Vault Header */}
+                <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-4 border-b border-zinc-800">
                   <div className="flex items-center gap-3">
-                    <div className="p-2 bg-red-950/80 border border-red-800/60 rounded-xl text-red-400">
-                      <Key size={20} />
+                    <div className="p-2.5 bg-red-950/90 border border-red-800/60 rounded-2xl text-red-400 shadow-inner">
+                      <Key size={24} />
                     </div>
                     <div>
-                      <h3 className="text-lg font-bold text-zinc-100">Multi-Key Load Balancer & Key Pool Settings</h3>
-                      <p className="text-xs text-zinc-400">Configure multiple Groq and Cohere API keys. The system auto-rotates and falls back across your keys on rate limits.</p>
+                      <h3 className="text-xl font-extrabold text-zinc-100 flex items-center gap-2 tracking-wide">
+                        API ROOM VAULT
+                        <span className="text-xs px-2.5 py-0.5 rounded-full bg-red-950 text-red-400 border border-red-800/60 font-mono font-bold">
+                          10 GROQ + 10 COHERE SLOTS
+                        </span>
+                      </h3>
+                      <p className="text-xs text-zinc-400 mt-0.5">
+                        Dedicated 1-key-per-box configuration room. Enter keys in individual slots below without messing up line breaks.
+                      </p>
                     </div>
                   </div>
-                  <button
-                    type="button"
-                    onClick={() => setShowKeys(!showKeys)}
-                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-zinc-900 border border-zinc-800 text-xs font-mono text-zinc-300 hover:text-white transition-colors"
-                  >
-                    {showKeys ? <EyeOff size={14} /> : <Eye size={14} />}
-                    <span>{showKeys ? 'Mask Keys' : 'Show Keys'}</span>
-                  </button>
+
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setShowKeys(!showKeys)}
+                      className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-zinc-900 border border-zinc-800 text-xs font-mono font-bold text-zinc-300 hover:text-white hover:border-zinc-700 transition-colors shadow-sm"
+                    >
+                      {showKeys ? <EyeOff size={14} /> : <Eye size={14} />}
+                      <span>{showKeys ? 'MASK ALL KEYS' : 'SHOW ALL KEYS'}</span>
+                    </button>
+                  </div>
                 </div>
 
-                {/* Security Vault Banner */}
-                <div className="mb-6 p-4 bg-zinc-900/90 border border-zinc-800 rounded-xl space-y-2">
-                  <div className="flex items-center gap-2 text-emerald-400 text-xs font-mono font-bold">
-                    <ShieldCheck size={16} />
-                    <span>SECURE BACKEND ROTATION ENGINE</span>
+                {/* Status Bar */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 p-4 bg-zinc-900/60 border border-zinc-800 rounded-xl">
+                  <div className="flex items-center justify-between px-3 py-2 bg-zinc-950/80 border border-red-950/60 rounded-lg">
+                    <div className="flex items-center gap-2">
+                      <span className="w-2.5 h-2.5 rounded-full bg-red-500 animate-pulse"></span>
+                      <span className="text-xs font-mono font-bold text-zinc-200">GROQ ENGINE POOL</span>
+                    </div>
+                    <span className="text-xs font-mono font-bold text-red-400">
+                      {groqKeysList.filter(k => k.trim()).length} / 10 ACTIVE SLOTS
+                    </span>
                   </div>
-                  <p className="text-xs text-zinc-400 leading-relaxed">
-                    Enter as many Groq and Cohere API keys as you like (<strong className="text-zinc-200">one key per line</strong>). Users only choose their AI model, while you control all API key pools on the server.
-                  </p>
+
+                  <div className="flex items-center justify-between px-3 py-2 bg-zinc-950/80 border border-blue-950/60 rounded-lg">
+                    <div className="flex items-center gap-2">
+                      <span className="w-2.5 h-2.5 rounded-full bg-blue-500 animate-pulse"></span>
+                      <span className="text-xs font-mono font-bold text-zinc-200">COHERE ENGINE POOL</span>
+                    </div>
+                    <span className="text-xs font-mono font-bold text-blue-400">
+                      {cohereKeysList.filter(k => k.trim()).length} / 10 ACTIVE SLOTS
+                    </span>
+                  </div>
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  {/* Groq Keys Pool */}
-                  <div className="space-y-2">
-                    <div className="flex items-center justify-between">
-                      <label className="block text-xs font-bold font-mono text-zinc-300 uppercase tracking-wider">
-                        Groq API Keys Pool
-                      </label>
-                      <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-red-950 text-red-400 border border-red-800/50">
-                        {groqKeysText.split('\n').filter(k => k.trim()).length} Keys Active
-                      </span>
-                    </div>
-                    <textarea 
-                      rows={6}
-                      value={groqKeysText}
-                      onChange={(e) => setGroqKeysText(e.target.value)}
-                      placeholder="gsk_key1...\ngsk_key2...\ngsk_key3..."
-                      style={{ WebkitTextSecurity: showKeys ? 'none' : 'disc' } as any}
-                      className="w-full bg-zinc-900 border border-zinc-700 focus:border-red-500 rounded-xl p-3.5 text-zinc-100 focus:outline-none font-mono text-xs transition-colors resize-y leading-relaxed"
-                    />
-                    <p className="text-[11px] text-zinc-500">Enter multiple Groq keys (one per line). Tested against Llama 3.3 70B, DeepSeek R1, etc.</p>
+                {/* GROQ KEYS ROOM - 10 SLOTS */}
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between border-b border-zinc-800/80 pb-2">
+                    <h4 className="text-xs font-mono font-bold text-red-400 uppercase tracking-wider flex items-center gap-2">
+                      <Cpu size={14} />
+                      Groq API Keys Room (10 Dedicated Boxes)
+                    </h4>
+                    <button
+                      type="button"
+                      onClick={() => setGroqKeysList(Array(10).fill(''))}
+                      className="text-[11px] font-mono text-zinc-500 hover:text-red-400 transition-colors flex items-center gap-1"
+                    >
+                      <Trash2 size={12} />
+                      Wipe Groq Slots
+                    </button>
                   </div>
 
-                  {/* Cohere Keys Pool */}
-                  <div className="space-y-2">
-                    <div className="flex items-center justify-between">
-                      <label className="block text-xs font-bold font-mono text-zinc-300 uppercase tracking-wider">
-                        Cohere API Keys Pool
-                      </label>
-                      <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-blue-950 text-blue-400 border border-blue-800/50">
-                        {cohereKeysText.split('\n').filter(k => k.trim()).length} Keys Active
-                      </span>
-                    </div>
-                    <textarea 
-                      rows={6}
-                      value={cohereKeysText}
-                      onChange={(e) => setCohereKeysText(e.target.value)}
-                      placeholder="cohere_key1...\ncohere_key2...\ncohere_key3..."
-                      style={{ WebkitTextSecurity: showKeys ? 'none' : 'disc' } as any}
-                      className="w-full bg-zinc-900 border border-zinc-700 focus:border-blue-500 rounded-xl p-3.5 text-zinc-100 focus:outline-none font-mono text-xs transition-colors resize-y leading-relaxed"
-                    />
-                    <p className="text-[11px] text-zinc-500">Enter multiple Cohere keys (one per line). Powers Command R+, Command R, Command Light.</p>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    {groqKeysList.map((keyVal, idx) => {
+                      const isFilled = keyVal.trim().length > 0;
+                      return (
+                        <div key={`groq-slot-${idx}`} className={clsx(
+                          "p-2.5 rounded-xl border transition-all flex flex-col gap-1.5",
+                          isFilled ? "bg-red-950/20 border-red-800/50" : "bg-zinc-900/40 border-zinc-800/80 hover:border-zinc-700"
+                        )}>
+                          <div className="flex items-center justify-between">
+                            <span className="text-[10px] font-mono font-bold text-zinc-400 flex items-center gap-1.5">
+                              <span className={clsx("w-2 h-2 rounded-full", isFilled ? "bg-red-500" : "bg-zinc-700")}></span>
+                              GROQ SLOT #{String(idx + 1).padStart(2, '0')}
+                            </span>
+                            <div className="flex items-center gap-2">
+                              <span className={clsx("text-[9px] font-mono font-bold px-1.5 py-0.5 rounded", isFilled ? "bg-red-950 text-red-300 border border-red-800/40" : "bg-zinc-800 text-zinc-500")}>
+                                {isFilled ? 'ACTIVE' : 'EMPTY'}
+                              </span>
+                              {isFilled && (
+                                <button
+                                  type="button"
+                                  onClick={() => updateGroqKeySlot(idx, '')}
+                                  className="text-zinc-500 hover:text-red-400 transition-colors"
+                                  title="Clear slot"
+                                >
+                                  <X size={12} />
+                                </button>
+                              )}
+                            </div>
+                          </div>
+
+                          <input
+                            type={showKeys ? 'text' : 'password'}
+                            value={keyVal}
+                            onChange={(e) => updateGroqKeySlot(idx, e.target.value)}
+                            placeholder={`Enter Groq API Key ${idx + 1} (gsk_...)`}
+                            className="w-full bg-zinc-950 border border-zinc-800 focus:border-red-500 rounded-lg px-3 py-2 text-zinc-100 font-mono text-xs focus:outline-none transition-colors"
+                          />
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {/* COHERE KEYS ROOM - 10 SLOTS */}
+                <div className="space-y-3 pt-4">
+                  <div className="flex items-center justify-between border-b border-zinc-800/80 pb-2">
+                    <h4 className="text-xs font-mono font-bold text-blue-400 uppercase tracking-wider flex items-center gap-2">
+                      <Cpu size={14} />
+                      Cohere API Keys Room (10 Dedicated Boxes)
+                    </h4>
+                    <button
+                      type="button"
+                      onClick={() => setCohereKeysList(Array(10).fill(''))}
+                      className="text-[11px] font-mono text-zinc-500 hover:text-blue-400 transition-colors flex items-center gap-1"
+                    >
+                      <Trash2 size={12} />
+                      Wipe Cohere Slots
+                    </button>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    {cohereKeysList.map((keyVal, idx) => {
+                      const isFilled = keyVal.trim().length > 0;
+                      return (
+                        <div key={`cohere-slot-${idx}`} className={clsx(
+                          "p-2.5 rounded-xl border transition-all flex flex-col gap-1.5",
+                          isFilled ? "bg-blue-950/20 border-blue-800/50" : "bg-zinc-900/40 border-zinc-800/80 hover:border-zinc-700"
+                        )}>
+                          <div className="flex items-center justify-between">
+                            <span className="text-[10px] font-mono font-bold text-zinc-400 flex items-center gap-1.5">
+                              <span className={clsx("w-2 h-2 rounded-full", isFilled ? "bg-blue-500" : "bg-zinc-700")}></span>
+                              COHERE SLOT #{String(idx + 1).padStart(2, '0')}
+                            </span>
+                            <div className="flex items-center gap-2">
+                              <span className={clsx("text-[9px] font-mono font-bold px-1.5 py-0.5 rounded", isFilled ? "bg-blue-950 text-blue-300 border border-blue-800/40" : "bg-zinc-800 text-zinc-500")}>
+                                {isFilled ? 'ACTIVE' : 'EMPTY'}
+                              </span>
+                              {isFilled && (
+                                <button
+                                  type="button"
+                                  onClick={() => updateCohereKeySlot(idx, '')}
+                                  className="text-zinc-500 hover:text-blue-400 transition-colors"
+                                  title="Clear slot"
+                                >
+                                  <X size={12} />
+                                </button>
+                              )}
+                            </div>
+                          </div>
+
+                          <input
+                            type={showKeys ? 'text' : 'password'}
+                            value={keyVal}
+                            onChange={(e) => updateCohereKeySlot(idx, e.target.value)}
+                            placeholder={`Enter Cohere API Key ${idx + 1} (cohere_...)`}
+                            className="w-full bg-zinc-950 border border-zinc-800 focus:border-blue-500 rounded-lg px-3 py-2 text-zinc-100 font-mono text-xs focus:outline-none transition-colors"
+                          />
+                        </div>
+                      );
+                    })}
                   </div>
                 </div>
 
                 {keySaveSuccess && (
-                  <div className="mt-6 p-3 bg-emerald-950/50 border border-emerald-800/60 rounded-xl text-emerald-400 text-xs flex items-center gap-2">
+                  <div className="p-3 bg-emerald-950/50 border border-emerald-800/60 rounded-xl text-emerald-400 text-xs flex items-center gap-2 font-semibold">
                     <CheckCircle size={16} />
-                    <span>API Key pools successfully updated and saved securely! Automatic rotation is active.</span>
+                    <span>API Room Vault updated successfully! Automatic load balancer & key rotation re-indexed.</span>
                   </div>
                 )}
 
-                <div className="mt-6 flex items-center justify-between pt-4 border-t border-zinc-800">
+                <div className="pt-4 border-t border-zinc-800 flex items-center justify-between">
                   <div className="text-[11px] font-mono text-zinc-500 flex items-center gap-1.5">
                     <Lock size={12} className="text-zinc-400" />
-                    <span>Admin Controls All Keys</span>
+                    <span>All keys stored encrypted in system database</span>
                   </div>
                   <button 
                     type="submit"
@@ -818,7 +935,7 @@ export function AdminDashboard({ onClose }: AdminDashboardProps) {
                     className="px-6 py-2.5 bg-red-600 hover:bg-red-500 text-white text-xs font-mono font-bold rounded-xl transition-all shadow-lg shadow-red-950/50 flex items-center gap-2 disabled:opacity-50"
                   >
                     <Save size={14} />
-                    <span>{savingKey ? 'SAVING POOLS...' : 'SAVE ALL API KEYS'}</span>
+                    <span>{savingKey ? 'SAVING VAULT...' : 'SAVE ALL 20 KEY SLOTS'}</span>
                   </button>
                 </div>
               </form>

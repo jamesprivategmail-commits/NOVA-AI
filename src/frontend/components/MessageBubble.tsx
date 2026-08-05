@@ -16,7 +16,7 @@ interface MessageBubbleProps {
   onEdit?: (id: string, text: string) => void;
 }
 
-export function MessageBubble({ message, isStreaming = false, onDelete, onEdit }: MessageBubbleProps) {
+export const MessageBubble = React.memo(function MessageBubble({ message, isStreaming = false, onDelete, onEdit }: MessageBubbleProps) {
   const isUser = message.role === 'user';
   const [copied, setCopied] = useState(false);
   const [liked, setLiked] = useState<boolean | null>(null);
@@ -301,4 +301,4 @@ export function MessageBubble({ message, isStreaming = false, onDelete, onEdit }
       )}
     </motion.div>
   );
-}
+});
