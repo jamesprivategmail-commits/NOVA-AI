@@ -130,9 +130,16 @@ export function AuthScreen() {
       <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-red-900/15 rounded-full blur-3xl pointer-events-none" />
 
       <div className="w-full max-w-md flex flex-col items-center z-10">
-        {/* Skull Icon Header */}
-        <div className="w-20 h-20 bg-red-950/60 border border-red-800/40 rounded-2xl flex items-center justify-center mb-6 shadow-2xl shadow-red-950/50">
-          <Skull size={40} className="text-red-500 animate-pulse" />
+        {/* Logo Header */}
+        <div className="relative mb-6 group">
+          <div className="absolute -inset-1 rounded-2xl bg-gradient-to-r from-red-600 via-amber-500 to-red-600 opacity-60 blur-md group-hover:opacity-90 transition duration-500 animate-pulse" />
+          <div className="relative w-20 h-20 rounded-2xl bg-[#0D1019]/90 border border-[#2A3145] p-2.5 flex items-center justify-center shadow-2xl backdrop-blur-md">
+            <img 
+              src="https://i.postimg.cc/8PVBFM75/file-00000000b40c82118dbaef206a9ebedc.png" 
+              alt="VOID AI Logo" 
+              className="w-full h-full object-contain"
+            />
+          </div>
         </div>
 
         <h1 className="text-3xl font-black text-white tracking-widest uppercase mb-1">

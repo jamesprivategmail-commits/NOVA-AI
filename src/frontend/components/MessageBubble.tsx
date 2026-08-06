@@ -38,96 +38,98 @@ export const MessageBubble = React.memo(function MessageBubble({ message, isStre
   };
 
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 12 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.25, ease: 'easeOut' }}
+    <div
       className={clsx(
-        "group w-full py-4 px-3 md:px-6 transition-colors",
-        isUser ? "bg-transparent" : "bg-[#161B22]/30 border-y border-[#21262D]/30"
+        "group w-full py-3 px-2 sm:px-4 md:px-6 transition-colors",
+        isUser ? "bg-transparent" : "bg-[#0E121D] border-y border-[#1E2536]"
       )}
     >
       <div className={clsx(
-        "max-w-4xl mx-auto flex w-full gap-3 md:gap-4 relative items-start",
+        "max-w-6xl mx-auto flex w-full gap-2 sm:gap-3.5 md:gap-4 relative items-start",
         isUser ? "flex-row-reverse" : "flex-row"
       )}>
         {/* Avatar */}
         <div className="shrink-0 mt-0.5">
           {isUser ? (
-            <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-red-600 to-red-800 border border-red-500/50 flex items-center justify-center text-white shadow-md">
-              <User size={16} />
+            <div className="w-8 h-8 sm:w-9 sm:h-9 md:w-10 md:h-10 rounded-xl bg-[#1A1F2C] border border-[#2F374A] flex items-center justify-center text-slate-200 font-mono text-xs font-bold shadow-sm">
+              <User size={16} className="sm:hidden" />
+              <User size={18} className="hidden sm:block" />
             </div>
           ) : (
-            <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-zinc-800 to-zinc-900 border border-zinc-700 flex items-center justify-center text-red-400 shadow-lg">
-              <Bot size={17} />
+            <div className="w-8 h-8 sm:w-9 sm:h-9 md:w-10 md:h-10 rounded-xl bg-[#090C15] border border-red-900/60 p-0.5 sm:p-1 flex items-center justify-center shadow-md">
+              <img 
+                src="https://i.postimg.cc/8PVBFM75/file-00000000b40c82118dbaef206a9ebedc.png" 
+                alt="VOID AI" 
+                className="w-full h-full object-contain"
+              />
             </div>
           )}
         </div>
 
         {/* Content Container */}
         <div className={clsx(
-          "flex-1 overflow-hidden min-w-0 space-y-1.5 flex flex-col",
+          "flex-1 overflow-hidden min-w-0 space-y-1 flex flex-col",
           isUser ? "items-end" : "items-start"
         )}>
           {/* Header info */}
           <div className={clsx(
-            "flex items-center gap-2",
+            "flex items-center gap-1.5 sm:gap-2 mb-0.5",
             isUser ? "flex-row-reverse" : "flex-row"
           )}>
-            <span className={clsx("text-xs font-bold tracking-wide", isUser ? "text-red-400" : "text-zinc-200 font-mono")}>
-              {isUser ? 'YOU' : 'VOID AI'}
+            <span className={clsx("text-[10px] sm:text-[11px] font-mono font-bold tracking-wider uppercase", isUser ? "text-slate-400" : "text-slate-200")}>
+              {isUser ? 'You' : 'VOID AI'}
             </span>
             {!isUser && (
-              <span className="px-1.5 py-0.2 rounded bg-red-950/60 border border-red-800/40 text-[10px] text-red-400 font-mono">
-                AI ENGINE
+              <span className="px-1.5 py-0.2 rounded bg-[#1C1F2A] border border-[#2B3040] text-[9px] sm:text-[10px] text-slate-400 font-mono">
+                ASSISTANT
               </span>
             )}
-            <span className="text-[11px] text-zinc-500 font-mono">
+            <span className="text-[9px] sm:text-[10px] text-slate-500 font-mono">
               {new Date(message.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
             </span>
           </div>
 
           {/* Edit Mode vs Content */}
           {isEditing ? (
-            <div className="w-full mt-2 space-y-2">
+            <div className="w-full mt-1 space-y-2">
               <textarea
                 value={editText}
                 onChange={(e) => setEditText(e.target.value)}
-                className="w-full bg-[#161B22] border border-[#30363D] focus:border-red-500 rounded-xl p-3 text-slate-100 min-h-[110px] outline-none text-sm font-sans"
+                className="w-full bg-[#14171F] border border-[#272B38] focus:border-red-500/80 rounded-xl p-3 text-slate-100 min-h-[110px] outline-none text-xs sm:text-sm font-sans"
               />
               <div className="flex items-center gap-2 justify-end">
                 <button
                   onClick={() => setIsEditing(false)}
-                  className="px-3.5 py-1.5 text-xs font-semibold text-slate-400 hover:text-white bg-[#21262D] hover:bg-[#30363D] rounded-lg transition-colors"
+                  className="px-3 py-1.5 text-xs font-semibold text-slate-400 hover:text-white bg-[#1E222D] hover:bg-[#272B38] rounded-lg transition-colors"
                 >
                   Cancel
                 </button>
                 <button
                   onClick={handleSaveEdit}
-                  className="px-4 py-1.5 text-xs font-bold bg-red-600 hover:bg-red-500 text-white rounded-lg transition-colors shadow-md shadow-red-950/50"
+                  className="px-4 py-1.5 text-xs font-bold bg-red-600 hover:bg-red-500 text-white rounded-lg transition-colors shadow-sm"
                 >
-                  Save Changes
+                  Save
                 </button>
               </div>
             </div>
           ) : (
             <div className={clsx(
-              "rounded-2xl p-4 text-sm md:text-[15px] leading-relaxed shadow-sm",
+              "text-xs sm:text-sm md:text-[15px] leading-relaxed w-full",
               isUser
-                ? "bg-gradient-to-r from-red-950/80 to-red-900/70 border border-red-800/60 text-white rounded-tr-xs max-w-[85%] md:max-w-[75%] text-left"
-                : "bg-[#161B22]/90 border border-[#30363D] text-slate-200 rounded-tl-xs w-full max-w-none text-left"
+                ? "bg-[#1B1E28] border border-[#2A2E3C] text-slate-100 rounded-2xl rounded-tr-xs p-3 sm:p-4 max-w-[95%] sm:max-w-[85%] text-left"
+                : "bg-transparent text-slate-200 rounded-tl-xs p-0 sm:p-1 w-full max-w-none text-left"
             )}>
               <div className={clsx(
-                "prose prose-invert max-w-none text-sm md:text-[15px] leading-relaxed",
+                "prose prose-invert max-w-none text-xs sm:text-sm md:text-[15px] leading-relaxed w-full",
                 "prose-headings:text-slate-100 prose-headings:font-bold prose-headings:tracking-tight",
-                "prose-h1:text-xl prose-h1:mt-4 prose-h1:mb-2 prose-h1:border-b prose-h1:border-[#30363D] prose-h1:pb-2",
-                "prose-h2:text-lg prose-h2:mt-4 prose-h2:mb-2",
-                "prose-h3:text-base prose-h3:mt-3 prose-h3:mb-1",
-                "prose-p:my-2 prose-p:leading-relaxed",
-                "prose-ul:my-2 prose-ul:pl-5 prose-ul:list-disc prose-li:my-1",
-                "prose-ol:my-2 prose-ol:pl-5 prose-ol:list-decimal prose-li:my-1",
-                "prose-blockquote:border-l-4 prose-blockquote:border-red-600 prose-blockquote:bg-[#161B22] prose-blockquote:py-2 prose-blockquote:px-4 prose-blockquote:rounded-r-lg prose-blockquote:text-slate-300 prose-blockquote:not-italic prose-blockquote:my-3",
-                "prose-hr:border-[#30363D] prose-hr:my-4",
+                "prose-h1:text-base sm:prose-h1:text-lg prose-h1:mt-2.5 prose-h1:mb-1.5 prose-h1:border-b prose-h1:border-[#272B38] prose-h1:pb-1.5",
+                "prose-h2:text-xs sm:prose-h2:text-base prose-h2:mt-2.5 prose-h2:mb-1",
+                "prose-h3:text-xs sm:prose-h3:text-sm prose-h3:mt-2 prose-h3:mb-1",
+                "prose-p:my-1.5 prose-p:leading-relaxed",
+                "prose-ul:my-1.5 prose-ul:pl-4 sm:prose-ul:pl-5 prose-ul:list-disc prose-li:my-0.5",
+                "prose-ol:my-1.5 prose-ol:pl-4 sm:prose-ol:pl-5 prose-ol:list-decimal prose-li:my-0.5",
+                "prose-blockquote:border-l-2 prose-blockquote:border-red-500 prose-blockquote:bg-[#161922] prose-blockquote:py-1.5 prose-blockquote:px-3 prose-blockquote:rounded-r-lg prose-blockquote:text-slate-300 prose-blockquote:not-italic prose-blockquote:my-2",
+                "prose-hr:border-[#272B38] prose-hr:my-3",
                 isStreaming && "streaming-cursor"
               )}>
                 <ReactMarkdown
@@ -299,6 +301,6 @@ export const MessageBubble = React.memo(function MessageBubble({ message, isStre
           />
         </div>
       )}
-    </motion.div>
+    </div>
   );
 });

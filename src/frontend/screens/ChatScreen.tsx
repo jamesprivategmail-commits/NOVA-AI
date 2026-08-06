@@ -7,9 +7,10 @@ import { AdminDashboard } from './AdminDashboard';
 import { SubscriptionModal } from './SubscriptionModal';
 import { SettingsModal } from './SettingsModal';
 import { SupportChatScreen } from './SupportChatScreen';
+import { FullPageSupportDesk } from './FullPageSupportDesk';
 import { EmailCampaignGenerator } from '../components/EmailCampaignGenerator';
 import { LiveVoiceModal } from '../components/LiveVoiceModal';
-import { Chat, Message, UserProfile } from '../../models/types';
+import { Chat, Message, UserProfile, BroadcastMessage } from '../../models/types';
 import {
   createChat,
   getUserChats,
@@ -22,11 +23,12 @@ import {
   deleteMessage,
   updateMessage,
   sendSupportMessage,
-  getAIBrainSettings
+  getAIBrainSettings,
+  listenToBroadcasts
 } from '../../database/db';
 import { sendMessageToGroq } from '../../api/client';
 import { memoryManager } from '../../memory/context';
-import { Menu, Shield, Crown, Mail, ArrowDown, Sparkles, Code, Target, Binary, Zap, Bot, Mic, ChevronDown, Send } from 'lucide-react';
+import { Menu, Shield, Crown, Mail, ArrowDown, Sparkles, Code, Target, Binary, Zap, Bot, Mic, ChevronDown, Send, Radio, X } from 'lucide-react';
 import { getAuth, signOut } from 'firebase/auth';
 import { clsx } from 'clsx';
 import { motion } from 'motion/react';
@@ -55,6 +57,24 @@ export function ChatScreen({ userId }: ChatScreenProps) {
   const [showSubscription, setShowSubscription] = useState(false);
   const [showCampaignGenerator, setShowCampaignGenerator] = useState(false);
   const [showLiveVoice, setShowLiveVoice] = useState(false);
+
+  // Broadcasts state
+  const [broadcasts, setBroadcasts] = useState<BroadcastMessage[]>([]);
+  const [dismissedBroadcastIds, setDismissedBroadcastIds] = useState<string[]>([]);
+
+  useEffect(() => {
+    const unsubBroadcasts = listenToBroadcasts((bList) => {
+      setBroadcasts(bList);
+    });
+    return () => unsubBroadcasts();
+  }, []);
+
+  const userTier = profile?.tier || 'free';
+  const activeBroadcast = broadcasts.find(b => {
+    if (dismissedBroadcastIds.includes(b.id)) return false;
+    if (!b.targetTier || b.targetTier === 'all') return true;
+    return b.targetTier === userTier;
+  });
 
   // Auto-scroll state & refs
   const [showScrollBottom, setShowScrollBottom] = useState(false);
@@ -91,14 +111,10 @@ export function ChatScreen({ userId }: ChatScreenProps) {
     setShowScrollBottom(!isAtBottom);
   };
 
-  const scrollToBottom = (instant = false) => {
+  const scrollToBottom = (instant = true) => {
     const container = chatContainerRef.current;
     if (!container) return;
-    if (instant) {
-      container.scrollTop = container.scrollHeight;
-    } else {
-      messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-    }
+    container.scrollTop = container.scrollHeight;
   };
 
   const loadProfileAndChats = async () => {
@@ -322,36 +338,70 @@ export function ChatScreen({ userId }: ChatScreenProps) {
         onOpenSubscription={() => setShowSubscription(true)}
         onOpenAdmin={() => setShowAdminPanel(true)}
         onOpenCampaignGenerator={() => setShowCampaignGenerator(true)}
+        onOpenLiveVoice={() => setShowLiveVoice(true)}
         onLogout={handleLogout}
         isOpen={isSidebarOpen}
         isAdmin={profile?.isAdmin || false}
+        isSupportStaff={profile?.isSupportStaff || false}
       />
 
       {/* Main Chat Workspace */}
       <div className="flex-1 flex flex-col h-full relative min-w-0 bg-[#0D1117]/60 backdrop-blur-sm">
+        {/* Broadcast System Banner Notice */}
+        {activeBroadcast && (
+          <div className="bg-gradient-to-r from-red-950 via-zinc-900 to-red-950 border-b border-red-800/80 p-3 px-4 flex items-center justify-between text-xs text-slate-200 z-30 shadow-xl animate-fadeIn">
+            <div className="flex items-center gap-2.5 min-w-0">
+              <div className="p-1.5 bg-red-600 rounded-xl text-white font-bold shrink-0 shadow">
+                <Radio size={14} className="animate-pulse" />
+              </div>
+              <div className="min-w-0">
+                <div className="font-bold text-white flex items-center gap-2">
+                  <span>{activeBroadcast.title}</span>
+                  <span className="text-[10px] uppercase font-mono px-1.5 py-0.2 rounded bg-red-900/80 border border-red-700/80 text-red-300 font-bold">
+                    Official Broadcast
+                  </span>
+                </div>
+                <p className="text-slate-300 truncate font-sans text-[11px]">{activeBroadcast.message}</p>
+              </div>
+            </div>
+            <button
+              onClick={() => setDismissedBroadcastIds(prev => [...prev, activeBroadcast.id])}
+              className="p-1.5 text-slate-400 hover:text-white hover:bg-zinc-800 rounded-lg transition-colors shrink-0"
+              title="Dismiss Notice"
+            >
+              <X size={16} />
+            </button>
+          </div>
+        )}
+
         {/* Header Bar */}
-        <header className="min-h-[3.5rem] py-2 px-3 sm:px-4 md:px-6 sticky top-0 z-10 bg-[#0D1117]/90 border-b border-[#30363D] backdrop-blur-md flex items-center justify-between gap-2 overflow-x-auto">
-          <div className="flex items-center gap-2 sm:gap-3 shrink-0">
+        <header className="h-14 px-3 sm:px-6 sticky top-0 z-10 bg-[#0B0C0E] border-b border-[#1E222D] flex items-center justify-between gap-3 select-none">
+          <div className="flex items-center gap-3 shrink-0">
             <button
               onClick={() => setIsSidebarOpen(!isSidebarOpen)}
-              className="p-2 -ml-1 rounded-xl hover:bg-[#161B22] text-slate-400 hover:text-slate-100 transition-colors"
+              className="p-2 -ml-1 rounded-xl hover:bg-[#161B22] text-slate-400 hover:text-slate-100 transition-colors cursor-pointer flex items-center justify-center"
               title="Toggle sidebar"
             >
-              <Menu size={20} />
+              <Menu size={19} />
             </button>
-            <div className="flex items-center gap-2">
-              <span className="font-extrabold text-base sm:text-lg tracking-wider bg-gradient-to-r from-red-500 via-slate-100 to-blue-500 bg-clip-text text-transparent">
+            <div className="flex items-center gap-2.5">
+              <img 
+                src="https://i.postimg.cc/8PVBFM75/file-00000000b40c82118dbaef206a9ebedc.png" 
+                alt="VOID AI Logo" 
+                className="w-7 h-7 rounded-lg object-contain bg-[#0D1018] border border-[#272C3A] p-0.5"
+              />
+              <span className="font-extrabold text-base sm:text-lg tracking-tight text-white">
                 VOID AI
               </span>
-              <span className="px-2 py-0.5 rounded-full bg-red-950/70 border border-red-800/40 text-[10px] text-red-400 font-mono font-bold uppercase tracking-wider hidden lg:inline-block">
-                PREMIUM INTELLIGENCE
+              <span className="px-2 py-0.5 rounded bg-[#1A1D27] border border-[#2B3142] text-[10px] text-slate-300 font-mono font-bold uppercase tracking-wider hidden sm:inline-block">
+                SYSTEM PRO
               </span>
             </div>
           </div>
 
-          <div className="flex items-center gap-1.5 sm:gap-2 md:gap-2.5 shrink-0">
+          <div className="flex items-center gap-2.5 shrink-0">
             {/* Model Selector Dropdown */}
-            <div className="relative max-w-[130px] sm:max-w-[180px] md:max-w-[220px]">
+            <div className="relative">
               <select
                 value={`${selectedProvider}:${selectedModel}`}
                 onChange={(e) => {
@@ -359,79 +409,34 @@ export function ChatScreen({ userId }: ChatScreenProps) {
                   setSelectedProvider(prov as 'groq' | 'cohere');
                   setSelectedModel(mod || 'auto');
                 }}
-                className="w-full bg-[#161B22] border border-[#30363D] hover:border-red-500/50 text-slate-200 text-xs font-mono font-bold py-1.5 pl-2.5 pr-6 rounded-xl focus:outline-none focus:border-red-500 cursor-pointer appearance-none shadow-sm transition-all truncate"
+                className="bg-[#141720] border border-[#272C3A] hover:border-slate-500 text-slate-200 text-xs font-mono py-1.5 pl-3 pr-7 rounded-xl focus:outline-none focus:border-red-500/80 cursor-pointer appearance-none shadow-sm transition-colors"
                 title="Select AI Engine"
               >
-                <option value="groq:auto">Groq Engine</option>
-                <option value="cohere:auto">Cohere Engine</option>
-                <optgroup label="Groq Specific Models">
+                <option value="groq:auto">Groq Llama 3.3 70B</option>
+                <option value="cohere:auto">Cohere Command R+</option>
+                <optgroup label="Groq Models">
                   <option value="groq:llama-3.3-70b-versatile">Groq: Llama 3.3 70B</option>
                   <option value="groq:llama-3.1-8b-instant">Groq: Llama 3.1 8B</option>
                   <option value="groq:mixtral-8x7b-32768">Groq: Mixtral 8x7B</option>
-                  <option value="groq:gemma2-9b-it">Groq: Gemma 2 9B</option>
                   <option value="groq:deepseek-r1-distill-llama-70b">Groq: DeepSeek R1 70B</option>
                 </optgroup>
-                <optgroup label="Cohere Specific Models">
-                  <option value="cohere:command-r-08-2024">Cohere: Command R</option>
+                <optgroup label="Cohere Models">
                   <option value="cohere:command-r-plus-08-2024">Cohere: Command R+</option>
-                  <option value="cohere:command-r7b-12-2024">Cohere: Command R7B</option>
-                  <option value="cohere:command-light">Cohere: Command Light</option>
+                  <option value="cohere:command-r-08-2024">Cohere: Command R</option>
                 </optgroup>
               </select>
-              <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-1.5 text-slate-400">
+              <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-slate-400">
                 <ChevronDown size={13} />
               </div>
             </div>
 
-            {/* Telegram Channel Link */}
-            <a
-              href="https://t.me/novatechco"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="flex items-center gap-1.5 px-2.5 py-1.5 bg-[#0088cc]/20 border border-[#0088cc]/40 text-[#38bdf8] hover:bg-[#0088cc]/30 hover:border-[#0088cc]/60 rounded-xl transition-all text-xs font-bold shadow-sm shrink-0"
-              title="Join Telegram Channel @novatechco"
-            >
-              <Send size={13} className="-rotate-45 text-[#38bdf8]" />
-              <span className="hidden sm:inline">Telegram</span>
-            </a>
-
-            <button
-              onClick={() => setShowLiveVoice(true)}
-              className="flex items-center gap-1.5 px-2.5 py-1.5 bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 hover:from-blue-500 hover:to-purple-500 text-white rounded-xl transition-all text-xs font-bold shadow-md shadow-blue-950/40 shrink-0"
-              title="Launch Live Voice Call with AI"
-            >
-              <Mic size={14} className="animate-pulse text-blue-200" />
-              <span className="hidden md:inline">Voice</span>
-            </button>
-
-            <button
-              onClick={() => setShowCampaignGenerator(true)}
-              className="flex items-center gap-1.5 px-2.5 py-1.5 bg-gradient-to-r from-red-600 to-red-700 hover:from-red-500 hover:to-red-600 text-white rounded-xl transition-all text-xs font-bold shadow-md shadow-red-950/40 shrink-0"
-              title="Email Campaign Studio"
-            >
-              <Mail size={14} />
-              <span className="hidden xl:inline">Campaigns</span>
-            </button>
-
-            {profile && profile.isAdmin && (
-              <button
-                onClick={() => setShowAdminPanel(true)}
-                className="flex items-center gap-1.5 px-2.5 py-1.5 bg-red-950/40 text-red-400 rounded-xl hover:bg-red-900/40 transition-colors text-xs font-bold border border-red-800/40 shrink-0"
-              >
-                <Shield size={14} />
-                <span className="hidden lg:inline">Admin</span>
-              </button>
-            )}
-
             {profile && (
               <button
                 onClick={() => setShowSubscription(true)}
-                className="px-2.5 py-1.5 bg-[#161B22] border border-[#30363D] hover:border-amber-500/50 rounded-xl text-xs font-semibold flex items-center gap-1.5 text-slate-200 transition-all cursor-pointer shrink-0"
+                className="px-3 py-1.5 bg-[#141720] border border-[#272C3A] hover:border-amber-500/50 rounded-xl text-xs font-semibold flex items-center gap-1.5 text-slate-200 transition-colors cursor-pointer shrink-0"
               >
                 <Crown size={14} className="text-amber-400" />
-                <span className="capitalize text-amber-400 font-bold">{profile.tier}</span>
-                <span className="w-1 h-1 rounded-full bg-slate-600 hidden sm:inline-block"></span>
-                <span className="text-slate-400 font-mono text-[11px] hidden sm:inline-block">{profile.messageCount} msgs</span>
+                <span className="capitalize text-amber-400 font-bold hidden sm:inline">{profile.tier}</span>
               </button>
             )}
           </div>
@@ -441,72 +446,57 @@ export function ChatScreen({ userId }: ChatScreenProps) {
         <div
           ref={chatContainerRef}
           onScroll={handleScroll}
-          className="flex-1 overflow-y-auto relative scroll-smooth"
+          className="flex-1 overflow-y-auto relative"
         >
           {messages.length === 0 ? (
             /* Starter / Welcome Screen */
-            <div className="h-full flex flex-col items-center justify-center p-6 md:p-10 text-center max-w-4xl mx-auto space-y-8">
-              <motion.div
-                initial={{ scale: 0.9, opacity: 0 }}
-                animate={{ scale: 1, opacity: 1 }}
-                transition={{ duration: 0.3 }}
-                className="flex flex-col items-center"
-              >
-                <div className="w-16 h-16 rounded-2xl bg-gradient-to-tr from-red-600 to-blue-600 p-[1px] shadow-2xl shadow-red-950/60 mb-5">
-                  <div className="w-full h-full bg-[#0D1117] rounded-[15px] flex items-center justify-center">
-                    <Bot size={34} className="text-red-400" />
+            <div className="h-full flex flex-col items-center justify-center p-6 md:p-10 text-center max-w-2xl mx-auto space-y-6">
+              <div className="flex flex-col items-center">
+                <div className="relative mb-5 group">
+                  <div className="w-20 h-20 md:w-24 md:h-24 rounded-3xl bg-[#0B0E17] border-2 border-[#323B52] p-2.5 flex items-center justify-center shadow-xl">
+                    <img 
+                      src="https://i.postimg.cc/8PVBFM75/file-00000000b40c82118dbaef206a9ebedc.png" 
+                      alt="VOID AI Logo" 
+                      className="w-full h-full object-contain"
+                    />
                   </div>
                 </div>
                 <h1 className="text-2xl md:text-3xl font-extrabold tracking-tight text-slate-100">
-                  Welcome to <span className="text-red-500">VOID AI</span> Engine
+                  How can <span className="bg-gradient-to-r from-red-400 via-red-500 to-amber-400 bg-clip-text text-transparent">VOID AI</span> help you today?
                 </h1>
-                <p className="text-slate-400 text-sm md:text-base max-w-lg mt-2 leading-relaxed">
-                  High-performance artificial intelligence designed for marketing strategy, software architecture, mathematics, and complex reasoning.
+                <p className="text-slate-300 text-xs md:text-sm max-w-md mt-2 leading-relaxed font-sans">
+                  Select a starter prompt below or type any query to start typing directly onto the live canvas.
                 </p>
-              </motion.div>
+              </div>
 
-              {/* Categorized Prompt Cards Grid */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5 w-full max-w-3xl text-left">
+              {/* Suggestion Chips */}
+              <div className="flex flex-col sm:flex-row items-center justify-center gap-3 w-full max-w-xl">
                 {[
                   {
-                    icon: <Mail size={18} className="text-red-400 shrink-0" />,
-                    category: "Email Marketing",
-                    title: "Draft a 5-part flash sale email launch sequence for a digital SaaS product."
+                    icon: <Code size={15} className="text-red-400" />,
+                    title: "Write an Express API with rate limiting"
                   },
                   {
-                    icon: <Code size={18} className="text-blue-400 shrink-0" />,
-                    category: "Software Development",
-                    title: "Write a high-performance Express & React TypeScript API wrapper with rate limiting."
+                    icon: <Mail size={15} className="text-amber-400" />,
+                    title: "Draft a 5-part flash sale email sequence"
                   },
                   {
-                    icon: <Target size={18} className="text-emerald-400 shrink-0" />,
-                    category: "Growth Strategy",
-                    title: "Outline a complete customer retention roadmap for subscription mobile apps."
-                  },
-                  {
-                    icon: <Binary size={18} className="text-purple-400 shrink-0" />,
-                    category: "Advanced Math & Code",
-                    title: "Derive the mathematical proof for gradient descent optimization algorithms."
+                    icon: <Target size={15} className="text-blue-400" />,
+                    title: "Outline a customer retention strategy"
                   }
-                ].map((item, idx) => (
-                  <motion.button
+                ].map((chip, idx) => (
+                  <button
                     key={idx}
-                    initial={{ opacity: 0, y: 15 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ duration: 0.25, delay: idx * 0.08 }}
-                    onClick={() => handleSend(item.title)}
-                    className="p-4 bg-[#161B22] hover:bg-[#1C2128] border border-[#30363D] hover:border-red-500/50 rounded-2xl text-left transition-all shadow-md group cursor-pointer flex flex-col justify-between"
+                    onClick={() => handleSend(chip.title)}
+                    className="w-full sm:w-1/3 p-3.5 bg-[#121622]/80 hover:bg-[#181E2E]/90 border border-[#272F42] hover:border-red-500/80 rounded-2xl text-left transition-all shadow-xl backdrop-blur-md group cursor-pointer flex items-center gap-3"
                   >
-                    <div className="flex items-center gap-2 mb-2">
-                      {item.icon}
-                      <span className="text-[11px] font-bold font-mono tracking-wider uppercase text-slate-400 group-hover:text-slate-200">
-                        {item.category}
-                      </span>
+                    <div className="p-2 rounded-xl bg-[#1A2030] text-slate-200 group-hover:scale-105 transition-transform shrink-0">
+                      {chip.icon}
                     </div>
-                    <p className="text-xs text-slate-200 group-hover:text-white leading-relaxed font-medium">
-                      "{item.title}"
-                    </p>
-                  </motion.button>
+                    <span className="text-xs text-slate-200 group-hover:text-white font-medium line-clamp-2 leading-snug">
+                      {chip.title}
+                    </span>
+                  </button>
                 ))}
               </div>
             </div>
@@ -603,11 +593,13 @@ export function ChatScreen({ userId }: ChatScreenProps) {
         />
       )}
 
-      {/* Support Chat Screen */}
+      {/* Full Page Support Chat Desk */}
       {showSupport && profile && (
-        <SupportChatScreen
+        <FullPageSupportDesk
           userId={userId}
           userName={profile.displayName || profile.email || 'User'}
+          isAdminView={profile.isAdmin || false}
+          isSupportStaff={profile.isSupportStaff || false}
           onClose={() => setShowSupport(false)}
         />
       )}

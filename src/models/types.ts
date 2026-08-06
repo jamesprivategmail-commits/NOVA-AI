@@ -40,8 +40,18 @@ export interface UserProfile {
   messageCount: number;
   lastMessageDate: string; // "YYYY-MM-DD"
   isAdmin: boolean;
+  isSupportStaff?: boolean;
   isBanned?: boolean;
   isVerified?: boolean;
+}
+
+export interface BroadcastMessage {
+  id: string;
+  title: string;
+  message: string;
+  senderName: string;
+  targetTier?: 'all' | UserTier;
+  createdAt: number;
 }
 
 export interface Chat {

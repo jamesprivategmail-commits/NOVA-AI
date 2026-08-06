@@ -1,6 +1,6 @@
 import { collection, doc, setDoc, getDocs, query, where, orderBy, deleteDoc, serverTimestamp, getDoc, onSnapshot } from "firebase/firestore";
 import { db } from "../config/firebase";
-import { Chat, Message, UserProfile, SupportChat, SupportMessage, PricingSettings } from "../models/types";
+import { Chat, Message, UserProfile, SupportChat, SupportMessage, PricingSettings, BroadcastMessage, UserTier } from "../models/types";
 import { v4 as uuidv4 } from "uuid";
 
 export async function getUserProfile(uid: string, email: string | null, displayName: string | null): Promise<UserProfile> {
@@ -98,6 +98,11 @@ export async function updateUserStatus(uid: string, isBanned: boolean): Promise<
 export async function updateUserVerification(uid: string, isVerified: boolean): Promise<void> {
   const userRef = doc(db, "users", uid);
   await setDoc(userRef, { isVerified }, { merge: true });
+}
+
+export async function updateUserSupportStaff(uid: string, isSupportStaff: boolean): Promise<void> {
+  const userRef = doc(db, "users", uid);
+  await setDoc(userRef, { isSupportStaff }, { merge: true });
 }
 
 export async function createChat(userId: string, title: string = "New Chat"): Promise<Chat> {
@@ -373,5 +378,37 @@ export async function getSystemAPIKeys(): Promise<SystemAPIKeys> {
 export async function updateSystemAPIKeys(keys: SystemAPIKeys): Promise<void> {
   const docRef = doc(db, 'settings', 'apikeys');
   await setDoc(docRef, keys, { merge: true });
+}
+
+export async function sendBroadcastMessage(title: string, message: string, senderName: string = "Admin", targetTier: 'all' | UserTier = 'all'): Promise<BroadcastMessage> {
+  const id = uuidv4();
+  const now = Date.now();
+  const broadcastRef = doc(db, 'broadcasts', id);
+  
+  const broadcast: BroadcastMessage = {
+    id,
+    title,
+    message,
+    senderName,
+    targetTier,
+    createdAt: now,
+  };
+  
+  await setDoc(broadcastRef, broadcast);
+  return broadcast;
+}
+
+export function listenToBroadcasts(callback: (broadcasts: BroadcastMessage[]) => void) {
+  const q = query(collection(db, 'broadcasts'), orderBy('createdAt', 'desc'));
+  return onSnapshot(q, (snapshot) => {
+    const broadcasts = snapshot.docs.map(doc => doc.data() as BroadcastMessage);
+    callback(broadcasts);
+  }, (error) => {
+    console.error("Error listening to broadcasts:", error);
+  });
+}
+
+export async function deleteBroadcast(id: string): Promise<void> {
+  await deleteDoc(doc(db, 'broadcasts', id));
 }
 

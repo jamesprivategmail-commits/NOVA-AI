@@ -145,7 +145,7 @@ export function InputArea({ onSend, isLoading, onStop }: InputAreaProps) {
   };
 
   return (
-    <div className="w-full max-w-4xl mx-auto px-3 sm:px-4 pb-3 sm:pb-4 md:px-6">
+    <div className="w-full max-w-6xl mx-auto px-2 sm:px-4 pb-2 sm:pb-4 md:px-6">
       {/* Speech Error Banner */}
       {speechError && (
         <div className="mb-2 p-2 px-3 bg-red-950/80 border border-red-800/80 rounded-xl text-xs text-red-200 animate-fadeIn flex items-center justify-between">
@@ -178,7 +178,7 @@ export function InputArea({ onSend, isLoading, onStop }: InputAreaProps) {
       )}
 
       {/* Main Input Box Container */}
-      <div className="relative flex items-end w-full bg-[#161B22]/95 backdrop-blur-md border border-[#30363D] focus-within:border-red-500/80 rounded-2xl shadow-2xl transition-colors">
+      <div className="relative flex items-end w-full bg-[#0E121E] border border-[#273044] focus-within:border-red-500/90 rounded-2xl shadow-2xl transition-all">
         {/* File upload hidden input */}
         <input
           type="file"
@@ -195,7 +195,7 @@ export function InputArea({ onSend, isLoading, onStop }: InputAreaProps) {
           className="p-2.5 sm:p-3 pl-3 sm:pl-4 text-slate-400 hover:text-slate-100 transition-colors shrink-0 mb-0.5"
           title="Attach image or file"
         >
-          <Paperclip size={19} />
+          <Paperclip size={18} />
         </button>
 
         {/* Speech / Voice button */}
@@ -208,10 +208,10 @@ export function InputArea({ onSend, isLoading, onStop }: InputAreaProps) {
           )}
           title={isListening ? "Stop listening" : "Voice input"}
         >
-          {isListening ? <MicOff size={19} className="text-red-500" /> : <Mic size={19} />}
+          {isListening ? <MicOff size={18} className="text-red-500" /> : <Mic size={18} />}
         </button>
 
-        {/* Auto-expanding Textarea - Note text-base on mobile prevents iOS safari auto-zoom issue */}
+        {/* Auto-expanding Textarea */}
         <textarea
           ref={textareaRef}
           value={text}
@@ -222,8 +222,20 @@ export function InputArea({ onSend, isLoading, onStop }: InputAreaProps) {
           autoCapitalize="sentences"
           autoCorrect="on"
           spellCheck={true}
-          className="flex-1 min-h-[44px] max-h-[200px] bg-transparent text-slate-100 placeholder-slate-500 border-0 focus:ring-0 resize-none py-2.5 px-2 outline-none text-base md:text-sm leading-relaxed"
+          className="flex-1 min-h-[44px] max-h-[200px] bg-transparent text-slate-100 placeholder:text-slate-500 border-0 focus:ring-0 resize-none py-2.5 px-2 outline-none text-base md:text-sm leading-relaxed font-sans"
         />
+
+        {/* Clear prompt text button if typing */}
+        {text.length > 0 && (
+          <button
+            type="button"
+            onClick={() => setText('')}
+            className="p-1.5 text-slate-500 hover:text-slate-300 transition-colors shrink-0 mb-1 rounded-lg hover:bg-[#1E2330] mr-1"
+            title="Clear prompt text"
+          >
+            <X size={15} />
+          </button>
+        )}
 
         {/* Send / Stop button */}
         <div className="p-2 shrink-0">
@@ -231,10 +243,10 @@ export function InputArea({ onSend, isLoading, onStop }: InputAreaProps) {
             <button
               type="button"
               onClick={onStop}
-              className="p-2.5 bg-red-600 hover:bg-red-500 text-white rounded-xl transition-all shadow-md shadow-red-950/50 flex items-center justify-center group"
+              className="p-2 bg-red-600 hover:bg-red-500 text-white rounded-xl transition-all shadow-sm flex items-center justify-center group"
               title="Stop generating"
             >
-              <Square size={16} fill="currentColor" className="group-hover:scale-95 transition-transform" />
+              <Square size={15} fill="currentColor" className="group-hover:scale-95 transition-transform" />
             </button>
           ) : (
             <button
@@ -242,21 +254,21 @@ export function InputArea({ onSend, isLoading, onStop }: InputAreaProps) {
               onClick={handleSend}
               disabled={!text.trim() && !attachment}
               className={clsx(
-                "p-2.5 rounded-xl transition-all flex items-center justify-center shadow-md",
+                "p-2 rounded-xl transition-all flex items-center justify-center shadow-sm",
                 text.trim() || attachment
-                  ? "bg-red-600 hover:bg-red-500 text-white shadow-red-950/50 cursor-pointer active:scale-95"
-                  : "bg-[#21262D] text-slate-600 cursor-not-allowed"
+                  ? "bg-red-600 hover:bg-red-500 text-white cursor-pointer active:scale-95"
+                  : "bg-[#1E2330] text-slate-600 cursor-not-allowed"
               )}
               title="Send message"
             >
-              <Send size={16} />
+              <Send size={15} />
             </button>
           )}
         </div>
       </div>
 
       {/* Footer Disclaimer & Shortcut tip */}
-      <div className="flex items-center justify-between text-[11px] text-slate-500 mt-1.5 px-1 font-mono">
+      <div className="flex items-center justify-between text-[10px] text-slate-500 mt-1.5 px-1 font-mono">
         <span>VOID AI Engine v2.5</span>
         <span className="hidden sm:inline">Press Shift + Enter for new line</span>
       </div>

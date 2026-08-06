@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { SupportMessage, UserProfile } from '../../models/types';
 import { sendSupportMessage, listenToSupportMessages, markSupportChatRead } from '../../database/db';
-import { ArrowLeft, Send, Shield, User } from 'lucide-react';
+import { ArrowLeft, Send, Shield, User, Maximize2 } from 'lucide-react';
 import { clsx } from 'clsx';
 import { twMerge } from 'tailwind-merge';
 
@@ -12,9 +12,10 @@ interface SupportChatScreenProps {
   isAdminView?: boolean;
   targetUserId?: string;
   targetUserName?: string;
+  onExpandFullScreen?: () => void;
 }
 
-export function SupportChatScreen({ userId, userName, onClose, isAdminView = false, targetUserId, targetUserName }: SupportChatScreenProps) {
+export function SupportChatScreen({ userId, userName, onClose, isAdminView = false, targetUserId, targetUserName, onExpandFullScreen }: SupportChatScreenProps) {
   const [messages, setMessages] = useState<SupportMessage[]>([]);
   const [inputText, setInputText] = useState('');
   
@@ -83,6 +84,18 @@ export function SupportChatScreen({ userId, userName, onClose, isAdminView = fal
             </p>
           </div>
         </div>
+
+        {onExpandFullScreen && (
+          <button
+            type="button"
+            onClick={onExpandFullScreen}
+            className="flex items-center gap-1.5 px-3 py-1.5 bg-red-600 hover:bg-red-500 text-white rounded-xl text-xs font-bold transition-all shadow-md cursor-pointer shrink-0"
+            title="Open Full Page Chat Screen"
+          >
+            <Maximize2 size={14} />
+            <span>Full Screen Chat</span>
+          </button>
+        )}
       </div>
 
       {/* Messages area */}

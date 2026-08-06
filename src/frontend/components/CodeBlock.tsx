@@ -58,47 +58,48 @@ export function CodeBlock({ language, value }: CodeBlockProps) {
   };
 
   return (
-    <div className="my-5 rounded-xl border border-[#30363D] bg-[#161B22] overflow-hidden shadow-lg">
+    <div className="my-3 sm:my-5 rounded-lg sm:rounded-xl border border-[#30363D] bg-[#161B22] overflow-hidden shadow-md w-full">
       {/* Header bar */}
-      <div className="flex items-center justify-between px-4 py-2 bg-[#0D1117] border-b border-[#30363D] text-xs font-mono text-slate-400">
-        <div className="flex items-center gap-2">
-          <Terminal size={14} className="text-red-400" />
-          <span className="uppercase tracking-wider font-semibold text-slate-300">
+      <div className="flex items-center justify-between px-2.5 py-1.5 sm:px-4 sm:py-2 bg-[#0D1117] border-b border-[#30363D] text-[11px] sm:text-xs font-mono text-slate-400">
+        <div className="flex items-center gap-1.5 sm:gap-2 min-w-0">
+          <Terminal size={13} className="text-red-400 shrink-0" />
+          <span className="uppercase tracking-wider font-semibold text-slate-300 truncate">
             {language || 'text'}
           </span>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
           <button
             onClick={handleDownload}
-            className="flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-[#21262D] hover:bg-[#30363D] text-slate-300 hover:text-white transition-colors text-xs font-medium border border-[#30363D]"
+            className="flex items-center gap-1 px-2 py-0.5 sm:px-2.5 sm:py-1 rounded-md bg-[#21262D] hover:bg-[#30363D] text-slate-300 hover:text-white transition-colors text-[10px] sm:text-xs font-medium border border-[#30363D]"
             title="Download file"
           >
             {downloaded ? (
               <>
-                <Check size={13} className="text-emerald-400" />
-                <span className="text-emerald-400 font-semibold">Downloaded!</span>
+                <Check size={12} className="text-emerald-400" />
+                <span className="text-emerald-400 font-semibold">Saved</span>
               </>
             ) : (
               <>
-                <Download size={13} className="text-red-400" />
-                <span>Download File</span>
+                <Download size={12} className="text-red-400" />
+                <span className="hidden sm:inline">Download File</span>
+                <span className="sm:hidden">Save</span>
               </>
             )}
           </button>
 
           <button
             onClick={handleCopy}
-            className="flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-[#21262D] hover:bg-[#30363D] text-slate-300 hover:text-white transition-colors text-xs font-medium border border-[#30363D]"
+            className="flex items-center gap-1 px-2 py-0.5 sm:px-2.5 sm:py-1 rounded-md bg-[#21262D] hover:bg-[#30363D] text-slate-300 hover:text-white transition-colors text-[10px] sm:text-xs font-medium border border-[#30363D]"
             title="Copy code"
           >
             {copied ? (
               <>
-                <Check size={13} className="text-emerald-400" />
-                <span className="text-emerald-400 font-semibold">Copied!</span>
+                <Check size={12} className="text-emerald-400" />
+                <span className="text-emerald-400 font-semibold">Copied</span>
               </>
             ) : (
               <>
-                <Copy size={13} />
+                <Copy size={12} />
                 <span>Copy</span>
               </>
             )}
@@ -107,16 +108,16 @@ export function CodeBlock({ language, value }: CodeBlockProps) {
       </div>
 
       {/* Code body */}
-      <div className="overflow-x-auto text-sm">
+      <div className="overflow-x-auto text-xs sm:text-sm">
         <SyntaxHighlighter
           language={language || 'text'}
           style={vscDarkPlus}
           customStyle={{
             margin: 0,
-            padding: '1.25rem 1rem',
+            padding: '0.875rem 0.75rem',
             background: 'transparent',
-            fontSize: '0.875rem',
-            lineHeight: '1.6',
+            fontSize: '0.8125rem',
+            lineHeight: '1.5',
           }}
           codeTagProps={{
             style: { fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace' }

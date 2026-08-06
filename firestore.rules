@@ -46,6 +46,10 @@ service cloud.firestore {
       allow read: if docId != 'apikeys';
       allow write: if isAdmin();
     }
+
+    match /broadcasts/{broadcastId} {
+      allow read, write: if true;
+    }
   }
 }
 
