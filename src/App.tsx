@@ -4,12 +4,14 @@ import { app } from './config/firebase'; // Ensure initialized
 import { AuthScreen } from './frontend/screens/AuthScreen';
 import { ChatScreen } from './frontend/screens/ChatScreen';
 import { EmailVerificationNotice } from './frontend/screens/EmailVerificationNotice';
+import { TermsModal } from './frontend/components/TermsModal';
 import { Bot } from 'lucide-react';
 
 export default function App() {
   const [user, setUser] = useState<FirebaseUser | null>(null);
   const [loading, setLoading] = useState(true);
   const [isVerified, setIsVerified] = useState(false);
+  const [termsAccepted, setTermsAccepted] = useState(false);
 
   useEffect(() => {
     const auth = getAuth(app);
@@ -20,13 +22,30 @@ export default function App() {
         const isGoogle = u.providerData?.some(p => p.providerId === 'google.com');
         const isAdmin = u.email === 'mrnovatech4@gmail.com';
         setIsVerified(u.emailVerified || isGoogle || isAdmin);
+
+        // Check terms acceptance
+        const accepted = localStorage.getItem(`void_ai_terms_accepted_${u.uid}`) === 'true';
+        setTermsAccepted(accepted);
       } else {
         setIsVerified(false);
+        setTermsAccepted(false);
       }
       setLoading(false);
     });
     return () => unsubscribe();
   }, []);
+
+  const handleAcceptTerms = () => {
+    if (user) {
+      localStorage.setItem(`void_ai_terms_accepted_${user.uid}`, 'true');
+      setTermsAccepted(true);
+    }
+  };
+
+  const handleDeclineTerms = () => {
+    const auth = getAuth(app);
+    auth.signOut();
+  };
 
   if (loading) {
     return (
@@ -51,7 +70,17 @@ export default function App() {
     );
   }
 
+  if (!termsAccepted) {
+    return (
+      <TermsModal 
+        onAccept={handleAcceptTerms} 
+        onDecline={handleDeclineTerms} 
+      />
+    );
+  }
+
   return <ChatScreen userId={user.uid} />;
 }
+
 
 
