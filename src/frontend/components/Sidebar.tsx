@@ -87,50 +87,73 @@ export function Sidebar({
 
         {/* Navigation Shortcut Menu */}
         <div className="space-y-1 pt-1 font-mono text-xs">
-          <button
-            onClick={onNewChat}
-            className="w-full flex items-center gap-2.5 px-3 py-1.5 rounded-lg text-red-400 hover:bg-red-950/30 hover:text-red-300 transition-colors cursor-pointer text-left font-semibold"
-          >
-            <MessageSquare size={14} className="text-red-500" />
-            <span>CHAT</span>
-          </button>
+          {onOpenLiveVoice && (
+            <button
+              onClick={onOpenLiveVoice}
+              className="w-full flex items-center gap-2.5 px-3 py-1.5 rounded-lg text-red-400 hover:bg-red-950/30 hover:text-red-300 transition-colors cursor-pointer text-left font-semibold"
+            >
+              <Mic size={14} className="text-red-500" />
+              <span>Live Voice Call</span>
+            </button>
+          )}
           <button
             onClick={onOpenCampaignGenerator}
-            className="w-full flex items-center gap-2.5 px-3 py-1.5 rounded-lg text-slate-300 hover:bg-red-950/30 hover:text-red-300 transition-colors cursor-pointer text-left"
+            className="w-full flex items-center gap-2.5 px-3 py-1.5 rounded-lg text-amber-400 hover:bg-red-950/30 hover:text-amber-300 transition-colors cursor-pointer text-left font-semibold"
           >
-            <Brain size={14} className="text-red-500" />
-            <span>MEMORY</span>
+            <Mail size={14} className="text-amber-500" />
+            <span>Email Studio</span>
           </button>
           <button
             onClick={onOpenSubscription}
             className="w-full flex items-center gap-2.5 px-3 py-1.5 rounded-lg text-slate-300 hover:bg-red-950/30 hover:text-red-300 transition-colors cursor-pointer text-left"
           >
-            <Lock size={14} className="text-red-500" />
-            <span>SECRETS</span>
-          </button>
-          <button
-            onClick={onOpenLiveVoice}
-            className="w-full flex items-center gap-2.5 px-3 py-1.5 rounded-lg text-slate-300 hover:bg-red-950/30 hover:text-red-300 transition-colors cursor-pointer text-left"
-          >
-            <Cpu size={14} className="text-red-500" />
-            <span>TOOLS</span>
+            <Crown size={14} className="text-amber-500" />
+            <span>Plans & Usage</span>
           </button>
           <button
             onClick={onOpenSettings}
             className="w-full flex items-center gap-2.5 px-3 py-1.5 rounded-lg text-slate-300 hover:bg-red-950/30 hover:text-red-300 transition-colors cursor-pointer text-left"
           >
             <Settings size={14} className="text-red-500" />
-            <span>SETTINGS</span>
+            <span>Settings</span>
+          </button>
+          <button
+            onClick={onOpenSupport}
+            className="w-full flex items-center gap-2.5 px-3 py-1.5 rounded-lg text-slate-300 hover:bg-red-950/30 hover:text-red-300 transition-colors cursor-pointer text-left"
+          >
+            <MessageSquare size={14} className="text-red-500" />
+            <span>Support Desk</span>
           </button>
           {isAdmin && (
             <button
               onClick={onOpenAdmin}
               className="w-full flex items-center gap-2.5 px-3 py-1.5 rounded-lg text-red-400 hover:bg-red-950/40 border border-red-900/40 transition-colors cursor-pointer text-left font-bold"
             >
-              <Terminal size={14} className="text-red-500" />
-              <span>TERMINAL</span>
+              <Shield size={14} className="text-red-500" />
+              <span>Admin Workspace</span>
             </button>
           )}
+          {isSupportStaff && !isAdmin && (
+            <button
+              onClick={onOpenSupport}
+              className="w-full flex items-center gap-2.5 px-3 py-1.5 rounded-lg text-emerald-400 hover:bg-red-950/40 border border-emerald-900/40 transition-colors cursor-pointer text-left font-bold"
+            >
+              <Shield size={14} className="text-emerald-500" />
+              <span>Support Desk</span>
+            </button>
+          )}
+          <a
+            href="https://t.me/novatechco"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="w-full flex items-center gap-2 bg-black/80 border border-red-950 hover:border-red-800 text-slate-300 py-1.5 px-3 rounded-lg transition-all font-medium text-xs shadow-sm mt-1"
+          >
+            <Send size={13} className="-rotate-45 text-sky-400 shrink-0" />
+            <div className="flex items-center justify-between w-full overflow-hidden">
+              <span className="truncate text-xs text-slate-200">Telegram</span>
+              <span className="text-[10px] text-sky-400 font-mono">@novatechco</span>
+            </div>
+          </a>
         </div>
 
         {/* Search Input */}
