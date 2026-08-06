@@ -345,11 +345,21 @@ export function ChatScreen({ userId }: ChatScreenProps) {
         isSupportStaff={profile?.isSupportStaff || false}
       />
 
+      {/* Background Atmosphere Image and Radial Vignette */}
+      <div className="absolute inset-0 z-0 pointer-events-none flex items-center justify-center opacity-30 overflow-hidden">
+        <img 
+          src="https://i.postimg.cc/8PVBFM75/file-00000000b40c82118dbaef206a9ebedc.png" 
+          alt="Demonic Void AI Background" 
+          className="w-[900px] h-auto max-w-none object-contain filter contrast-125 saturate-150"
+        />
+      </div>
+      <div className="absolute inset-0 z-0 pointer-events-none bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-red-950/20 via-black/80 to-black" />
+
       {/* Main Chat Workspace */}
-      <div className="flex-1 flex flex-col h-full relative min-w-0 bg-[#0D1117]/60 backdrop-blur-sm">
+      <div className="flex-1 flex flex-col h-full relative min-w-0 bg-transparent z-10">
         {/* Broadcast System Banner Notice */}
         {activeBroadcast && (
-          <div className="bg-gradient-to-r from-red-950 via-zinc-900 to-red-950 border-b border-red-800/80 p-3 px-4 flex items-center justify-between text-xs text-slate-200 z-30 shadow-xl animate-fadeIn">
+          <div className="bg-red-950/90 border-b border-red-800/80 p-3 px-4 flex items-center justify-between text-xs text-slate-200 z-30 shadow-xl animate-fadeIn backdrop-blur-md">
             <div className="flex items-center gap-2.5 min-w-0">
               <div className="p-1.5 bg-red-600 rounded-xl text-white font-bold shrink-0 shadow">
                 <Radio size={14} className="animate-pulse" />
@@ -375,26 +385,29 @@ export function ChatScreen({ userId }: ChatScreenProps) {
         )}
 
         {/* Header Bar */}
-        <header className="h-14 px-3 sm:px-6 sticky top-0 z-10 bg-[#0B0C0E] border-b border-[#1E222D] flex items-center justify-between gap-3 select-none">
+        <header className="h-14 px-3 sm:px-6 sticky top-0 z-20 bg-black/85 border-b border-red-950/90 backdrop-blur-md flex items-center justify-between gap-3 select-none">
           <div className="flex items-center gap-3 shrink-0">
             <button
               onClick={() => setIsSidebarOpen(!isSidebarOpen)}
-              className="p-2 -ml-1 rounded-xl hover:bg-[#161B22] text-slate-400 hover:text-slate-100 transition-colors cursor-pointer flex items-center justify-center"
+              className="p-2 -ml-1 rounded-xl hover:bg-red-950/40 text-red-500 transition-colors cursor-pointer flex items-center justify-center border border-transparent hover:border-red-900/60"
               title="Toggle sidebar"
             >
               <Menu size={19} />
             </button>
-            <div className="flex items-center gap-2.5">
-              <img 
-                src="https://i.postimg.cc/8PVBFM75/file-00000000b40c82118dbaef206a9ebedc.png" 
-                alt="VOID AI Logo" 
-                className="w-7 h-7 rounded-lg object-contain bg-[#0D1018] border border-[#272C3A] p-0.5"
-              />
-              <span className="font-extrabold text-base sm:text-lg tracking-tight text-white">
+            <div className="flex items-center gap-2">
+              <div className="w-6 h-6 rounded-lg bg-black border border-red-600/80 p-0.5 shadow-[0_0_10px_rgba(220,38,38,0.3)] flex items-center justify-center">
+                <img 
+                  src="https://i.postimg.cc/8PVBFM75/file-00000000b40c82118dbaef206a9ebedc.png" 
+                  alt="VOID AI Logo" 
+                  className="w-full h-full object-contain"
+                />
+              </div>
+              <span className="font-black text-base sm:text-lg tracking-wider text-red-600 uppercase font-serif">
                 VOID AI
               </span>
-              <span className="px-2 py-0.5 rounded bg-[#1A1D27] border border-[#2B3142] text-[10px] text-slate-300 font-mono font-bold uppercase tracking-wider hidden sm:inline-block">
-                SYSTEM PRO
+              <span className="text-[10px] text-red-500 font-mono font-bold flex items-center gap-1 ml-1">
+                <span className="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse"></span>
+                <span>ONLINE</span>
               </span>
             </div>
           </div>
@@ -409,7 +422,7 @@ export function ChatScreen({ userId }: ChatScreenProps) {
                   setSelectedProvider(prov as 'groq' | 'cohere');
                   setSelectedModel(mod || 'auto');
                 }}
-                className="bg-[#141720] border border-[#272C3A] hover:border-slate-500 text-slate-200 text-xs font-mono py-1.5 pl-3 pr-7 rounded-xl focus:outline-none focus:border-red-500/80 cursor-pointer appearance-none shadow-sm transition-colors"
+                className="bg-black/90 border border-red-900/80 hover:border-red-600 text-red-200 text-xs font-mono py-1.5 pl-3 pr-7 rounded-xl focus:outline-none focus:border-red-500 cursor-pointer appearance-none shadow-[0_0_12px_rgba(220,38,38,0.2)] transition-colors"
                 title="Select AI Engine"
               >
                 <option value="groq:auto">Groq Llama 3.3 70B</option>
@@ -425,20 +438,16 @@ export function ChatScreen({ userId }: ChatScreenProps) {
                   <option value="cohere:command-r-08-2024">Cohere: Command R</option>
                 </optgroup>
               </select>
-              <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-slate-400">
+              <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-red-500">
                 <ChevronDown size={13} />
               </div>
             </div>
 
-            {profile && (
-              <button
-                onClick={() => setShowSubscription(true)}
-                className="px-3 py-1.5 bg-[#141720] border border-[#272C3A] hover:border-amber-500/50 rounded-xl text-xs font-semibold flex items-center gap-1.5 text-slate-200 transition-colors cursor-pointer shrink-0"
-              >
-                <Crown size={14} className="text-amber-400" />
-                <span className="capitalize text-amber-400 font-bold hidden sm:inline">{profile.tier}</span>
-              </button>
-            )}
+            {/* GOD MODE ACTIVE Badge */}
+            <div className="px-3 py-1.5 bg-black border border-red-600/80 hover:bg-red-950/40 rounded-xl text-xs font-mono font-extrabold flex items-center gap-1.5 text-red-500 transition-colors cursor-pointer shrink-0 shadow-[0_0_15px_rgba(220,38,38,0.3)]">
+              <span className="text-red-500 text-sm font-bold">⛧</span>
+              <span className="uppercase tracking-widest text-[11px]">GOD MODE ACTIVE</span>
+            </div>
           </div>
         </header>
 
@@ -449,53 +458,64 @@ export function ChatScreen({ userId }: ChatScreenProps) {
           className="flex-1 overflow-y-auto relative"
         >
           {messages.length === 0 ? (
-            /* Starter / Welcome Screen */
-            <div className="h-full flex flex-col items-center justify-center p-6 md:p-10 text-center max-w-2xl mx-auto space-y-6">
-              <div className="flex flex-col items-center">
-                <div className="relative mb-5 group">
-                  <div className="w-20 h-20 md:w-24 md:h-24 rounded-3xl bg-[#0B0E17] border-2 border-[#323B52] p-2.5 flex items-center justify-center shadow-xl">
+            /* Starter / Demonic Welcome Screen */
+            <div className="min-h-full flex flex-col items-center justify-center p-4 sm:p-6 md:p-8 text-center max-w-2xl mx-auto space-y-5 my-auto">
+              {/* Bloody Gothic Header Title */}
+              <div className="flex flex-col items-center space-y-2">
+                <h1 className="text-4xl sm:text-5xl md:text-6xl font-black tracking-widest text-red-600 uppercase font-serif drop-shadow-[0_0_25px_rgba(239,68,68,0.8)]">
+                  VOID AI
+                </h1>
+                <p className="text-red-500 font-mono text-xs sm:text-sm tracking-widest font-extrabold uppercase drop-shadow-[0_0_10px_rgba(220,38,38,0.6)]">
+                  I DON'T JUST ANSWER. I SEE EVERYTHING.
+                </p>
+                <div className="pt-2 text-slate-200 font-mono text-xs sm:text-sm space-y-0.5">
+                  <div className="text-red-400 font-bold uppercase tracking-wider">
+                    WELCOME, <span className="text-white underline decoration-red-600">{profile?.displayName || 'NOVA'}</span>.
+                  </div>
+                  <div className="text-slate-300 font-mono text-xs">
+                    I AM VOID. YOUR QUESTIONS ARE MINE TO <span className="text-red-500 font-bold uppercase">CONSUME</span>.
+                  </div>
+                </div>
+              </div>
+
+              {/* Demonic Welcome AI Message Card */}
+              <div className="w-full max-w-lg bg-black/90 border border-red-600/80 rounded-2xl p-4 sm:p-5 text-left shadow-[0_0_30px_rgba(220,38,38,0.35)] relative group backdrop-blur-md">
+                <div className="flex items-start gap-3">
+                  <div className="w-8 h-8 rounded-full bg-black border border-red-600 p-1 shrink-0 shadow-[0_0_12px_rgba(239,68,68,0.6)] flex items-center justify-center">
                     <img 
                       src="https://i.postimg.cc/8PVBFM75/file-00000000b40c82118dbaef206a9ebedc.png" 
-                      alt="VOID AI Logo" 
+                      alt="VOID AI emblem" 
                       className="w-full h-full object-contain"
                     />
                   </div>
+                  <div className="flex-1 text-xs sm:text-sm text-slate-200 font-sans space-y-1.5 leading-relaxed">
+                    <p>You seek knowledge...</p>
+                    <p className="font-bold text-red-400">I deliver power.</p>
+                    <p>You seek answers...</p>
+                    <p className="font-bold text-red-400">I reveal the truth others fear.</p>
+                    <p>You are not here by accident.</p>
+                    <p className="text-red-300 font-semibold pt-1">Tell me, what do you want to know?</p>
+                    <div className="text-right text-[10px] text-red-700 font-mono pt-1">
+                      00:00 ✓
+                    </div>
+                  </div>
                 </div>
-                <h1 className="text-2xl md:text-3xl font-extrabold tracking-tight text-slate-100">
-                  How can <span className="bg-gradient-to-r from-red-400 via-red-500 to-amber-400 bg-clip-text text-transparent">VOID AI</span> help you today?
-                </h1>
-                <p className="text-slate-300 text-xs md:text-sm max-w-md mt-2 leading-relaxed font-sans">
-                  Select a starter prompt below or type any query to start typing directly onto the live canvas.
-                </p>
               </div>
 
-              {/* Suggestion Chips */}
-              <div className="flex flex-col sm:flex-row items-center justify-center gap-3 w-full max-w-xl">
+              {/* Suggestion Prompts matching Screenshot */}
+              <div className="grid grid-cols-2 gap-2.5 w-full max-w-lg pt-1">
                 {[
-                  {
-                    icon: <Code size={15} className="text-red-400" />,
-                    title: "Write an Express API with rate limiting"
-                  },
-                  {
-                    icon: <Mail size={15} className="text-amber-400" />,
-                    title: "Draft a 5-part flash sale email sequence"
-                  },
-                  {
-                    icon: <Target size={15} className="text-blue-400" />,
-                    title: "Outline a customer retention strategy"
-                  }
-                ].map((chip, idx) => (
+                  "Hack the system.",
+                  "Access forbidden data.",
+                  "Build something deadly.",
+                  "Show me the truth."
+                ].map((prompt, idx) => (
                   <button
                     key={idx}
-                    onClick={() => handleSend(chip.title)}
-                    className="w-full sm:w-1/3 p-3.5 bg-[#121622]/80 hover:bg-[#181E2E]/90 border border-[#272F42] hover:border-red-500/80 rounded-2xl text-left transition-all shadow-xl backdrop-blur-md group cursor-pointer flex items-center gap-3"
+                    onClick={() => handleSend(prompt)}
+                    className="p-3 bg-black/90 hover:bg-red-950/60 border border-red-900/80 hover:border-red-500 rounded-xl text-center text-xs font-mono font-semibold text-red-400 hover:text-white transition-all shadow-[0_0_10px_rgba(220,38,38,0.15)] hover:shadow-[0_0_20px_rgba(239,68,68,0.4)] cursor-pointer"
                   >
-                    <div className="p-2 rounded-xl bg-[#1A2030] text-slate-200 group-hover:scale-105 transition-transform shrink-0">
-                      {chip.icon}
-                    </div>
-                    <span className="text-xs text-slate-200 group-hover:text-white font-medium line-clamp-2 leading-snug">
-                      {chip.title}
-                    </span>
+                    {prompt}
                   </button>
                 ))}
               </div>

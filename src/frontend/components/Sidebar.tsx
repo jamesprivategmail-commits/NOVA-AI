@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Plus, MessageSquare, Trash2, Edit2, Settings, LogOut, Shield, Crown, Mail, Search, Sparkles, X, Send, Mic } from 'lucide-react';
+import { Plus, MessageSquare, Trash2, Edit2, Settings, LogOut, Shield, Crown, Mail, Search, Sparkles, X, Send, Mic, Terminal, Lock, Cpu, Brain, Flame } from 'lucide-react';
 import { Chat } from '../../models/types';
 import { clsx } from 'clsx';
 
@@ -49,65 +49,104 @@ export function Sidebar({
   return (
     <aside
       className={clsx(
-        "fixed inset-y-0 left-0 z-40 md:relative md:z-30 flex flex-col h-full bg-[#0B0C0E] transition-transform duration-150 ease-out w-72 shrink-0 border-r border-[#1E222D]",
+        "fixed inset-y-0 left-0 z-40 md:relative md:z-30 flex flex-col h-full bg-[#050103] transition-transform duration-150 ease-out w-72 shrink-0 border-r border-red-950/80 shadow-[5px_0_30px_rgba(150,0,0,0.2)]",
         !isOpen && "-translate-x-full md:w-0 md:-translate-x-full overflow-hidden opacity-0 pointer-events-none"
       )}
     >
-      {/* Top Action Header */}
-      <div className="p-3 space-y-2 border-b border-[#1E222D] bg-[#0A0C13]">
-        <div className="flex items-center gap-2.5 px-1 py-1 mb-1">
-          <img 
-            src="https://i.postimg.cc/8PVBFM75/file-00000000b40c82118dbaef206a9ebedc.png" 
-            alt="VOID AI Logo" 
-            className="w-7 h-7 rounded-lg object-contain bg-[#0D1018] border border-[#272C3A] p-0.5 shadow-sm"
-          />
-          <div>
-            <div className="font-extrabold text-sm tracking-tight text-white flex items-center gap-1.5">
-              <span>VOID AI</span>
-              <span className="text-[9px] font-mono px-1.5 py-0.2 rounded bg-red-950 text-red-400 border border-red-800 font-bold uppercase">v2.5</span>
+      {/* Top Header Branding & Actions */}
+      <div className="p-3.5 space-y-3 border-b border-red-950/90 bg-black/90">
+        <div className="flex items-center justify-between px-1 py-1">
+          <div className="flex items-center gap-2.5">
+            <div className="w-8 h-8 rounded-xl bg-black border border-red-600/80 p-0.5 shadow-[0_0_12px_rgba(220,38,38,0.4)] flex items-center justify-center">
+              <img 
+                src="https://i.postimg.cc/8PVBFM75/file-00000000b40c82118dbaef206a9ebedc.png" 
+                alt="VOID AI Logo" 
+                className="w-full h-full object-contain"
+              />
             </div>
-            <p className="text-[10px] text-slate-400 font-sans">Next-Gen AI Workspace</p>
+            <div>
+              <div className="font-extrabold text-sm tracking-wider text-red-500 flex items-center gap-1.5 uppercase font-mono">
+                <span>VOID AI</span>
+              </div>
+              <p className="text-[10px] text-red-600/80 font-mono tracking-widest flex items-center gap-1">
+                <span className="w-1.5 h-1.5 rounded-full bg-red-500 animate-ping"></span>
+                <span>ONLINE</span>
+              </p>
+            </div>
           </div>
         </div>
 
+        {/* New Chat Primary Button */}
         <button
           onClick={onNewChat}
-          className="w-full flex items-center justify-between bg-red-600 hover:bg-red-500 text-white font-bold py-2.5 px-3.5 rounded-xl transition-all shadow-sm text-xs group cursor-pointer"
+          className="w-full flex items-center justify-center gap-2 bg-black border border-red-600/80 hover:bg-red-950/50 text-red-500 font-bold py-2.5 px-3.5 rounded-xl transition-all shadow-[0_0_15px_rgba(220,38,38,0.25)] text-xs font-mono uppercase tracking-wider group cursor-pointer"
         >
-          <div className="flex items-center gap-2">
-            <Plus size={16} strokeWidth={2.5} />
-            <span>New Chat</span>
-          </div>
-          <Sparkles size={14} className="text-red-200" />
+          <Plus size={16} strokeWidth={2.5} className="group-hover:rotate-90 transition-transform" />
+          <span>+ NEW CHAT</span>
         </button>
 
-        <a
-          href="https://t.me/novatechco"
-          target="_blank"
-          rel="noopener noreferrer"
-          className="w-full flex items-center gap-2 bg-[#141720] border border-[#272C3A] hover:border-slate-500 text-slate-300 py-2 px-3 rounded-xl transition-all font-medium text-xs shadow-sm"
-        >
-          <Send size={13} className="-rotate-45 text-sky-400" />
-          <div className="flex items-center justify-between w-full overflow-hidden">
-            <span className="truncate text-xs font-semibold text-slate-200">Telegram Channel</span>
-            <span className="text-[10px] text-sky-400 font-mono">@novatechco</span>
-          </div>
-        </a>
+        {/* Navigation Shortcut Menu */}
+        <div className="space-y-1 pt-1 font-mono text-xs">
+          <button
+            onClick={onNewChat}
+            className="w-full flex items-center gap-2.5 px-3 py-1.5 rounded-lg text-red-400 hover:bg-red-950/30 hover:text-red-300 transition-colors cursor-pointer text-left font-semibold"
+          >
+            <MessageSquare size={14} className="text-red-500" />
+            <span>CHAT</span>
+          </button>
+          <button
+            onClick={onOpenCampaignGenerator}
+            className="w-full flex items-center gap-2.5 px-3 py-1.5 rounded-lg text-slate-300 hover:bg-red-950/30 hover:text-red-300 transition-colors cursor-pointer text-left"
+          >
+            <Brain size={14} className="text-red-500" />
+            <span>MEMORY</span>
+          </button>
+          <button
+            onClick={onOpenSubscription}
+            className="w-full flex items-center gap-2.5 px-3 py-1.5 rounded-lg text-slate-300 hover:bg-red-950/30 hover:text-red-300 transition-colors cursor-pointer text-left"
+          >
+            <Lock size={14} className="text-red-500" />
+            <span>SECRETS</span>
+          </button>
+          <button
+            onClick={onOpenLiveVoice}
+            className="w-full flex items-center gap-2.5 px-3 py-1.5 rounded-lg text-slate-300 hover:bg-red-950/30 hover:text-red-300 transition-colors cursor-pointer text-left"
+          >
+            <Cpu size={14} className="text-red-500" />
+            <span>TOOLS</span>
+          </button>
+          <button
+            onClick={onOpenSettings}
+            className="w-full flex items-center gap-2.5 px-3 py-1.5 rounded-lg text-slate-300 hover:bg-red-950/30 hover:text-red-300 transition-colors cursor-pointer text-left"
+          >
+            <Settings size={14} className="text-red-500" />
+            <span>SETTINGS</span>
+          </button>
+          {isAdmin && (
+            <button
+              onClick={onOpenAdmin}
+              className="w-full flex items-center gap-2.5 px-3 py-1.5 rounded-lg text-red-400 hover:bg-red-950/40 border border-red-900/40 transition-colors cursor-pointer text-left font-bold"
+            >
+              <Terminal size={14} className="text-red-500" />
+              <span>TERMINAL</span>
+            </button>
+          )}
+        </div>
 
         {/* Search Input */}
-        <div className="relative">
-          <Search size={13} className="absolute left-3 top-2.5 text-slate-500" />
+        <div className="relative pt-1">
+          <Search size={13} className="absolute left-3 top-3.5 text-red-600/70" />
           <input
             type="text"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Search chats or tasks..."
-            className="w-full bg-[#141720] border border-[#272C3A] text-slate-200 text-xs rounded-xl pl-8 pr-16 py-2 outline-none focus:border-slate-500 transition-colors placeholder:text-slate-500 font-sans"
+            placeholder="Search chats..."
+            className="w-full bg-black/90 border border-red-900/60 text-slate-200 text-xs rounded-xl pl-8 pr-16 py-2 outline-none focus:border-red-500 transition-colors placeholder:text-red-900/80 font-mono"
           />
           {searchQuery && (
             <button
               onClick={() => setSearchQuery('')}
-              className="absolute right-2 top-1.5 px-2 py-0.5 rounded-lg bg-red-600/80 hover:bg-red-500 text-white text-[10px] font-bold transition-all flex items-center gap-1 cursor-pointer"
+              className="absolute right-2 top-2 px-2 py-0.5 rounded-lg bg-red-600/80 hover:bg-red-500 text-white text-[10px] font-bold transition-all flex items-center gap-1 cursor-pointer"
               title="Clear search query"
             >
               <X size={11} />
@@ -120,21 +159,13 @@ export function Sidebar({
       {/* Conversations List */}
       <div className="flex-1 overflow-y-auto px-2 py-2 space-y-1">
         <div className="flex items-center justify-between px-3 py-1.5">
-          <span className="text-[11px] font-bold tracking-wider text-slate-500 uppercase font-mono">
-            Recent Chats ({filteredChats.length})
+          <span className="text-[10px] font-bold tracking-widest text-red-600 uppercase font-mono">
+            Recent Conversations ({filteredChats.length})
           </span>
-          {searchQuery && (
-            <button
-              onClick={() => setSearchQuery('')}
-              className="text-[10px] font-bold text-red-400 hover:text-red-300 underline cursor-pointer"
-            >
-              Reset Search
-            </button>
-          )}
         </div>
 
         {filteredChats.length === 0 ? (
-          <div className="p-4 text-center text-xs text-slate-500 font-mono">
+          <div className="p-4 text-center text-xs text-red-900/80 font-mono">
             {searchQuery ? 'No matching chats' : 'No recent chats'}
           </div>
         ) : (
@@ -143,19 +174,19 @@ export function Sidebar({
               key={chat.id}
               onClick={() => onSelectChat(chat.id)}
               className={clsx(
-                "group relative flex items-center justify-between px-3 py-2 rounded-xl cursor-pointer transition-all text-xs font-medium",
+                "group relative flex items-center justify-between px-3 py-2 rounded-xl cursor-pointer transition-all text-xs font-mono",
                 currentChatId === chat.id
-                  ? "bg-[#1A1D27] text-slate-100 border border-[#2B3142]"
-                  : "text-slate-400 hover:bg-[#141720] hover:text-slate-200 border border-transparent"
+                  ? "bg-red-950/40 text-red-200 border border-red-800/80 shadow-[0_0_12px_rgba(220,38,38,0.15)]"
+                  : "text-slate-400 hover:bg-black/60 hover:text-slate-200 border border-transparent"
               )}
             >
               <div className="flex items-center gap-2.5 overflow-hidden flex-1 pr-6">
-                <MessageSquare size={14} className={clsx("shrink-0", currentChatId === chat.id ? "text-red-400" : "text-slate-500")} />
+                <MessageSquare size={13} className={clsx("shrink-0", currentChatId === chat.id ? "text-red-500" : "text-red-900/80")} />
                 <span className="truncate">{chat.title || 'Untitled Chat'}</span>
               </div>
 
               {/* Rename / Delete buttons */}
-              <div className="absolute right-2 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity bg-[#1A1D27] pl-1.5 rounded-lg">
+              <div className="absolute right-2 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity bg-black/90 pl-1.5 rounded-lg border border-red-950">
                 <button
                   onClick={(e) => {
                     e.stopPropagation();
@@ -164,7 +195,7 @@ export function Sidebar({
                       onRenameChat(chat.id, newTitle.trim());
                     }
                   }}
-                  className="p-1 text-slate-400 hover:text-slate-100 hover:bg-[#252A38] rounded transition-colors"
+                  className="p-1 text-slate-400 hover:text-white hover:bg-red-950/60 rounded transition-colors"
                   title="Rename"
                 >
                   <Edit2 size={12} />
@@ -176,7 +207,7 @@ export function Sidebar({
                       onDeleteChat(chat.id);
                     }
                   }}
-                  className="p-1 text-slate-400 hover:text-rose-400 hover:bg-[#252A38] rounded transition-colors"
+                  className="p-1 text-slate-400 hover:text-red-400 hover:bg-red-950/60 rounded transition-colors"
                   title="Delete"
                 >
                   <Trash2 size={12} />
@@ -187,70 +218,31 @@ export function Sidebar({
         )}
       </div>
 
-      {/* Bottom Menu & Settings */}
-      <div className="p-2.5 border-t border-[#1E222D] space-y-0.5 bg-[#0B0C0E]">
-        {onOpenLiveVoice && (
-          <button
-            onClick={onOpenLiveVoice}
-            className="w-full flex items-center gap-2.5 p-2 rounded-xl text-red-400 hover:bg-red-950/20 transition-colors text-xs font-semibold cursor-pointer"
-          >
-            <Mic size={15} className="text-red-500" />
-            <span>Live Voice Call</span>
-          </button>
-        )}
-        <button
-          onClick={onOpenCampaignGenerator}
-          className="w-full flex items-center gap-2.5 p-2 rounded-xl text-amber-400 hover:bg-amber-950/20 transition-colors text-xs font-semibold cursor-pointer"
-        >
-          <Mail size={15} className="text-amber-500" />
-          <span>Email Studio</span>
-        </button>
-        {isAdmin && (
-          <button
-            onClick={onOpenAdmin}
-            className="w-full flex items-center gap-2.5 p-2 rounded-xl text-red-400 hover:bg-red-950/30 border border-transparent transition-colors text-xs font-bold cursor-pointer"
-          >
-            <Shield size={15} />
-            <span>Admin Workspace</span>
-          </button>
-        )}
-        {isSupportStaff && !isAdmin && (
-          <button
-            onClick={onOpenSupport}
-            className="w-full flex items-center gap-2.5 p-2 rounded-xl text-emerald-400 bg-emerald-950/30 border border-emerald-800/30 transition-colors text-xs font-bold cursor-pointer"
-          >
-            <Shield size={15} />
-            <span>Support Desk</span>
-          </button>
-        )}
-        <button
-          onClick={onOpenSubscription}
-          className="w-full flex items-center gap-2.5 p-2 rounded-xl text-slate-200 hover:bg-[#141720] transition-colors text-xs font-medium cursor-pointer"
-        >
-          <Crown size={15} className="text-amber-400" />
-          <span>Plans & Usage</span>
-        </button>
-        <button
-          onClick={onOpenSettings}
-          className="w-full flex items-center gap-2.5 p-2 rounded-xl text-slate-300 hover:bg-[#141720] transition-colors text-xs font-medium cursor-pointer"
-        >
-          <Settings size={15} />
-          <span>Settings</span>
-        </button>
-        <button
-          onClick={onOpenSupport}
-          className="w-full flex items-center gap-2.5 p-2 rounded-xl text-slate-300 hover:bg-[#141720] transition-colors text-xs font-medium cursor-pointer"
-        >
-          <MessageSquare size={15} />
-          <span>Support Desk</span>
-        </button>
+      {/* Bottom Demonic Branding Footer */}
+      <div className="p-3 border-t border-red-950/90 bg-black/90 space-y-2">
         <button
           onClick={onLogout}
-          className="w-full flex items-center gap-2.5 p-2 rounded-xl text-slate-400 hover:text-rose-400 hover:bg-rose-950/20 transition-colors text-xs font-medium cursor-pointer"
+          className="w-full flex items-center justify-between px-3 py-2 rounded-xl text-red-500 hover:bg-red-950/40 border border-red-900/40 transition-colors text-xs font-mono font-bold cursor-pointer uppercase"
         >
-          <LogOut size={15} />
-          <span>Sign Out</span>
+          <div className="flex items-center gap-2">
+            <LogOut size={14} />
+            <span>LOG OUT</span>
+          </div>
         </button>
+
+        <div className="pt-2 border-t border-red-950/60 flex items-center gap-2.5">
+          <div className="w-8 h-8 rounded-full bg-red-950/80 border border-red-700/80 p-1 flex items-center justify-center shrink-0 shadow-[0_0_10px_rgba(220,38,38,0.3)]">
+            <Flame size={18} className="text-red-500 animate-pulse" />
+          </div>
+          <div>
+            <div className="text-[10px] font-bold text-red-500 uppercase tracking-widest font-mono">
+              NOVA TECH CO.
+            </div>
+            <div className="text-[8px] text-red-700 font-mono uppercase tracking-wider">
+              BUILT IN THE DARK FOR THOSE WHO DARE
+            </div>
+          </div>
+        </div>
       </div>
     </aside>
   );

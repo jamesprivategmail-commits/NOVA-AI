@@ -178,7 +178,7 @@ export function InputArea({ onSend, isLoading, onStop }: InputAreaProps) {
       )}
 
       {/* Main Input Box Container */}
-      <div className="relative flex items-end w-full bg-[#0E121E] border border-[#273044] focus-within:border-red-500/90 rounded-2xl shadow-2xl transition-all">
+      <div className="relative flex items-end w-full bg-black/95 border border-red-600/80 focus-within:border-red-500 focus-within:shadow-[0_0_25px_rgba(239,68,68,0.4)] rounded-2xl shadow-[0_0_20px_rgba(220,38,38,0.25)] transition-all">
         {/* File upload hidden input */}
         <input
           type="file"
@@ -192,7 +192,7 @@ export function InputArea({ onSend, isLoading, onStop }: InputAreaProps) {
         <button
           type="button"
           onClick={() => fileInputRef.current?.click()}
-          className="p-2.5 sm:p-3 pl-3 sm:pl-4 text-slate-400 hover:text-slate-100 transition-colors shrink-0 mb-0.5"
+          className="p-2.5 sm:p-3 pl-3 sm:pl-4 text-red-500/80 hover:text-red-400 transition-colors shrink-0 mb-0.5"
           title="Attach image or file"
         >
           <Paperclip size={18} />
@@ -203,7 +203,7 @@ export function InputArea({ onSend, isLoading, onStop }: InputAreaProps) {
           type="button"
           onClick={toggleSpeechRecognition}
           className={clsx(
-            "p-2.5 sm:p-3 text-slate-400 hover:text-slate-100 transition-colors shrink-0 mb-0.5",
+            "p-2.5 sm:p-3 text-red-500/80 hover:text-red-400 transition-colors shrink-0 mb-0.5",
             isListening && "text-red-500 animate-pulse"
           )}
           title={isListening ? "Stop listening" : "Voice input"}
@@ -217,12 +217,12 @@ export function InputArea({ onSend, isLoading, onStop }: InputAreaProps) {
           value={text}
           onChange={(e) => setText(e.target.value)}
           onKeyDown={handleKeyDown}
-          placeholder="Ask VOID AI..."
+          placeholder="Ask me anything..."
           rows={1}
           autoCapitalize="sentences"
           autoCorrect="on"
           spellCheck={true}
-          className="flex-1 min-h-[44px] max-h-[200px] bg-transparent text-slate-100 placeholder:text-slate-500 border-0 focus:ring-0 resize-none py-2.5 px-2 outline-none text-base md:text-sm leading-relaxed font-sans"
+          className="flex-1 min-h-[44px] max-h-[200px] bg-transparent text-slate-100 placeholder:text-red-900/80 border-0 focus:ring-0 resize-none py-2.5 px-2 outline-none text-base md:text-sm leading-relaxed font-mono"
         />
 
         {/* Clear prompt text button if typing */}
@@ -230,7 +230,7 @@ export function InputArea({ onSend, isLoading, onStop }: InputAreaProps) {
           <button
             type="button"
             onClick={() => setText('')}
-            className="p-1.5 text-slate-500 hover:text-slate-300 transition-colors shrink-0 mb-1 rounded-lg hover:bg-[#1E2330] mr-1"
+            className="p-1.5 text-red-600 hover:text-red-400 transition-colors shrink-0 mb-1 rounded-lg hover:bg-red-950/40 mr-1"
             title="Clear prompt text"
           >
             <X size={15} />
@@ -243,7 +243,7 @@ export function InputArea({ onSend, isLoading, onStop }: InputAreaProps) {
             <button
               type="button"
               onClick={onStop}
-              className="p-2 bg-red-600 hover:bg-red-500 text-white rounded-xl transition-all shadow-sm flex items-center justify-center group"
+              className="p-2 bg-red-600 hover:bg-red-500 text-white rounded-xl transition-all shadow-[0_0_15px_rgba(239,68,68,0.5)] flex items-center justify-center group"
               title="Stop generating"
             >
               <Square size={15} fill="currentColor" className="group-hover:scale-95 transition-transform" />
@@ -254,23 +254,23 @@ export function InputArea({ onSend, isLoading, onStop }: InputAreaProps) {
               onClick={handleSend}
               disabled={!text.trim() && !attachment}
               className={clsx(
-                "p-2 rounded-xl transition-all flex items-center justify-center shadow-sm",
+                "p-2.5 rounded-xl transition-all flex items-center justify-center shadow-lg",
                 text.trim() || attachment
-                  ? "bg-red-600 hover:bg-red-500 text-white cursor-pointer active:scale-95"
-                  : "bg-[#1E2330] text-slate-600 cursor-not-allowed"
+                  ? "bg-red-600 hover:bg-red-500 text-white cursor-pointer active:scale-95 shadow-[0_0_15px_rgba(239,68,68,0.6)]"
+                  : "bg-red-950/40 text-red-900 cursor-not-allowed border border-red-950"
               )}
               title="Send message"
             >
-              <Send size={15} />
+              <Send size={16} fill="currentColor" />
             </button>
           )}
         </div>
       </div>
 
-      {/* Footer Disclaimer & Shortcut tip */}
-      <div className="flex items-center justify-between text-[10px] text-slate-500 mt-1.5 px-1 font-mono">
-        <span>VOID AI Engine v2.5</span>
-        <span className="hidden sm:inline">Press Shift + Enter for new line</span>
+      {/* Footer Warning Disclaimer */}
+      <div className="flex items-center justify-center gap-1.5 text-[11px] text-red-600/90 mt-2 px-1 font-mono text-center font-semibold">
+        <span>⚠️</span>
+        <span>VOID AI can make mistakes. It can also ruin your life.</span>
       </div>
     </div>
   );

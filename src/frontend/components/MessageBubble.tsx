@@ -40,23 +40,23 @@ export const MessageBubble = React.memo(function MessageBubble({ message, isStre
   return (
     <div
       className={clsx(
-        "group w-full py-3 px-2 sm:px-4 md:px-6 transition-colors",
-        isUser ? "bg-transparent" : "bg-[#0E121D] border-y border-[#1E2536]"
+        "group w-full py-3.5 px-2 sm:px-4 md:px-6 transition-colors",
+        isUser ? "bg-transparent" : "bg-black/80 border-y border-red-950/80 shadow-[inset_0_0_20px_rgba(150,0,0,0.1)]"
       )}
     >
       <div className={clsx(
-        "max-w-6xl mx-auto flex w-full gap-2 sm:gap-3.5 md:gap-4 relative items-start",
+        "max-w-6xl mx-auto flex w-full gap-2.5 sm:gap-3.5 md:gap-4 relative items-start",
         isUser ? "flex-row-reverse" : "flex-row"
       )}>
         {/* Avatar */}
         <div className="shrink-0 mt-0.5">
           {isUser ? (
-            <div className="w-8 h-8 sm:w-9 sm:h-9 md:w-10 md:h-10 rounded-xl bg-[#1A1F2C] border border-[#2F374A] flex items-center justify-center text-slate-200 font-mono text-xs font-bold shadow-sm">
+            <div className="w-8 h-8 sm:w-9 sm:h-9 md:w-10 md:h-10 rounded-xl bg-black border border-red-800/80 flex items-center justify-center text-red-400 font-mono text-xs font-bold shadow-[0_0_10px_rgba(220,38,38,0.2)]">
               <User size={16} className="sm:hidden" />
               <User size={18} className="hidden sm:block" />
             </div>
           ) : (
-            <div className="w-8 h-8 sm:w-9 sm:h-9 md:w-10 md:h-10 rounded-xl bg-[#090C15] border border-red-900/60 p-0.5 sm:p-1 flex items-center justify-center shadow-md">
+            <div className="w-8 h-8 sm:w-9 sm:h-9 md:w-10 md:h-10 rounded-xl bg-black border border-red-600/80 p-0.5 sm:p-1 flex items-center justify-center shadow-[0_0_15px_rgba(220,38,38,0.4)]">
               <img 
                 src="https://i.postimg.cc/8PVBFM75/file-00000000b40c82118dbaef206a9ebedc.png" 
                 alt="VOID AI" 
@@ -76,15 +76,15 @@ export const MessageBubble = React.memo(function MessageBubble({ message, isStre
             "flex items-center gap-1.5 sm:gap-2 mb-0.5",
             isUser ? "flex-row-reverse" : "flex-row"
           )}>
-            <span className={clsx("text-[10px] sm:text-[11px] font-mono font-bold tracking-wider uppercase", isUser ? "text-slate-400" : "text-slate-200")}>
+            <span className={clsx("text-[10px] sm:text-[11px] font-mono font-bold tracking-wider uppercase", isUser ? "text-red-400" : "text-red-500")}>
               {isUser ? 'You' : 'VOID AI'}
             </span>
             {!isUser && (
-              <span className="px-1.5 py-0.2 rounded bg-[#1C1F2A] border border-[#2B3040] text-[9px] sm:text-[10px] text-slate-400 font-mono">
-                ASSISTANT
+              <span className="px-1.5 py-0.2 rounded bg-red-950/80 border border-red-800/80 text-[9px] sm:text-[10px] text-red-300 font-mono uppercase tracking-widest font-bold">
+                GOD MODE
               </span>
             )}
-            <span className="text-[9px] sm:text-[10px] text-slate-500 font-mono">
+            <span className="text-[9px] sm:text-[10px] text-red-900 font-mono">
               {new Date(message.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
             </span>
           </div>
@@ -95,18 +95,18 @@ export const MessageBubble = React.memo(function MessageBubble({ message, isStre
               <textarea
                 value={editText}
                 onChange={(e) => setEditText(e.target.value)}
-                className="w-full bg-[#14171F] border border-[#272B38] focus:border-red-500/80 rounded-xl p-3 text-slate-100 min-h-[110px] outline-none text-xs sm:text-sm font-sans"
+                className="w-full bg-black/90 border border-red-600/80 focus:border-red-500 rounded-xl p-3 text-slate-100 min-h-[110px] outline-none text-xs sm:text-sm font-mono"
               />
               <div className="flex items-center gap-2 justify-end">
                 <button
                   onClick={() => setIsEditing(false)}
-                  className="px-3 py-1.5 text-xs font-semibold text-slate-400 hover:text-white bg-[#1E222D] hover:bg-[#272B38] rounded-lg transition-colors"
+                  className="px-3 py-1.5 text-xs font-mono font-semibold text-red-400 hover:text-white bg-red-950/40 hover:bg-red-900/60 rounded-lg transition-colors border border-red-900/60"
                 >
                   Cancel
                 </button>
                 <button
                   onClick={handleSaveEdit}
-                  className="px-4 py-1.5 text-xs font-bold bg-red-600 hover:bg-red-500 text-white rounded-lg transition-colors shadow-sm"
+                  className="px-4 py-1.5 text-xs font-mono font-bold bg-red-600 hover:bg-red-500 text-white rounded-lg transition-colors shadow-[0_0_12px_rgba(220,38,38,0.5)]"
                 >
                   Save
                 </button>
@@ -114,10 +114,10 @@ export const MessageBubble = React.memo(function MessageBubble({ message, isStre
             </div>
           ) : (
             <div className={clsx(
-              "text-xs sm:text-sm md:text-[15px] leading-relaxed w-full",
+              "text-xs sm:text-sm md:text-[15px] leading-relaxed w-full font-sans",
               isUser
-                ? "bg-[#1B1E28] border border-[#2A2E3C] text-slate-100 rounded-2xl rounded-tr-xs p-3 sm:p-4 max-w-[95%] sm:max-w-[85%] text-left"
-                : "bg-transparent text-slate-200 rounded-tl-xs p-0 sm:p-1 w-full max-w-none text-left"
+                ? "bg-red-950/30 border border-red-800/60 text-slate-100 rounded-2xl rounded-tr-xs p-3.5 sm:p-4 max-w-[95%] sm:max-w-[85%] text-left shadow-[0_0_15px_rgba(220,38,38,0.15)]"
+                : "bg-transparent text-slate-100 rounded-tl-xs p-0 sm:p-1 w-full max-w-none text-left"
             )}>
               <div className={clsx(
                 "prose prose-invert max-w-none text-xs sm:text-sm md:text-[15px] leading-relaxed w-full",
