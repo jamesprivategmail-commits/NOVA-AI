@@ -190,10 +190,13 @@ export function FullPageSupportDesk({
       </header>
 
       {/* Main Content Body */}
-      <div className="flex-1 flex overflow-hidden">
+      <div className="flex-1 flex overflow-hidden relative">
         {/* Left Sidebar (Staff/Admin view) */}
         {isStaffOrAdmin && (
-          <div className="w-80 md:w-96 bg-[#0D1117]/95 border-r border-[#30363D] flex flex-col shrink-0">
+          <div className={clsx(
+            "w-full md:w-80 lg:w-96 bg-[#0D1117]/95 border-r border-[#30363D] flex flex-col shrink-0 h-full",
+            selectedChatUserId ? "hidden md:flex" : "flex"
+          )}>
             {/* Main Mode Toggle: Tickets vs All Users */}
             <div className="p-3 pb-2 border-b border-[#30363D] space-y-2.5">
               <div className="flex items-center gap-1.5 bg-[#161B22] p-1 rounded-xl border border-[#30363D]">
@@ -394,32 +397,45 @@ export function FullPageSupportDesk({
         )}
 
         {/* Right Active Chat Canvas (Full Height) */}
-        <div className="flex-1 flex flex-col bg-[#090A0F] relative overflow-hidden">
+        <div className={clsx(
+          "flex-1 flex flex-col bg-[#090A0F] relative overflow-hidden h-full w-full min-w-0",
+          isStaffOrAdmin && !selectedChatUserId ? "hidden md:flex" : "flex"
+        )}>
           {currentChatUserId ? (
             <>
               {/* Active Ticket Header */}
-              <div className="p-3.5 bg-[#0D1117] border-b border-[#30363D] flex items-center justify-between flex-wrap gap-2">
-                <div className="flex items-center gap-3">
-                  <div className="w-9 h-9 rounded-full bg-red-950/80 border border-red-800/60 flex items-center justify-center font-bold text-xs text-red-400">
+              <div className="p-3.5 bg-[#0D1117] border-b border-[#30363D] flex items-center justify-between flex-wrap gap-2 shrink-0">
+                <div className="flex items-center gap-2.5 min-w-0">
+                  {isStaffOrAdmin && (
+                    <button
+                      onClick={() => setSelectedChatUserId(null)}
+                      className="md:hidden flex items-center gap-1.5 px-2.5 py-1.5 bg-[#161B22] hover:bg-[#21262D] border border-[#30363D] rounded-xl text-xs font-bold text-slate-200 transition-all shrink-0"
+                      title="Back to Ticket List"
+                    >
+                      <ArrowLeft size={15} />
+                      <span>Tickets</span>
+                    </button>
+                  )}
+                  <div className="w-9 h-9 rounded-full bg-red-950/80 border border-red-800/60 flex items-center justify-center font-bold text-xs text-red-400 shrink-0">
                     <User size={18} />
                   </div>
-                  <div>
-                    <div className="flex items-center gap-2">
-                      <h2 className="text-sm font-bold text-white">
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <h2 className="text-sm font-bold text-white truncate">
                         {currentChatUserName}
                       </h2>
                       {activeUserProfile?.tier && (
-                        <span className="text-[10px] uppercase font-mono font-bold px-2 py-0.5 rounded-full bg-red-950 border border-red-800 text-red-300">
+                        <span className="text-[10px] uppercase font-mono font-bold px-2 py-0.5 rounded-full bg-red-950 border border-red-800 text-red-300 shrink-0">
                           {activeUserProfile.tier} TIER
                         </span>
                       )}
                       {activeUserProfile?.isVerified && (
-                        <span className="text-[10px] font-mono text-emerald-400 flex items-center gap-1">
+                        <span className="text-[10px] font-mono text-emerald-400 flex items-center gap-1 shrink-0">
                           <BadgeCheck size={12} /> Verified
                         </span>
                       )}
                     </div>
-                    <p className="text-[11px] text-slate-500 font-mono">
+                    <p className="text-[11px] text-slate-500 font-mono truncate">
                       User ID: {currentChatUserId} {activeUserProfile?.email ? `• ${activeUserProfile.email}` : ''}
                     </p>
                   </div>

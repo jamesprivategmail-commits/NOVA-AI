@@ -6,7 +6,8 @@ export const AI_CONFIG = {
         "llama-3.1-8b-instant",
         "mixtral-8x7b-32768",
         "gemma2-9b-it",
-        "deepseek-r1-distill-llama-70b"
+        "llama3-70b-8192",
+        "llama3-8b-8192"
       ]
     },
     cohere: {

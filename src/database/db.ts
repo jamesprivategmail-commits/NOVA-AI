@@ -143,6 +143,22 @@ export async function deleteChat(chatId: string): Promise<void> {
   await deleteDoc(doc(db, "chats", chatId));
 }
 
+export async function clearAllUserChats(userId: string): Promise<void> {
+  const q = query(collection(db, "chats"), where("userId", "==", userId));
+  const snapshot = await getDocs(q);
+  
+  const deleteChatPromises = snapshot.docs.map(async (chatDoc) => {
+    const chatId = chatDoc.id;
+    const msgsQuery = query(collection(db, `chats/${chatId}/messages`));
+    const msgsSnapshot = await getDocs(msgsQuery);
+    const msgDeleteOps = msgsSnapshot.docs.map(mDoc => deleteDoc(mDoc.ref));
+    await Promise.all(msgDeleteOps);
+    await deleteDoc(chatDoc.ref);
+  });
+
+  await Promise.all(deleteChatPromises);
+}
+
 export async function updateChatTitle(chatId: string, title: string): Promise<void> {
   const chatRef = doc(db, "chats", chatId);
   await setDoc(chatRef, { title, updatedAt: Date.now() }, { merge: true });

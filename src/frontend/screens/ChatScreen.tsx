@@ -15,6 +15,7 @@ import {
   createChat,
   getUserChats,
   deleteChat,
+  clearAllUserChats,
   updateChatTitle,
   saveMessage,
   getChatMessages,
@@ -28,7 +29,7 @@ import {
 } from '../../database/db';
 import { sendMessageToGroq } from '../../api/client';
 import { memoryManager } from '../../memory/context';
-import { Menu, Shield, Crown, Mail, ArrowDown, Sparkles, Code, Target, Binary, Zap, Bot, Mic, ChevronDown, Send, Radio, X } from 'lucide-react';
+import { Menu, Shield, Crown, Mail, ArrowDown, Sparkles, Code, Target, Binary, Zap, Bot, Mic, ChevronDown, Send, Radio, X, Trash2 } from 'lucide-react';
 import { getAuth, signOut } from 'firebase/auth';
 import { clsx } from 'clsx';
 import { motion } from 'motion/react';
@@ -150,6 +151,24 @@ export function ChatScreen({ userId }: ChatScreenProps) {
     if (currentChatId === id) {
       setCurrentChatId(updatedChats.length > 0 ? updatedChats[0].id : null);
     }
+  };
+
+  const handleClearAllHistory = async () => {
+    if (chats.length === 0 && messages.length === 0) {
+      alert('History is already empty.');
+      return;
+    }
+    if (!confirm('Are you sure you want to clear ALL search tasks, AI chat messages, and history? This action cannot be undone.')) {
+      return;
+    }
+    try {
+      await clearAllUserChats(userId);
+    } catch (err) {
+      console.error('Failed to clear chats:', err);
+    }
+    setChats([]);
+    setCurrentChatId(null);
+    setMessages([]);
   };
 
   const handleRenameChat = async (id: string, title: string) => {
@@ -333,6 +352,7 @@ export function ChatScreen({ userId }: ChatScreenProps) {
         }}
         onDeleteChat={handleDeleteChat}
         onRenameChat={handleRenameChat}
+        onClearAllHistory={handleClearAllHistory}
         onOpenSettings={() => setShowSettings(true)}
         onOpenSupport={() => setShowSupport(true)}
         onOpenSubscription={() => setShowSubscription(true)}
@@ -442,6 +462,16 @@ export function ChatScreen({ userId }: ChatScreenProps) {
                 <ChevronDown size={13} />
               </div>
             </div>
+
+            {/* Clear History Button */}
+            <button
+              onClick={handleClearAllHistory}
+              className="px-2 sm:px-3 py-1.5 bg-black border border-red-900/80 hover:border-red-600 hover:bg-red-950/40 rounded-xl text-[10px] sm:text-xs font-mono font-bold flex items-center gap-1 sm:gap-1.5 text-red-400 hover:text-red-200 transition-all cursor-pointer shrink-0 shadow-sm"
+              title="Clear all search tasks and AI chat history"
+            >
+              <Trash2 size={13} className="text-red-500" />
+              <span className="hidden sm:inline">Clear History</span>
+            </button>
 
             {/* GOD MODE ACTIVE Badge */}
             <div className="px-2 sm:px-3 py-1.5 bg-black border border-red-600/80 hover:bg-red-950/40 rounded-xl text-[10px] sm:text-xs font-mono font-extrabold flex items-center gap-1 sm:gap-1.5 text-red-500 transition-colors cursor-pointer shrink-0 shadow-[0_0_15px_rgba(220,38,38,0.3)]">
@@ -593,6 +623,7 @@ export function ChatScreen({ userId }: ChatScreenProps) {
         <SettingsModal
           onClose={() => setShowSettings(false)}
           isAdmin={profile?.isAdmin || false}
+          onClearHistory={handleClearAllHistory}
         />
       )}
 

@@ -5,7 +5,6 @@ import { AuthScreen } from './frontend/screens/AuthScreen';
 import { ChatScreen } from './frontend/screens/ChatScreen';
 import { EmailVerificationNotice } from './frontend/screens/EmailVerificationNotice';
 import { TermsModal } from './frontend/components/TermsModal';
-import { Bot } from 'lucide-react';
 
 export default function App() {
   const [user, setUser] = useState<FirebaseUser | null>(null);
@@ -49,9 +48,17 @@ export default function App() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-zinc-950 flex items-center justify-center">
-        <div className="w-16 h-16 bg-red-600 rounded-2xl flex items-center justify-center shadow-lg shadow-red-900/20 animate-pulse">
-          <Bot size={32} className="text-white" />
+      <div className="min-h-screen bg-black flex flex-col items-center justify-center gap-4">
+        <div className="w-16 h-16 rounded-2xl bg-black border border-red-600/80 p-2 shadow-[0_0_30px_rgba(220,38,38,0.4)] flex items-center justify-center">
+          <img 
+            src="https://i.postimg.cc/8PVBFM75/file-00000000b40c82118dbaef206a9ebedc.png" 
+            alt="VOID AI Profile" 
+            className="w-full h-full object-contain"
+          />
+        </div>
+        <div className="flex items-center gap-2 text-red-500 font-mono text-xs font-bold tracking-widest uppercase">
+          <span className="w-2 h-2 rounded-full bg-red-600 animate-ping"></span>
+          <span>INITIALIZING VOID AI...</span>
         </div>
       </div>
     );

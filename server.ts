@@ -271,8 +271,12 @@ async function executeGroqWithRotation(messages: any[], systemPrompt: string, ma
           break; // Key itself is invalid, skip to next key
         }
         
-        // If model is rate limited (429) or not available, try next model on this key!
-        console.warn(`[Groq] Model ${model} unavailable/rate-limited on key #${keyIdx + 1}. Trying next model...`);
+        // If daily token limit or organization rate limit reached on Groq
+        if (msg.includes("rate_limit_exceeded") || msg.includes("tokens per day") || msg.includes("tpd")) {
+          console.warn(`[Groq] Model ${model} daily token limit reached on Key #${keyIdx + 1}. Trying next model/key...`);
+        } else {
+          console.warn(`[Groq] Model ${model} unavailable/rate-limited on Key #${keyIdx + 1}. Trying next model...`);
+        }
         continue;
       }
     }
@@ -473,8 +477,16 @@ async function startServer() {
       // Increment message count on server side
       await incrementUserMessageCountServer(userId);
 
-      const maxTokens = 4096;
-      const combinedSystemPrompt = systemPrompt ? systemPrompt.trim() : "";
+      const maxTokens = (tier === 'vip' ? brainSettings.vipMaxTokens
+        : tier === 'premium' ? brainSettings.premiumMaxTokens
+        : tier === 'pro' ? brainSettings.proMaxTokens
+        : brainSettings.freeMaxTokens) || 2048;
+
+      const masterPrompt = brainSettings.globalPrompt || "You are VOID AI, an elite AI assistant.";
+      const combinedSystemPrompt = [
+        masterPrompt,
+        systemPrompt
+      ].filter(Boolean).map(s => s.trim()).join("\n\n");
 
       const providersToTry = provider === "cohere" ? ["cohere", "groq"] : ["groq", "cohere"];
       let executedSuccessfully = false;
@@ -500,9 +512,11 @@ async function startServer() {
       if (!executedSuccessfully) {
         console.warn("[Failover Engine] All providers failed:", lastProviderError?.message);
         const errMessage = String(lastProviderError?.message || "");
-        let errNotice = "⚡ **VOID AI Traffic Notice:** Our AI connection pool is undergoing high demand or slot updates. Please re-send your message in a moment or select a different model engine from the top bar.";
+        let errNotice = "⚡ **VOID AI Traffic Notice:** Our AI connection pool is undergoing high demand. Please re-send your message in a moment or select a different model engine from the top bar.";
         if (errMessage.toLowerCase().includes("healthy") || errMessage.toLowerCase().includes("valid")) {
           errNotice = "⚡ **API Key Validation Notice:** Configured AI provider keys are currently invalid or depleted. Please check system API key configuration in Admin Settings.";
+        } else if (errMessage.toLowerCase().includes("rate_limit_exceeded") || errMessage.toLowerCase().includes("rate limit") || errMessage.toLowerCase().includes("429") || errMessage.toLowerCase().includes("tokens")) {
+          errNotice = "⚡ **Rate Limit Notice:** Groq daily token limit reached on current model. Please switch engine to **Cohere** or **Llama 3.1 8B** from the dropdown menu above.";
         }
         res.write(`data: ${JSON.stringify({ text: `\n\n${errNotice}` })}\n\n`);
       }

@@ -1,13 +1,14 @@
 import React, { useState, useEffect } from 'react';
-import { X, ArrowLeft, Key, Save, Server, Shield, Lock, Zap } from 'lucide-react';
+import { X, ArrowLeft, Key, Save, Server, Shield, Lock, Zap, Trash2 } from 'lucide-react';
 import { clsx } from 'clsx';
 
 interface SettingsModalProps {
   onClose: () => void;
   isAdmin?: boolean;
+  onClearHistory?: () => void;
 }
 
-export function SettingsModal({ onClose, isAdmin = false }: SettingsModalProps) {
+export function SettingsModal({ onClose, isAdmin = false, onClearHistory }: SettingsModalProps) {
   const [customKey, setCustomKey] = useState('');
   const [provider, setProvider] = useState('gemini');
 
@@ -33,7 +34,7 @@ export function SettingsModal({ onClose, isAdmin = false }: SettingsModalProps) 
           <div className="flex items-center gap-3">
             <button 
               onClick={onClose}
-              className="flex items-center gap-2 p-2 mr-2 text-zinc-400 hover:text-zinc-100 hover:bg-zinc-800 rounded-lg transition-colors"
+              className="flex items-center gap-2 p-2 mr-2 text-zinc-400 hover:text-zinc-100 hover:bg-zinc-800 rounded-lg transition-colors cursor-pointer"
             >
               <ArrowLeft size={20} />
               <span className="font-medium text-sm hidden sm:inline">Back</span>
@@ -68,10 +69,32 @@ export function SettingsModal({ onClose, isAdmin = false }: SettingsModalProps) 
                 <span className="text-amber-400 font-bold">Active & Configured</span>
               </div>
             </div>
-            <p className="text-[11px] text-zinc-500 italic">
-              All API keys are protected on the secure server layer. Users do not need to configure keys manually.
-            </p>
           </div>
+
+          {/* Data & History Management */}
+          {onClearHistory && (
+            <div className="p-5 bg-zinc-950 border border-red-950 rounded-xl space-y-3">
+              <div className="flex items-center gap-2 text-red-400 font-bold text-sm">
+                <Trash2 size={18} className="text-red-500" />
+                <span>Clear Data & Chat History</span>
+              </div>
+              <p className="text-xs text-zinc-400 leading-relaxed">
+                Permanently delete all your AI chat logs, saved searches, and active task history.
+              </p>
+              <button
+                onClick={() => {
+                  if (confirm('Are you sure you want to delete all your search tasks and chat history? This cannot be undone.')) {
+                    onClearHistory();
+                    onClose();
+                  }
+                }}
+                className="w-full py-2.5 px-4 bg-red-950/80 hover:bg-red-900 border border-red-800 text-red-200 font-mono font-bold text-xs rounded-xl transition-all shadow flex items-center justify-center gap-2 cursor-pointer uppercase tracking-wider"
+              >
+                <Trash2 size={14} />
+                <span>Clear Search Tasks & Chat History</span>
+              </button>
+            </div>
+          )}
         </div>
       </div>
     </div>

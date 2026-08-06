@@ -9,6 +9,7 @@ interface SidebarProps {
   onSelectChat: (id: string) => void;
   onNewChat: () => void;
   onDeleteChat: (id: string) => void;
+  onClearAllHistory?: () => void;
   onRenameChat: (id: string, newTitle: string) => void;
   onOpenSettings: () => void;
   onOpenSupport: () => void;
@@ -28,6 +29,7 @@ export function Sidebar({
   onSelectChat,
   onNewChat,
   onDeleteChat,
+  onClearAllHistory,
   onRenameChat,
   onOpenSettings,
   onOpenSupport,
@@ -185,6 +187,20 @@ export function Sidebar({
           <span className="text-[10px] font-bold tracking-widest text-red-600 uppercase font-mono">
             Recent Conversations ({filteredChats.length})
           </span>
+          {chats.length > 0 && onClearAllHistory && (
+            <button
+              onClick={() => {
+                if (confirm('Clear all search & conversation history? This will permanently delete all your chats.')) {
+                  onClearAllHistory();
+                }
+              }}
+              className="text-[10px] text-red-500 hover:text-red-300 font-mono font-bold flex items-center gap-1 hover:underline cursor-pointer transition-colors"
+              title="Clear all chat history"
+            >
+              <Trash2 size={11} />
+              <span>Clear History</span>
+            </button>
+          )}
         </div>
 
         {filteredChats.length === 0 ? (

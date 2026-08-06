@@ -690,177 +690,151 @@ export function AdminDashboard({ onClose }: AdminDashboardProps) {
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
                     <Cpu size={20} className="text-red-500" />
-                    <h3 className="text-lg font-bold text-white">VOID AI System Brain & Rules</h3>
+                    <h3 className="text-lg font-bold text-white">Master AI Brain Persona & System Instructions</h3>
                   </div>
-                  <span className="text-xs bg-red-500/20 text-red-400 border border-red-500/30 px-2 py-0.5 rounded font-mono font-bold">
-                    ADMIN-ONLY
+                  <span className="text-xs bg-red-500/20 text-red-400 border border-red-500/30 px-2.5 py-1 rounded font-mono font-bold">
+                    UNIFIED AI BRAIN
                   </span>
                 </div>
-                <p className="text-xs text-zinc-400">
-                  Only authorized system admin accounts can configure the AI brain instructions for each tier.
+                <p className="text-xs text-zinc-400 leading-relaxed">
+                  Configure the single master AI system prompt below. This prompt directly controls the persona, rules, capabilities, and response guidelines for VOID AI across all users and models.
                 </p>
 
                 {brainSaveSuccess && (
                   <div className="p-3 bg-emerald-500/20 border border-emerald-500/30 rounded-lg text-emerald-400 text-sm flex items-center gap-2">
                     <CheckCircle size={16} />
-                    <span>AI Brain rules updated successfully!</span>
+                    <span>Master AI Brain instructions updated successfully!</span>
                   </div>
                 )}
 
-                <div>
-                  <label className="block text-sm font-semibold text-zinc-300 mb-1">
-                    Global System Persona (Base AI Brain)
-                  </label>
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <label className="block text-xs font-bold text-red-400 uppercase tracking-wider">
+                      Master AI Brain Prompt (Applies Globally)
+                    </label>
+                    <span className="text-[11px] text-zinc-500 font-mono">
+                      {brain.globalPrompt.length} characters
+                    </span>
+                  </div>
                   <textarea
-                    rows={3}
+                    rows={7}
                     value={brain.globalPrompt}
                     onChange={(e) => setBrain({ ...brain, globalPrompt: e.target.value })}
-                    className="w-full bg-zinc-900 border border-zinc-700 rounded-lg p-3 text-zinc-100 text-sm focus:border-red-500 outline-none"
-                    placeholder="Enter global system instructions..."
+                    className="w-full bg-zinc-900 border border-zinc-700/80 rounded-xl p-3.5 text-zinc-100 text-xs md:text-sm focus:border-red-500 outline-none font-mono leading-relaxed shadow-inner"
+                    placeholder="Enter master system instructions for VOID AI..."
                   />
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2">
-                  {/* Free Tier */}
-                  <div className="p-4 bg-zinc-900/60 border border-zinc-800 rounded-xl space-y-3">
-                    <label className="block text-xs font-bold text-zinc-400 uppercase tracking-wider">
-                      Free Tier Config
-                    </label>
-                    <div>
-                      <span className="text-[11px] text-zinc-500 block mb-1">System Behavior Prompt</span>
-                      <textarea
-                        rows={3}
-                        value={brain.freePrompt}
-                        onChange={(e) => setBrain({ ...brain, freePrompt: e.target.value })}
-                        className="w-full bg-zinc-950 border border-zinc-700/80 rounded-lg p-2.5 text-zinc-100 text-xs focus:border-red-500 outline-none"
-                      />
-                    </div>
-                    <div className="grid grid-cols-2 gap-2">
-                      <div>
-                        <span className="text-[11px] text-zinc-400 block mb-1">Daily Msgs Limit</span>
-                        <input
-                          type="number"
-                          value={brain.freeLimit}
-                          onChange={(e) => setBrain({ ...brain, freeLimit: parseInt(e.target.value) || 0 })}
-                          className="w-full bg-zinc-950 border border-zinc-700/80 rounded-lg px-3 py-1.5 text-zinc-100 text-xs outline-none focus:border-red-500"
-                        />
-                      </div>
-                      <div>
-                        <span className="text-[11px] text-zinc-400 block mb-1">Max Output Tokens</span>
-                        <input
-                          type="number"
-                          value={brain.freeMaxTokens}
-                          onChange={(e) => setBrain({ ...brain, freeMaxTokens: parseInt(e.target.value) || 0 })}
-                          className="w-full bg-zinc-950 border border-zinc-700/80 rounded-lg px-3 py-1.5 text-zinc-100 text-xs outline-none focus:border-red-500"
-                        />
+                <div className="pt-2">
+                  <h4 className="text-xs font-bold text-zinc-300 uppercase tracking-wider mb-3">
+                    Tier Rate Limits & Token Controls
+                  </h4>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+                    {/* Free Tier */}
+                    <div className="p-3.5 bg-zinc-900/60 border border-zinc-800 rounded-xl space-y-2.5">
+                      <label className="block text-xs font-bold text-zinc-400 uppercase tracking-wider">
+                        Free Tier
+                      </label>
+                      <div className="space-y-2">
+                        <div>
+                          <span className="text-[10px] text-zinc-400 block mb-1">Daily Msgs Limit</span>
+                          <input
+                            type="number"
+                            value={brain.freeLimit}
+                            onChange={(e) => setBrain({ ...brain, freeLimit: parseInt(e.target.value) || 0 })}
+                            className="w-full bg-zinc-950 border border-zinc-700/80 rounded-lg px-2.5 py-1.5 text-zinc-100 text-xs outline-none focus:border-red-500"
+                          />
+                        </div>
+                        <div>
+                          <span className="text-[10px] text-zinc-400 block mb-1">Max Tokens</span>
+                          <input
+                            type="number"
+                            value={brain.freeMaxTokens}
+                            onChange={(e) => setBrain({ ...brain, freeMaxTokens: parseInt(e.target.value) || 0 })}
+                            className="w-full bg-zinc-950 border border-zinc-700/80 rounded-lg px-2.5 py-1.5 text-zinc-100 text-xs outline-none focus:border-red-500"
+                          />
+                        </div>
                       </div>
                     </div>
-                  </div>
 
-                  {/* Pro Tier */}
-                  <div className="p-4 bg-zinc-900/60 border border-blue-950/60 rounded-xl space-y-3">
-                    <label className="block text-xs font-bold text-blue-400 uppercase tracking-wider">
-                      Pro Tier Config
-                    </label>
-                    <div>
-                      <span className="text-[11px] text-zinc-500 block mb-1">System Behavior Prompt</span>
-                      <textarea
-                        rows={3}
-                        value={brain.proPrompt}
-                        onChange={(e) => setBrain({ ...brain, proPrompt: e.target.value })}
-                        className="w-full bg-zinc-950 border border-zinc-700/80 rounded-lg p-2.5 text-zinc-100 text-xs focus:border-blue-500 outline-none"
-                      />
-                    </div>
-                    <div className="grid grid-cols-2 gap-2">
-                      <div>
-                        <span className="text-[11px] text-zinc-400 block mb-1">Daily Msgs Limit</span>
-                        <input
-                          type="number"
-                          value={brain.proLimit}
-                          onChange={(e) => setBrain({ ...brain, proLimit: parseInt(e.target.value) || 0 })}
-                          className="w-full bg-zinc-950 border border-zinc-700/80 rounded-lg px-3 py-1.5 text-zinc-100 text-xs outline-none focus:border-blue-500"
-                        />
-                      </div>
-                      <div>
-                        <span className="text-[11px] text-zinc-400 block mb-1">Max Output Tokens</span>
-                        <input
-                          type="number"
-                          value={brain.proMaxTokens}
-                          onChange={(e) => setBrain({ ...brain, proMaxTokens: parseInt(e.target.value) || 0 })}
-                          className="w-full bg-zinc-950 border border-zinc-700/80 rounded-lg px-3 py-1.5 text-zinc-100 text-xs outline-none focus:border-blue-500"
-                        />
+                    {/* Pro Tier */}
+                    <div className="p-3.5 bg-zinc-900/60 border border-blue-950/60 rounded-xl space-y-2.5">
+                      <label className="block text-xs font-bold text-blue-400 uppercase tracking-wider">
+                        Pro Tier
+                      </label>
+                      <div className="space-y-2">
+                        <div>
+                          <span className="text-[10px] text-zinc-400 block mb-1">Daily Msgs Limit</span>
+                          <input
+                            type="number"
+                            value={brain.proLimit}
+                            onChange={(e) => setBrain({ ...brain, proLimit: parseInt(e.target.value) || 0 })}
+                            className="w-full bg-zinc-950 border border-zinc-700/80 rounded-lg px-2.5 py-1.5 text-zinc-100 text-xs outline-none focus:border-blue-500"
+                          />
+                        </div>
+                        <div>
+                          <span className="text-[10px] text-zinc-400 block mb-1">Max Tokens</span>
+                          <input
+                            type="number"
+                            value={brain.proMaxTokens}
+                            onChange={(e) => setBrain({ ...brain, proMaxTokens: parseInt(e.target.value) || 0 })}
+                            className="w-full bg-zinc-950 border border-zinc-700/80 rounded-lg px-2.5 py-1.5 text-zinc-100 text-xs outline-none focus:border-blue-500"
+                          />
+                        </div>
                       </div>
                     </div>
-                  </div>
 
-                  {/* Premium Tier */}
-                  <div className="p-4 bg-zinc-900/60 border border-amber-950/60 rounded-xl space-y-3">
-                    <label className="block text-xs font-bold text-amber-400 uppercase tracking-wider">
-                      Premium Tier Config
-                    </label>
-                    <div>
-                      <span className="text-[11px] text-zinc-500 block mb-1">System Behavior Prompt</span>
-                      <textarea
-                        rows={3}
-                        value={brain.premiumPrompt}
-                        onChange={(e) => setBrain({ ...brain, premiumPrompt: e.target.value })}
-                        className="w-full bg-zinc-950 border border-zinc-700/80 rounded-lg p-2.5 text-zinc-100 text-xs focus:border-amber-500 outline-none"
-                      />
-                    </div>
-                    <div className="grid grid-cols-2 gap-2">
-                      <div>
-                        <span className="text-[11px] text-zinc-400 block mb-1">Daily Msgs Limit</span>
-                        <input
-                          type="number"
-                          value={brain.premiumLimit}
-                          onChange={(e) => setBrain({ ...brain, premiumLimit: parseInt(e.target.value) || 0 })}
-                          className="w-full bg-zinc-950 border border-zinc-700/80 rounded-lg px-3 py-1.5 text-zinc-100 text-xs outline-none focus:border-amber-500"
-                        />
-                      </div>
-                      <div>
-                        <span className="text-[11px] text-zinc-400 block mb-1">Max Output Tokens</span>
-                        <input
-                          type="number"
-                          value={brain.premiumMaxTokens}
-                          onChange={(e) => setBrain({ ...brain, premiumMaxTokens: parseInt(e.target.value) || 0 })}
-                          className="w-full bg-zinc-950 border border-zinc-700/80 rounded-lg px-3 py-1.5 text-zinc-100 text-xs outline-none focus:border-amber-500"
-                        />
+                    {/* Premium Tier */}
+                    <div className="p-3.5 bg-zinc-900/60 border border-amber-950/60 rounded-xl space-y-2.5">
+                      <label className="block text-xs font-bold text-amber-400 uppercase tracking-wider">
+                        Premium Tier
+                      </label>
+                      <div className="space-y-2">
+                        <div>
+                          <span className="text-[10px] text-zinc-400 block mb-1">Daily Msgs Limit</span>
+                          <input
+                            type="number"
+                            value={brain.premiumLimit}
+                            onChange={(e) => setBrain({ ...brain, premiumLimit: parseInt(e.target.value) || 0 })}
+                            className="w-full bg-zinc-950 border border-zinc-700/80 rounded-lg px-2.5 py-1.5 text-zinc-100 text-xs outline-none focus:border-amber-500"
+                          />
+                        </div>
+                        <div>
+                          <span className="text-[10px] text-zinc-400 block mb-1">Max Tokens</span>
+                          <input
+                            type="number"
+                            value={brain.premiumMaxTokens}
+                            onChange={(e) => setBrain({ ...brain, premiumMaxTokens: parseInt(e.target.value) || 0 })}
+                            className="w-full bg-zinc-950 border border-zinc-700/80 rounded-lg px-2.5 py-1.5 text-zinc-100 text-xs outline-none focus:border-amber-500"
+                          />
+                        </div>
                       </div>
                     </div>
-                  </div>
 
-                  {/* VIP Tier */}
-                  <div className="p-4 bg-zinc-900/60 border border-purple-950/60 rounded-xl space-y-3">
-                    <label className="block text-xs font-bold text-purple-400 uppercase tracking-wider">
-                      VIP Tier Config
-                    </label>
-                    <div>
-                      <span className="text-[11px] text-zinc-500 block mb-1">System Behavior Prompt</span>
-                      <textarea
-                        rows={3}
-                        value={brain.vipPrompt}
-                        onChange={(e) => setBrain({ ...brain, vipPrompt: e.target.value })}
-                        className="w-full bg-zinc-950 border border-zinc-700/80 rounded-lg p-2.5 text-zinc-100 text-xs focus:border-purple-500 outline-none"
-                      />
-                    </div>
-                    <div className="grid grid-cols-2 gap-2">
-                      <div>
-                        <span className="text-[11px] text-zinc-400 block mb-1">Daily Msgs Limit</span>
-                        <input
-                          type="number"
-                          value={brain.vipLimit}
-                          onChange={(e) => setBrain({ ...brain, vipLimit: parseInt(e.target.value) || 0 })}
-                          className="w-full bg-zinc-950 border border-zinc-700/80 rounded-lg px-3 py-1.5 text-zinc-100 text-xs outline-none focus:border-purple-500"
-                        />
-                      </div>
-                      <div>
-                        <span className="text-[11px] text-zinc-400 block mb-1">Max Output Tokens</span>
-                        <input
-                          type="number"
-                          value={brain.vipMaxTokens}
-                          onChange={(e) => setBrain({ ...brain, vipMaxTokens: parseInt(e.target.value) || 0 })}
-                          className="w-full bg-zinc-950 border border-zinc-700/80 rounded-lg px-3 py-1.5 text-zinc-100 text-xs outline-none focus:border-purple-500"
-                        />
+                    {/* VIP Tier */}
+                    <div className="p-3.5 bg-zinc-900/60 border border-purple-950/60 rounded-xl space-y-2.5">
+                      <label className="block text-xs font-bold text-purple-400 uppercase tracking-wider">
+                        VIP Tier
+                      </label>
+                      <div className="space-y-2">
+                        <div>
+                          <span className="text-[10px] text-zinc-400 block mb-1">Daily Msgs Limit</span>
+                          <input
+                            type="number"
+                            value={brain.vipLimit}
+                            onChange={(e) => setBrain({ ...brain, vipLimit: parseInt(e.target.value) || 0 })}
+                            className="w-full bg-zinc-950 border border-zinc-700/80 rounded-lg px-2.5 py-1.5 text-zinc-100 text-xs outline-none focus:border-purple-500"
+                          />
+                        </div>
+                        <div>
+                          <span className="text-[10px] text-zinc-400 block mb-1">Max Tokens</span>
+                          <input
+                            type="number"
+                            value={brain.vipMaxTokens}
+                            onChange={(e) => setBrain({ ...brain, vipMaxTokens: parseInt(e.target.value) || 0 })}
+                            className="w-full bg-zinc-950 border border-zinc-700/80 rounded-lg px-2.5 py-1.5 text-zinc-100 text-xs outline-none focus:border-purple-500"
+                          />
+                        </div>
                       </div>
                     </div>
                   </div>
