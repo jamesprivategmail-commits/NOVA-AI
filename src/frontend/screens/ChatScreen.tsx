@@ -385,36 +385,36 @@ export function ChatScreen({ userId }: ChatScreenProps) {
         )}
 
         {/* Header Bar */}
-        <header className="h-14 px-3 sm:px-6 sticky top-0 z-20 bg-black/85 border-b border-red-950/90 backdrop-blur-md flex items-center justify-between gap-3 select-none">
-          <div className="flex items-center gap-3 shrink-0">
+        <header className="h-14 px-2 sm:px-6 sticky top-0 z-20 bg-black/85 border-b border-red-950/90 backdrop-blur-md flex items-center justify-between gap-1.5 sm:gap-3 select-none w-full min-w-0">
+          <div className="flex items-center gap-1.5 sm:gap-3 min-w-0 shrink">
             <button
               onClick={() => setIsSidebarOpen(!isSidebarOpen)}
-              className="p-2 -ml-1 rounded-xl hover:bg-red-950/40 text-red-500 transition-colors cursor-pointer flex items-center justify-center border border-transparent hover:border-red-900/60"
+              className="p-1.5 sm:p-2 -ml-1 rounded-xl hover:bg-red-950/40 text-red-500 transition-colors cursor-pointer flex items-center justify-center border border-transparent hover:border-red-900/60 shrink-0"
               title="Toggle sidebar"
             >
               <Menu size={19} />
             </button>
-            <div className="flex items-center gap-2">
-              <div className="w-6 h-6 rounded-lg bg-black border border-red-600/80 p-0.5 shadow-[0_0_10px_rgba(220,38,38,0.3)] flex items-center justify-center">
+            <div className="flex items-center gap-1.5 sm:gap-2 min-w-0">
+              <div className="w-6 h-6 rounded-lg bg-black border border-red-600/80 p-0.5 shadow-[0_0_10px_rgba(220,38,38,0.3)] flex items-center justify-center shrink-0">
                 <img 
                   src="https://i.postimg.cc/8PVBFM75/file-00000000b40c82118dbaef206a9ebedc.png" 
                   alt="VOID AI Logo" 
                   className="w-full h-full object-contain"
                 />
               </div>
-              <span className="font-black text-base sm:text-lg tracking-wider text-red-600 uppercase font-serif">
+              <span className="font-black text-sm sm:text-lg tracking-wider text-red-600 uppercase font-serif truncate">
                 VOID AI
               </span>
-              <span className="text-[10px] text-red-500 font-mono font-bold flex items-center gap-1 ml-1">
+              <span className="text-[10px] text-red-500 font-mono font-bold hidden md:flex items-center gap-1 ml-1 shrink-0">
                 <span className="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse"></span>
                 <span>ONLINE</span>
               </span>
             </div>
           </div>
 
-          <div className="flex items-center gap-2.5 shrink-0">
+          <div className="flex items-center gap-1.5 sm:gap-2.5 shrink-0 min-w-0">
             {/* Model Selector Dropdown */}
-            <div className="relative">
+            <div className="relative max-w-[130px] sm:max-w-[200px] md:max-w-none">
               <select
                 value={`${selectedProvider}:${selectedModel}`}
                 onChange={(e) => {
@@ -422,7 +422,7 @@ export function ChatScreen({ userId }: ChatScreenProps) {
                   setSelectedProvider(prov as 'groq' | 'cohere');
                   setSelectedModel(mod || 'auto');
                 }}
-                className="bg-black/90 border border-red-900/80 hover:border-red-600 text-red-200 text-xs font-mono py-1.5 pl-3 pr-7 rounded-xl focus:outline-none focus:border-red-500 cursor-pointer appearance-none shadow-[0_0_12px_rgba(220,38,38,0.2)] transition-colors"
+                className="w-full bg-black/90 border border-red-900/80 hover:border-red-600 text-red-200 text-[11px] sm:text-xs font-mono py-1.5 pl-2 sm:pl-3 pr-6 sm:pr-7 rounded-xl focus:outline-none focus:border-red-500 cursor-pointer appearance-none shadow-[0_0_12px_rgba(220,38,38,0.2)] transition-colors truncate"
                 title="Select AI Engine"
               >
                 <option value="groq:auto">Groq Llama 3.3 70B</option>
@@ -438,15 +438,16 @@ export function ChatScreen({ userId }: ChatScreenProps) {
                   <option value="cohere:command-r-08-2024">Cohere: Command R</option>
                 </optgroup>
               </select>
-              <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-red-500">
+              <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-1.5 sm:px-2 text-red-500">
                 <ChevronDown size={13} />
               </div>
             </div>
 
             {/* GOD MODE ACTIVE Badge */}
-            <div className="px-3 py-1.5 bg-black border border-red-600/80 hover:bg-red-950/40 rounded-xl text-xs font-mono font-extrabold flex items-center gap-1.5 text-red-500 transition-colors cursor-pointer shrink-0 shadow-[0_0_15px_rgba(220,38,38,0.3)]">
-              <span className="text-red-500 text-sm font-bold">⛧</span>
-              <span className="uppercase tracking-widest text-[11px]">GOD MODE ACTIVE</span>
+            <div className="px-2 sm:px-3 py-1.5 bg-black border border-red-600/80 hover:bg-red-950/40 rounded-xl text-[10px] sm:text-xs font-mono font-extrabold flex items-center gap-1 sm:gap-1.5 text-red-500 transition-colors cursor-pointer shrink-0 shadow-[0_0_15px_rgba(220,38,38,0.3)]">
+              <span className="text-red-500 text-xs sm:text-sm font-bold">⛧</span>
+              <span className="uppercase tracking-widest text-[10px] sm:text-[11px] hidden xs:inline">GOD MODE</span>
+              <span className="uppercase tracking-widest text-[10px] sm:text-[11px] hidden sm:inline">ACTIVE</span>
             </div>
           </div>
         </header>

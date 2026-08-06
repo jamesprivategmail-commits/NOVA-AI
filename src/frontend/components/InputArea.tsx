@@ -267,10 +267,10 @@ export function InputArea({ onSend, isLoading, onStop }: InputAreaProps) {
         </div>
       </div>
 
-      {/* Footer Warning Disclaimer */}
-      <div className="flex items-center justify-center gap-1.5 text-[11px] text-red-600/90 mt-2 px-1 font-mono text-center font-semibold">
-        <span>⚠️</span>
-        <span>VOID AI can make mistakes. It can also ruin your life.</span>
+      {/* Footer info */}
+      <div className="flex items-center justify-between text-[10px] text-red-900/80 mt-1.5 px-1 font-mono">
+        <span>VOID AI Engine</span>
+        <span className="hidden sm:inline">Press Shift + Enter for newline</span>
       </div>
     </div>
   );
