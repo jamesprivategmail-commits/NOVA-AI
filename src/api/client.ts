@@ -5,7 +5,7 @@ export async function sendMessageToGroq(
   signal?: AbortSignal,
   userId?: string,
   userTier?: string,
-  provider: 'groq' | 'cohere' = 'groq',
+  provider: 'groq' | 'cohere' | 'bazaarlink' = 'groq',
   model?: string
 ) {
   try {

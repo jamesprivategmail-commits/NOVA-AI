@@ -1,9 +1,32 @@
+export interface UserApiKey {
+  id: string;
+  userId: string;
+  name: string;
+  key: string;
+  createdAt: number;
+  lastUsedAt?: number;
+}
+
 export type UserTier = 'free' | 'pro' | 'premium' | 'vip';
 
 export interface PricingSettings {
-  premium: number;
+  // Account Subscriptions (Monthly, Yearly, Discount %)
   pro: number;
+  proYearly?: number;
+  proDiscount?: number;
+
+  premium: number;
+  premiumYearly?: number;
+  premiumDiscount?: number;
+
   vip: number;
+  vipYearly?: number;
+  vipDiscount?: number;
+
+  // Separate Developer API Key Pricing (Per Month, Per Year, Discount %)
+  apiKeyMonthly?: number;
+  apiKeyYearly?: number;
+  apiKeyDiscount?: number;
 }
 
 export interface SystemAPIKeys {
@@ -11,6 +34,8 @@ export interface SystemAPIKeys {
   groqApiKeys?: string[];
   cohereApiKey?: string;
   cohereApiKeys?: string[];
+  bazaarLinkApiKey?: string;
+  bazaarLinkApiKeys?: string[];
 }
 
 export interface AIBrainSettings {

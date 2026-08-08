@@ -11,6 +11,7 @@ import { FullPageSupportDesk } from './FullPageSupportDesk';
 import { EmailCampaignGenerator } from '../components/EmailCampaignGenerator';
 import { LiveVoiceModal } from '../components/LiveVoiceModal';
 import { TelegramModal } from './TelegramModal';
+import { ApiKeyModal } from '../components/ApiKeyModal';
 import { Chat, Message, UserProfile, BroadcastMessage } from '../../models/types';
 import {
   createChat,
@@ -49,7 +50,7 @@ export function ChatScreen({ userId }: ChatScreenProps) {
   const [profile, setProfile] = useState<UserProfile | null>(null);
 
   // AI Model Selection state
-  const [selectedProvider, setSelectedProvider] = useState<'groq' | 'cohere'>('groq');
+  const [selectedProvider, setSelectedProvider] = useState<'groq' | 'cohere' | 'bazaarlink'>('groq');
   const [selectedModel, setSelectedModel] = useState<string>('auto');
 
   // Modals state
@@ -60,6 +61,7 @@ export function ChatScreen({ userId }: ChatScreenProps) {
   const [showCampaignGenerator, setShowCampaignGenerator] = useState(false);
   const [showLiveVoice, setShowLiveVoice] = useState(false);
   const [showTelegramModal, setShowTelegramModal] = useState(false);
+  const [showApiKeyModal, setShowApiKeyModal] = useState(false);
 
   // Broadcasts state
   const [broadcasts, setBroadcasts] = useState<BroadcastMessage[]>([]);
@@ -361,6 +363,7 @@ export function ChatScreen({ userId }: ChatScreenProps) {
         onOpenAdmin={() => setShowAdminPanel(true)}
         onOpenCampaignGenerator={() => setShowCampaignGenerator(true)}
         onOpenLiveVoice={() => setShowLiveVoice(true)}
+        onOpenApiKeys={() => setShowApiKeyModal(true)}
         onLogout={handleLogout}
         isOpen={isSidebarOpen}
         isAdmin={profile?.isAdmin || false}
@@ -441,14 +444,15 @@ export function ChatScreen({ userId }: ChatScreenProps) {
                 value={`${selectedProvider}:${selectedModel}`}
                 onChange={(e) => {
                   const [prov, mod] = e.target.value.split(':');
-                  setSelectedProvider(prov as 'groq' | 'cohere');
+                  setSelectedProvider(prov as 'groq' | 'cohere' | 'bazaarlink');
                   setSelectedModel(mod || 'auto');
                 }}
                 className="w-full bg-black/90 border border-red-900/80 hover:border-red-600 text-red-200 text-[11px] sm:text-xs font-mono py-1.5 pl-2 sm:pl-3 pr-6 sm:pr-7 rounded-xl focus:outline-none focus:border-red-500 cursor-pointer appearance-none shadow-[0_0_12px_rgba(220,38,38,0.2)] transition-colors truncate"
                 title="Select AI Engine"
               >
-                <option value="groq:auto">Groq Llama 3.3 70B</option>
-                <option value="cohere:auto">Cohere Command R+</option>
+                <option value="groq:auto">Groq AI Engine</option>
+                <option value="cohere:auto">Cohere AI Engine</option>
+                <option value="bazaarlink:auto">BazaarLink AI Engine</option>
                 <optgroup label="Groq Models">
                   <option value="groq:llama-3.3-70b-versatile">Groq: Llama 3.3 70B</option>
                   <option value="groq:llama-3.1-8b-instant">Groq: Llama 3.1 8B</option>
@@ -458,6 +462,12 @@ export function ChatScreen({ userId }: ChatScreenProps) {
                 <optgroup label="Cohere Models">
                   <option value="cohere:command-r-plus-08-2024">Cohere: Command R+</option>
                   <option value="cohere:command-r-08-2024">Cohere: Command R</option>
+                </optgroup>
+                <optgroup label="BazaarLink Models">
+                  <option value="bazaarlink:bazaarlink-fast">BazaarLink: Fast AI</option>
+                  <option value="bazaarlink:bazaarlink-pro">BazaarLink: Pro AI</option>
+                  <option value="bazaarlink:llama-3.3-70b">BazaarLink: Llama 3.3 70B</option>
+                  <option value="bazaarlink:deepseek-r1">BazaarLink: DeepSeek R1</option>
                 </optgroup>
               </select>
               <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-1.5 sm:px-2 text-red-500">
@@ -683,6 +693,14 @@ export function ChatScreen({ userId }: ChatScreenProps) {
           userTier={profile?.tier || 'free'}
         />
       )}
+
+      {/* Developer API Keys & Billing Modal */}
+      <ApiKeyModal
+        user={profile}
+        isOpen={showApiKeyModal}
+        onClose={() => setShowApiKeyModal(false)}
+        onOpenSubscription={() => setShowSubscription(true)}
+      />
     </div>
   );
 }

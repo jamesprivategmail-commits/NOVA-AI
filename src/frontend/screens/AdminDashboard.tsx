@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { UserProfile, SupportChat, PricingSettings, AIBrainSettings, SystemAPIKeys, BroadcastMessage, UserTier } from '../../models/types';
 import { listenToAllUsers, updateUserTier, updateUserStatus, updateUserVerification, updateUserSupportStaff, listenToAllSupportChats, getPricingSettings, updatePricingSettings, getAIBrainSettings, updateAIBrainSettings, getSystemAPIKeys, updateSystemAPIKeys, sendBroadcastMessage, listenToBroadcasts, deleteBroadcast } from '../../database/db';
-import { X, ArrowLeft, Shield, Crown, User, RefreshCw, Ban, CheckCircle, BadgeCheck, MessageSquare, ChevronUp, ChevronDown, DollarSign, Cpu, Save, Sparkles, Key, Eye, EyeOff, Lock, ShieldCheck, Trash2, Radio, Megaphone, Maximize2, Search } from 'lucide-react';
+import { X, ArrowLeft, Shield, Crown, User, RefreshCw, Ban, CheckCircle, BadgeCheck, MessageSquare, ChevronUp, ChevronDown, DollarSign, Cpu, Save, Sparkles, Key, Eye, EyeOff, Lock, ShieldCheck, Trash2, Radio, Megaphone, Maximize2, Search, Check } from 'lucide-react';
 import { clsx } from 'clsx';
 import { SupportChatScreen } from './SupportChatScreen';
 import { FullPageSupportDesk } from './FullPageSupportDesk';
@@ -28,11 +28,30 @@ export function AdminDashboard({ onClose }: AdminDashboardProps) {
   const [broadcastTargetTier, setBroadcastTargetTier] = useState<'all' | UserTier>('all');
   const [sendingBroadcast, setSendingBroadcast] = useState(false);
 
-  const [pricing, setPricing] = useState<PricingSettings>({ premium: 5000, pro: 7000, vip: 10000 });
+  const [pricing, setPricing] = useState<PricingSettings>({
+    pro: 7000,
+    proYearly: 70000,
+    proDiscount: 16,
+    premium: 15000,
+    premiumYearly: 150000,
+    premiumDiscount: 16,
+    vip: 30000,
+    vipYearly: 300000,
+    vipDiscount: 16,
+    apiKeyMonthly: 20000,
+    apiKeyYearly: 200000,
+    apiKeyDiscount: 20
+  });
   const [savingPricing, setSavingPricing] = useState(false);
+  const [pricingSaveSuccess, setPricingSaveSuccess] = useState(false);
 
   const [groqKeysList, setGroqKeysList] = useState<string[]>(Array(10).fill(''));
   const [cohereKeysList, setCohereKeysList] = useState<string[]>(Array(10).fill(''));
+  const [bazaarLinkKeysList, setBazaarLinkKeysList] = useState<string[]>(Array(10).fill(''));
+  const [bulkGroqText, setBulkGroqText] = useState<string>('');
+  const [bulkCohereText, setBulkCohereText] = useState<string>('');
+  const [bulkBazaarLinkText, setBulkBazaarLinkText] = useState<string>('');
+  const [keyInputMode, setKeyInputMode] = useState<'slots' | 'bulk'>('bulk');
   const [showKeys, setShowKeys] = useState(false);
   const [savingKey, setSavingKey] = useState(false);
   const [keySaveSuccess, setKeySaveSuccess] = useState(false);
@@ -73,6 +92,11 @@ export function AdminDashboard({ onClose }: AdminDashboardProps) {
     getSystemAPIKeys().then(keys => {
       const gKeys = keys.groqApiKeys && keys.groqApiKeys.length > 0 ? keys.groqApiKeys : (keys.groqApiKey ? [keys.groqApiKey] : []);
       const cKeys = keys.cohereApiKeys && keys.cohereApiKeys.length > 0 ? keys.cohereApiKeys : (keys.cohereApiKey ? [keys.cohereApiKey] : []);
+      const bKeys = keys.bazaarLinkApiKeys && keys.bazaarLinkApiKeys.length > 0 ? keys.bazaarLinkApiKeys : (keys.bazaarLinkApiKey ? [keys.bazaarLinkApiKey] : []);
+
+      setBulkGroqText(gKeys.join('\n'));
+      setBulkCohereText(cKeys.join('\n'));
+      setBulkBazaarLinkText(bKeys.join('\n'));
 
       const gList = Array(10).fill('');
       gKeys.slice(0, 10).forEach((k, idx) => { gList[idx] = k; });
@@ -81,6 +105,10 @@ export function AdminDashboard({ onClose }: AdminDashboardProps) {
       const cList = Array(10).fill('');
       cKeys.slice(0, 10).forEach((k, idx) => { cList[idx] = k; });
       setCohereKeysList(cList);
+
+      const bList = Array(10).fill('');
+      bKeys.slice(0, 10).forEach((k, idx) => { bList[idx] = k; });
+      setBazaarLinkKeysList(bList);
     });
     
     return () => {
@@ -123,19 +151,47 @@ export function AdminDashboard({ onClose }: AdminDashboardProps) {
     }
   };
 
+  const parseRawKeyInput = (text: string, list: string[]): string[] => {
+    const fromText = text.split(/[\n,;\s]+/).map(k => k.trim()).filter(k => k.length > 5);
+    const fromList = list.map(k => k.trim()).filter(k => k.length > 5);
+    const combined = Array.from(new Set([...fromText, ...fromList]));
+    return combined;
+  };
+
   const handleSaveApiKey = async (e: React.FormEvent) => {
     e.preventDefault();
     setSavingKey(true);
     try {
-      const parsedGroq = groqKeysList.map(k => k.trim()).filter(Boolean);
-      const parsedCohere = cohereKeysList.map(k => k.trim()).filter(Boolean);
+      const parsedGroq = parseRawKeyInput(bulkGroqText, groqKeysList);
+      const parsedCohere = parseRawKeyInput(bulkCohereText, cohereKeysList);
+      const parsedBazaarLink = parseRawKeyInput(bulkBazaarLinkText, bazaarLinkKeysList);
 
       await updateSystemAPIKeys({ 
         groqApiKey: parsedGroq[0] || '',
         groqApiKeys: parsedGroq,
         cohereApiKey: parsedCohere[0] || '',
-        cohereApiKeys: parsedCohere
+        cohereApiKeys: parsedCohere,
+        bazaarLinkApiKey: parsedBazaarLink[0] || '',
+        bazaarLinkApiKeys: parsedBazaarLink
       });
+
+      // Update bulk text and slots view to reflect saved keys
+      setBulkGroqText(parsedGroq.join('\n'));
+      setBulkCohereText(parsedCohere.join('\n'));
+      setBulkBazaarLinkText(parsedBazaarLink.join('\n'));
+
+      const newGList = Array(10).fill('');
+      parsedGroq.slice(0, 10).forEach((k, idx) => { newGList[idx] = k; });
+      setGroqKeysList(newGList);
+
+      const newCList = Array(10).fill('');
+      parsedCohere.slice(0, 10).forEach((k, idx) => { newCList[idx] = k; });
+      setCohereKeysList(newCList);
+
+      const newBList = Array(10).fill('');
+      parsedBazaarLink.slice(0, 10).forEach((k, idx) => { newBList[idx] = k; });
+      setBazaarLinkKeysList(newBList);
+
       setKeySaveSuccess(true);
       setTimeout(() => setKeySaveSuccess(false), 3000);
     } catch (err) {
@@ -157,11 +213,19 @@ export function AdminDashboard({ onClose }: AdminDashboardProps) {
     setCohereKeysList(updated);
   };
 
+  const updateBazaarLinkKeySlot = (index: number, val: string) => {
+    const updated = [...bazaarLinkKeysList];
+    updated[index] = val;
+    setBazaarLinkKeysList(updated);
+  };
+
   const handleSavePricing = async (e: React.FormEvent) => {
     e.preventDefault();
     setSavingPricing(true);
     try {
       await updatePricingSettings(pricing);
+      setPricingSaveSuccess(true);
+      setTimeout(() => setPricingSaveSuccess(false), 3000);
     } catch (err) {
       console.error("Failed to save pricing", err);
     } finally {
@@ -449,8 +513,8 @@ export function AdminDashboard({ onClose }: AdminDashboardProps) {
                           </td>
                         </tr>
                       ) : (
-                        sortedUsers.map(user => (
-                          <tr key={user.uid} className="hover:bg-zinc-800/40 transition-colors">
+                        sortedUsers.map((user, idx) => (
+                          <tr key={user.uid ? user.uid : `user-row-${idx}`} className="hover:bg-zinc-800/40 transition-colors">
                         <td className="py-3 px-2">
                           <div className="font-medium text-zinc-200 flex items-center gap-1">
                             {user.displayName || 'User'}
@@ -657,8 +721,8 @@ export function AdminDashboard({ onClose }: AdminDashboardProps) {
                   <p className="text-xs text-zinc-500 font-mono">No broadcasts published yet.</p>
                 ) : (
                   <div className="space-y-3">
-                    {broadcastsList.map(b => (
-                      <div key={b.id} className="p-4 bg-zinc-900/80 border border-zinc-800 rounded-xl flex items-start justify-between gap-4">
+                    {broadcastsList.map((b, idx) => (
+                      <div key={b.id ? b.id : `bcast-${idx}`} className="p-4 bg-zinc-900/80 border border-zinc-800 rounded-xl flex items-start justify-between gap-4">
                         <div className="space-y-1 min-w-0">
                           <div className="flex items-center gap-2 flex-wrap">
                             <span className="font-bold text-xs text-zinc-100">{b.title}</span>
@@ -712,17 +776,41 @@ export function AdminDashboard({ onClose }: AdminDashboardProps) {
                     <label className="block text-xs font-bold text-red-400 uppercase tracking-wider">
                       Master AI Brain Prompt (Applies Globally)
                     </label>
-                    <span className="text-[11px] text-zinc-500 font-mono">
-                      {brain.globalPrompt.length} characters
-                    </span>
+                    <div className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={() => setBrain({ ...brain, globalPrompt: '' })}
+                        className="px-2.5 py-1 rounded-lg bg-zinc-800 hover:bg-red-950/80 text-zinc-300 hover:text-red-400 text-[10px] font-mono font-bold border border-zinc-700 hover:border-red-800 transition-colors cursor-pointer flex items-center gap-1"
+                      >
+                        <Trash2 size={11} />
+                        <span>Empty Brain</span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setBrain({ ...brain, globalPrompt: "You are VOID AI, an elite AI assistant. Answer user prompts directly, accurately, and concisely without unnecessary disclaimers." })}
+                        className="px-2.5 py-1 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-zinc-300 text-[10px] font-mono font-bold border border-zinc-700 transition-colors cursor-pointer"
+                      >
+                        Reset Default
+                      </button>
+                      <span className="text-[11px] text-zinc-500 font-mono">
+                        {brain.globalPrompt.length} chars
+                      </span>
+                    </div>
                   </div>
                   <textarea
-                    rows={7}
+                    rows={8}
                     value={brain.globalPrompt}
                     onChange={(e) => setBrain({ ...brain, globalPrompt: e.target.value })}
                     className="w-full bg-zinc-900 border border-zinc-700/80 rounded-xl p-3.5 text-zinc-100 text-xs md:text-sm focus:border-red-500 outline-none font-mono leading-relaxed shadow-inner"
-                    placeholder="Enter master system instructions for VOID AI..."
+                    placeholder="Enter master system instructions for VOID AI (or leave blank for raw default AI responses)..."
                   />
+                  
+                  <div className="p-3 bg-red-950/60 border border-red-800/80 rounded-xl flex items-center gap-2.5 text-xs text-red-300 font-mono">
+                    <ShieldCheck size={18} className="text-emerald-400 shrink-0" />
+                    <span>
+                      <strong className="text-emerald-400 uppercase tracking-wide">Brain Confidentiality Active:</strong> Server-side security guardrails are active. Whatever you type into the brain will NEVER be disclosed, quoted, or revealed to users or third parties by the AI.
+                    </span>
+                  </div>
                 </div>
 
                 <div className="pt-2">
@@ -896,8 +984,8 @@ export function AdminDashboard({ onClose }: AdminDashboardProps) {
                     className="w-full bg-zinc-950 border border-zinc-700 text-zinc-200 text-xs py-1.5 px-2 rounded-lg outline-none focus:border-red-500 cursor-pointer"
                   >
                     <option value="">-- Choose Any User to Text Back --</option>
-                    {users.map(u => (
-                      <option key={u.uid} value={u.uid}>
+                    {users.map((u, idx) => (
+                      <option key={u.uid ? `opt-${u.uid}` : `opt-idx-${idx}`} value={u.uid || ''}>
                         {u.displayName || u.email || u.uid} ({u.tier || 'free'})
                       </option>
                     ))}
@@ -910,11 +998,11 @@ export function AdminDashboard({ onClose }: AdminDashboardProps) {
                       No active support tickets found.
                     </div>
                   ) : (
-                    supportChats.map(chat => {
+                    supportChats.map((chat, idx) => {
                       const isActive = activeSupportUserId === chat.userId;
                       return (
                         <div
-                          key={chat.id}
+                          key={chat.id ? chat.id : `chat-${chat.userId || idx}`}
                           onClick={() => {
                             setActiveSupportUserId(chat.userId);
                             setActiveSupportUserName(chat.userName);
@@ -999,48 +1087,214 @@ export function AdminDashboard({ onClose }: AdminDashboardProps) {
               </div>
             </div>
           ) : activeTab === 'pricing' ? (
-            <div className="max-w-2xl mx-auto space-y-6">
-              <form onSubmit={handleSavePricing} className="bg-zinc-950/60 border border-zinc-800 rounded-2xl p-6">
-                <div className="flex items-center gap-2 mb-6">
-                  <DollarSign size={20} className="text-amber-500" />
-                  <h3 className="text-lg font-bold text-zinc-100">Subscription Pricing (NAIRA - ₦)</h3>
+            <div className="max-w-4xl mx-auto space-y-6">
+              <form onSubmit={handleSavePricing} className="space-y-6">
+                
+                {pricingSaveSuccess && (
+                  <div className="p-4 bg-emerald-950/80 border border-emerald-700/80 text-emerald-300 rounded-2xl flex items-center gap-3 animate-fadeIn font-mono text-xs">
+                    <Check size={18} className="text-emerald-400" />
+                    <span>ALL PRICING MATRICES & DEVELOPER API RATES SAVED SUCCESSFULLY!</span>
+                  </div>
+                )}
+
+                {/* SECTION 1: WEBSITE USER SUBSCRIPTIONS */}
+                <div className="bg-zinc-950/80 border border-zinc-800 rounded-2xl p-6 space-y-6 shadow-xl">
+                  <div className="flex items-center justify-between border-b border-zinc-800 pb-4">
+                    <div className="flex items-center gap-2">
+                      <div className="p-2 bg-amber-950/80 border border-amber-800/60 rounded-xl text-amber-400">
+                        <DollarSign size={20} />
+                      </div>
+                      <div>
+                        <h3 className="text-lg font-extrabold text-zinc-100">1. Website User Subscriptions (NAIRA - ₦)</h3>
+                        <p className="text-xs text-zinc-400">Configure monthly rates, yearly rates, and discount percentage tags for users on the platform.</p>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    {/* PRO PLAN */}
+                    <div className="bg-zinc-900/60 border border-blue-900/40 rounded-xl p-4 space-y-3">
+                      <div className="flex items-center justify-between">
+                        <span className="text-sm font-extrabold text-blue-400 uppercase">PRO PLAN</span>
+                        <span className="text-[10px] bg-blue-950 text-blue-300 px-2 py-0.5 rounded font-mono">50 MSGS/DAY</span>
+                      </div>
+                      <div>
+                        <label className="block text-xs font-semibold text-zinc-400 mb-1">Monthly Rate (₦/mo)</label>
+                        <input 
+                          type="number" 
+                          value={pricing.pro}
+                          onChange={(e) => setPricing({ ...pricing, pro: parseInt(e.target.value) || 0 })}
+                          className="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-3 py-2 text-zinc-100 text-sm font-mono focus:outline-none focus:border-blue-500"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-xs font-semibold text-zinc-400 mb-1">Yearly Rate (₦/yr)</label>
+                        <input 
+                          type="number" 
+                          value={pricing.proYearly ?? (pricing.pro * 10)}
+                          onChange={(e) => setPricing({ ...pricing, proYearly: parseInt(e.target.value) || 0 })}
+                          className="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-3 py-2 text-zinc-100 text-sm font-mono focus:outline-none focus:border-blue-500"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-xs font-semibold text-zinc-400 mb-1">Yearly Discount Tag (% OFF)</label>
+                        <input 
+                          type="number" 
+                          value={pricing.proDiscount ?? 16}
+                          onChange={(e) => setPricing({ ...pricing, proDiscount: parseInt(e.target.value) || 0 })}
+                          className="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-3 py-2 text-amber-400 text-sm font-mono focus:outline-none focus:border-amber-500"
+                        />
+                      </div>
+                    </div>
+
+                    {/* PREMIUM PLAN */}
+                    <div className="bg-zinc-900/60 border border-amber-900/40 rounded-xl p-4 space-y-3">
+                      <div className="flex items-center justify-between">
+                        <span className="text-sm font-extrabold text-amber-400 uppercase">PREMIUM PLAN</span>
+                        <span className="text-[10px] bg-amber-950 text-amber-300 px-2 py-0.5 rounded font-mono">250 MSGS/DAY</span>
+                      </div>
+                      <div>
+                        <label className="block text-xs font-semibold text-zinc-400 mb-1">Monthly Rate (₦/mo)</label>
+                        <input 
+                          type="number" 
+                          value={pricing.premium}
+                          onChange={(e) => setPricing({ ...pricing, premium: parseInt(e.target.value) || 0 })}
+                          className="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-3 py-2 text-zinc-100 text-sm font-mono focus:outline-none focus:border-amber-500"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-xs font-semibold text-zinc-400 mb-1">Yearly Rate (₦/yr)</label>
+                        <input 
+                          type="number" 
+                          value={pricing.premiumYearly ?? (pricing.premium * 10)}
+                          onChange={(e) => setPricing({ ...pricing, premiumYearly: parseInt(e.target.value) || 0 })}
+                          className="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-3 py-2 text-zinc-100 text-sm font-mono focus:outline-none focus:border-amber-500"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-xs font-semibold text-zinc-400 mb-1">Yearly Discount Tag (% OFF)</label>
+                        <input 
+                          type="number" 
+                          value={pricing.premiumDiscount ?? 16}
+                          onChange={(e) => setPricing({ ...pricing, premiumDiscount: parseInt(e.target.value) || 0 })}
+                          className="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-3 py-2 text-amber-400 text-sm font-mono focus:outline-none focus:border-amber-500"
+                        />
+                      </div>
+                    </div>
+
+                    {/* VIP PLAN */}
+                    <div className="bg-zinc-900/60 border border-purple-900/40 rounded-xl p-4 space-y-3">
+                      <div className="flex items-center justify-between">
+                        <span className="text-sm font-extrabold text-purple-400 uppercase">VIP PLAN</span>
+                        <span className="text-[10px] bg-purple-950 text-purple-300 px-2 py-0.5 rounded font-mono">UNLIMITED</span>
+                      </div>
+                      <div>
+                        <label className="block text-xs font-semibold text-zinc-400 mb-1">Monthly Rate (₦/mo)</label>
+                        <input 
+                          type="number" 
+                          value={pricing.vip}
+                          onChange={(e) => setPricing({ ...pricing, vip: parseInt(e.target.value) || 0 })}
+                          className="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-3 py-2 text-zinc-100 text-sm font-mono focus:outline-none focus:border-purple-500"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-xs font-semibold text-zinc-400 mb-1">Yearly Rate (₦/yr)</label>
+                        <input 
+                          type="number" 
+                          value={pricing.vipYearly ?? (pricing.vip * 10)}
+                          onChange={(e) => setPricing({ ...pricing, vipYearly: parseInt(e.target.value) || 0 })}
+                          className="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-3 py-2 text-zinc-100 text-sm font-mono focus:outline-none focus:border-purple-500"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-xs font-semibold text-zinc-400 mb-1">Yearly Discount Tag (% OFF)</label>
+                        <input 
+                          type="number" 
+                          value={pricing.vipDiscount ?? 16}
+                          onChange={(e) => setPricing({ ...pricing, vipDiscount: parseInt(e.target.value) || 0 })}
+                          className="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-3 py-2 text-amber-400 text-sm font-mono focus:outline-none focus:border-amber-500"
+                        />
+                      </div>
+                    </div>
+                  </div>
                 </div>
-                <div className="space-y-4">
-                  <div>
-                    <label className="block text-sm font-semibold text-zinc-300 mb-1">Pro Plan Price (₦)</label>
-                    <input 
-                      type="number" 
-                      value={pricing.pro}
-                      onChange={(e) => setPricing({ ...pricing, pro: parseInt(e.target.value) || 0 })}
-                      className="w-full bg-zinc-900 border border-zinc-700 rounded-xl px-4 py-2.5 text-zinc-100 focus:outline-none focus:border-red-500 font-mono"
-                    />
+
+                {/* SECTION 2: SEPARATE DEVELOPER API KEY ACCESS PRICING */}
+                <div className="bg-zinc-950/80 border border-red-950 rounded-2xl p-6 space-y-6 shadow-2xl relative overflow-hidden">
+                  <div className="flex items-center justify-between border-b border-red-950 pb-4">
+                    <div className="flex items-center gap-3">
+                      <div className="p-2.5 bg-red-950 border border-red-800 text-red-500 rounded-xl shadow-inner">
+                        <Key size={22} />
+                      </div>
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <h3 className="text-lg font-extrabold text-red-500 uppercase tracking-wide">
+                            2. Developer API Key Dedicated Pricing
+                          </h3>
+                          <span className="text-[10px] bg-red-950 text-red-400 border border-red-900/80 px-2 py-0.5 rounded font-mono font-bold">
+                            SEPARATE API PRICING
+                          </span>
+                        </div>
+                        <p className="text-xs text-zinc-400 mt-0.5">
+                          Set the independent rate for third-party developers, web platforms, and bots connecting directly via <code className="text-red-400">nvn_live_...</code> keys.
+                        </p>
+                      </div>
+                    </div>
                   </div>
-                  <div>
-                    <label className="block text-sm font-semibold text-zinc-300 mb-1">Premium Plan Price (₦)</label>
-                    <input 
-                      type="number" 
-                      value={pricing.premium}
-                      onChange={(e) => setPricing({ ...pricing, premium: parseInt(e.target.value) || 0 })}
-                      className="w-full bg-zinc-900 border border-zinc-700 rounded-xl px-4 py-2.5 text-zinc-100 focus:outline-none focus:border-red-500 font-mono"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-semibold text-zinc-300 mb-1">VIP Plan Price (₦)</label>
-                    <input 
-                      type="number" 
-                      value={pricing.vip}
-                      onChange={(e) => setPricing({ ...pricing, vip: parseInt(e.target.value) || 0 })}
-                      className="w-full bg-zinc-900 border border-zinc-700 rounded-xl px-4 py-2.5 text-zinc-100 focus:outline-none focus:border-red-500 font-mono"
-                    />
+
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-6 bg-zinc-900/40 border border-red-950/80 p-4 rounded-2xl">
+                    <div>
+                      <label className="block text-xs font-semibold text-zinc-300 mb-1 flex items-center gap-1.5">
+                        <span className="w-2 h-2 rounded-full bg-red-500"></span>
+                        <span>API Key Per Month (₦/mo)</span>
+                      </label>
+                      <input 
+                        type="number" 
+                        value={pricing.apiKeyMonthly ?? 20000}
+                        onChange={(e) => setPricing({ ...pricing, apiKeyMonthly: parseInt(e.target.value) || 0 })}
+                        className="w-full bg-zinc-950 border border-red-950 rounded-xl px-4 py-2.5 text-red-400 text-sm font-mono focus:outline-none focus:border-red-500 font-bold"
+                      />
+                      <p className="text-[11px] text-zinc-500 mt-1">Monthly fee for developer API access</p>
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-semibold text-zinc-300 mb-1 flex items-center gap-1.5">
+                        <span className="w-2 h-2 rounded-full bg-amber-500"></span>
+                        <span>API Key Per Year (₦/yr)</span>
+                      </label>
+                      <input 
+                        type="number" 
+                        value={pricing.apiKeyYearly ?? 200000}
+                        onChange={(e) => setPricing({ ...pricing, apiKeyYearly: parseInt(e.target.value) || 0 })}
+                        className="w-full bg-zinc-950 border border-red-950 rounded-xl px-4 py-2.5 text-amber-400 text-sm font-mono focus:outline-none focus:border-amber-500 font-bold"
+                      />
+                      <p className="text-[11px] text-zinc-500 mt-1">Annual fee for developer API access</p>
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-semibold text-zinc-300 mb-1 flex items-center gap-1.5">
+                        <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
+                        <span>API Annual Discount (% OFF)</span>
+                      </label>
+                      <input 
+                        type="number" 
+                        value={pricing.apiKeyDiscount ?? 20}
+                        onChange={(e) => setPricing({ ...pricing, apiKeyDiscount: parseInt(e.target.value) || 0 })}
+                        className="w-full bg-zinc-950 border border-red-950 rounded-xl px-4 py-2.5 text-emerald-400 text-sm font-mono focus:outline-none focus:border-emerald-500 font-bold"
+                      />
+                      <p className="text-[11px] text-zinc-500 mt-1">Discount percentage shown to annual API key buyers</p>
+                    </div>
                   </div>
                 </div>
-                <div className="mt-6 flex justify-end">
+
+                <div className="flex items-center justify-end gap-3 pt-2">
                   <button 
                     type="submit"
                     disabled={savingPricing}
-                    className="px-5 py-2.5 bg-red-600 hover:bg-red-500 text-white font-semibold rounded-xl transition-colors disabled:opacity-50"
+                    className="px-6 py-3 bg-red-600 hover:bg-red-500 text-white font-bold text-xs uppercase tracking-wider rounded-xl transition-all shadow-lg shadow-red-950/50 flex items-center gap-2 cursor-pointer disabled:opacity-50"
                   >
-                    {savingPricing ? 'Saving...' : 'Save Pricing'}
+                    <Save size={16} />
+                    <span>{savingPricing ? 'SAVING PRICING...' : 'SAVE ALL PRICING MATRICES'}</span>
                   </button>
                 </div>
               </form>
@@ -1058,169 +1312,340 @@ export function AdminDashboard({ onClose }: AdminDashboardProps) {
                       <h3 className="text-xl font-extrabold text-zinc-100 flex items-center gap-2 tracking-wide">
                         API ROOM VAULT
                         <span className="text-xs px-2.5 py-0.5 rounded-full bg-red-950 text-red-400 border border-red-800/60 font-mono font-bold">
-                          10 GROQ + 10 COHERE SLOTS
+                          UP TO 100 GROQ & COHERE KEYS
                         </span>
                       </h3>
                       <p className="text-xs text-zinc-400 mt-0.5">
-                        Dedicated 1-key-per-box configuration room. Enter keys in individual slots below without messing up line breaks.
+                        Paste up to 100 Groq keys at once into the bulk vault below, or use the individual slot boxes.
                       </p>
                     </div>
                   </div>
 
                   <div className="flex items-center gap-2">
+                    <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-1 flex items-center gap-1">
+                      <button
+                        type="button"
+                        onClick={() => setKeyInputMode('bulk')}
+                        className={clsx(
+                          "px-3 py-1.5 rounded-lg text-xs font-mono font-bold transition-all cursor-pointer",
+                          keyInputMode === 'bulk' ? "bg-red-600 text-white shadow-md" : "text-zinc-400 hover:text-zinc-200"
+                        )}
+                      >
+                        ⚡ Bulk Paste (100 Keys)
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setKeyInputMode('slots')}
+                        className={clsx(
+                          "px-3 py-1.5 rounded-lg text-xs font-mono font-bold transition-all cursor-pointer",
+                          keyInputMode === 'slots' ? "bg-red-600 text-white shadow-md" : "text-zinc-400 hover:text-zinc-200"
+                        )}
+                      >
+                        📦 Slot Boxes (10 Slots)
+                      </button>
+                    </div>
+
                     <button
                       type="button"
                       onClick={() => setShowKeys(!showKeys)}
-                      className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-zinc-900 border border-zinc-800 text-xs font-mono font-bold text-zinc-300 hover:text-white hover:border-zinc-700 transition-colors shadow-sm"
+                      className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-zinc-900 border border-zinc-800 text-xs font-mono font-bold text-zinc-300 hover:text-white hover:border-zinc-700 transition-colors shadow-sm"
                     >
                       {showKeys ? <EyeOff size={14} /> : <Eye size={14} />}
-                      <span>{showKeys ? 'MASK ALL KEYS' : 'SHOW ALL KEYS'}</span>
+                      <span>{showKeys ? 'MASK' : 'SHOW'}</span>
                     </button>
                   </div>
                 </div>
 
                 {/* Status Bar */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 p-4 bg-zinc-900/60 border border-zinc-800 rounded-xl">
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 p-4 bg-zinc-900/60 border border-zinc-800 rounded-xl">
                   <div className="flex items-center justify-between px-3 py-2 bg-zinc-950/80 border border-red-950/60 rounded-lg">
                     <div className="flex items-center gap-2">
                       <span className="w-2.5 h-2.5 rounded-full bg-red-500 animate-pulse"></span>
-                      <span className="text-xs font-mono font-bold text-zinc-200">GROQ ENGINE POOL</span>
+                      <span className="text-xs font-mono font-bold text-zinc-200">GROQ POOL</span>
                     </div>
                     <span className="text-xs font-mono font-bold text-red-400">
-                      {groqKeysList.filter(k => k.trim()).length} / 10 ACTIVE SLOTS
+                      {parseRawKeyInput(bulkGroqText, groqKeysList).length} GROQ KEYS
                     </span>
                   </div>
 
                   <div className="flex items-center justify-between px-3 py-2 bg-zinc-950/80 border border-blue-950/60 rounded-lg">
                     <div className="flex items-center gap-2">
                       <span className="w-2.5 h-2.5 rounded-full bg-blue-500 animate-pulse"></span>
-                      <span className="text-xs font-mono font-bold text-zinc-200">COHERE ENGINE POOL</span>
+                      <span className="text-xs font-mono font-bold text-zinc-200">COHERE POOL</span>
                     </div>
                     <span className="text-xs font-mono font-bold text-blue-400">
-                      {cohereKeysList.filter(k => k.trim()).length} / 10 ACTIVE SLOTS
+                      {parseRawKeyInput(bulkCohereText, cohereKeysList).length} COHERE KEYS
+                    </span>
+                  </div>
+
+                  <div className="flex items-center justify-between px-3 py-2 bg-zinc-950/80 border border-amber-950/60 rounded-lg">
+                    <div className="flex items-center gap-2">
+                      <span className="w-2.5 h-2.5 rounded-full bg-amber-500 animate-pulse"></span>
+                      <span className="text-xs font-mono font-bold text-zinc-200">BAZAARLINK POOL</span>
+                    </div>
+                    <span className="text-xs font-mono font-bold text-amber-400">
+                      {parseRawKeyInput(bulkBazaarLinkText, bazaarLinkKeysList).length} BAZAARLINK KEYS
                     </span>
                   </div>
                 </div>
 
-                {/* GROQ KEYS ROOM - 10 SLOTS */}
-                <div className="space-y-3">
-                  <div className="flex items-center justify-between border-b border-zinc-800/80 pb-2">
-                    <h4 className="text-xs font-mono font-bold text-red-400 uppercase tracking-wider flex items-center gap-2">
-                      <Cpu size={14} />
-                      Groq API Keys Room (10 Dedicated Boxes)
-                    </h4>
-                    <button
-                      type="button"
-                      onClick={() => setGroqKeysList(Array(10).fill(''))}
-                      className="text-[11px] font-mono text-zinc-500 hover:text-red-400 transition-colors flex items-center gap-1"
-                    >
-                      <Trash2 size={12} />
-                      Wipe Groq Slots
-                    </button>
-                  </div>
+                {keyInputMode === 'bulk' ? (
+                  <div className="space-y-6">
+                    {/* BULK GROQ KEYS TEXTAREA */}
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between">
+                        <label className="text-xs font-mono font-bold text-red-400 uppercase tracking-wider flex items-center gap-2">
+                          <Cpu size={14} />
+                          <span>Bulk Groq API Keys Vault (Paste up to 100 Keys)</span>
+                        </label>
+                        <span className="text-[11px] text-zinc-400 font-mono">
+                          {parseRawKeyInput(bulkGroqText, []).length} keys detected (1 per line)
+                        </span>
+                      </div>
+                      <p className="text-[11px] text-zinc-400">
+                        Paste all your Groq API keys (`gsk_...`) here separated by newlines or commas. VOID AI will automatically rotate through all keys.
+                      </p>
+                      <textarea
+                        rows={8}
+                        value={bulkGroqText}
+                        onChange={(e) => setBulkGroqText(e.target.value)}
+                        placeholder="gsk_key1...\ngsk_key2...\ngsk_key3..."
+                        className={clsx(
+                          "w-full bg-zinc-950 border border-zinc-800 rounded-xl p-3 text-zinc-100 font-mono text-xs focus:border-red-500 outline-none leading-relaxed",
+                          !showKeys && "security-mask"
+                        )}
+                        style={!showKeys ? ({ WebkitTextSecurity: 'disc' } as React.CSSProperties) : undefined}
+                      />
+                    </div>
 
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                    {groqKeysList.map((keyVal, idx) => {
-                      const isFilled = keyVal.trim().length > 0;
-                      return (
-                        <div key={`groq-slot-${idx}`} className={clsx(
-                          "p-2.5 rounded-xl border transition-all flex flex-col gap-1.5",
-                          isFilled ? "bg-red-950/20 border-red-800/50" : "bg-zinc-900/40 border-zinc-800/80 hover:border-zinc-700"
-                        )}>
-                          <div className="flex items-center justify-between">
-                            <span className="text-[10px] font-mono font-bold text-zinc-400 flex items-center gap-1.5">
-                              <span className={clsx("w-2 h-2 rounded-full", isFilled ? "bg-red-500" : "bg-zinc-700")}></span>
-                              GROQ SLOT #{String(idx + 1).padStart(2, '0')}
-                            </span>
-                            <div className="flex items-center gap-2">
-                              <span className={clsx("text-[9px] font-mono font-bold px-1.5 py-0.5 rounded", isFilled ? "bg-red-950 text-red-300 border border-red-800/40" : "bg-zinc-800 text-zinc-500")}>
-                                {isFilled ? 'ACTIVE' : 'EMPTY'}
-                              </span>
-                              {isFilled && (
-                                <button
-                                  type="button"
-                                  onClick={() => updateGroqKeySlot(idx, '')}
-                                  className="text-zinc-500 hover:text-red-400 transition-colors"
-                                  title="Clear slot"
-                                >
-                                  <X size={12} />
-                                </button>
-                              )}
+                    {/* BULK COHERE KEYS TEXTAREA */}
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between">
+                        <label className="text-xs font-mono font-bold text-blue-400 uppercase tracking-wider flex items-center gap-2">
+                          <Cpu size={14} />
+                          <span>Bulk Cohere API Keys Vault</span>
+                        </label>
+                        <span className="text-[11px] text-zinc-400 font-mono">
+                          {parseRawKeyInput(bulkCohereText, []).length} keys detected
+                        </span>
+                      </div>
+                      <textarea
+                        rows={4}
+                        value={bulkCohereText}
+                        onChange={(e) => setBulkCohereText(e.target.value)}
+                        placeholder="cohere_key1...\ncohere_key2..."
+                        className="w-full bg-zinc-950 border border-zinc-800 rounded-xl p-3 text-zinc-100 font-mono text-xs focus:border-blue-500 outline-none leading-relaxed"
+                        style={!showKeys ? ({ WebkitTextSecurity: 'disc' } as React.CSSProperties) : undefined}
+                      />
+                    </div>
+
+                    {/* BULK BAZAARLINK KEYS TEXTAREA */}
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between">
+                        <label className="text-xs font-mono font-bold text-amber-400 uppercase tracking-wider flex items-center gap-2">
+                          <Cpu size={14} />
+                          <span>Bulk BazaarLink API Keys Vault (Paste up to 100 Keys)</span>
+                        </label>
+                        <span className="text-[11px] text-zinc-400 font-mono">
+                          {parseRawKeyInput(bulkBazaarLinkText, []).length} keys detected
+                        </span>
+                      </div>
+                      <p className="text-[11px] text-zinc-400">
+                        Paste your BazaarLink API keys here. VOID AI will automatically rotate through all active BazaarLink keys with load balancing.
+                      </p>
+                      <textarea
+                        rows={4}
+                        value={bulkBazaarLinkText}
+                        onChange={(e) => setBulkBazaarLinkText(e.target.value)}
+                        placeholder="bazaarlink_key1...\nbazaarlink_key2..."
+                        className="w-full bg-zinc-950 border border-zinc-800 rounded-xl p-3 text-zinc-100 font-mono text-xs focus:border-amber-500 outline-none leading-relaxed"
+                        style={!showKeys ? ({ WebkitTextSecurity: 'disc' } as React.CSSProperties) : undefined}
+                      />
+                    </div>
+                  </div>
+                ) : (
+                  <div className="space-y-6">
+                    {/* GROQ KEYS ROOM - 10 SLOTS */}
+                    <div className="space-y-3">
+                      <div className="flex items-center justify-between border-b border-zinc-800/80 pb-2">
+                        <h4 className="text-xs font-mono font-bold text-red-400 uppercase tracking-wider flex items-center gap-2">
+                          <Cpu size={14} />
+                          Groq API Keys Room (10 Dedicated Boxes)
+                        </h4>
+                        <button
+                          type="button"
+                          onClick={() => setGroqKeysList(Array(10).fill(''))}
+                          className="text-[11px] font-mono text-zinc-500 hover:text-red-400 transition-colors flex items-center gap-1 cursor-pointer"
+                        >
+                          <Trash2 size={12} />
+                          Wipe Groq Slots
+                        </button>
+                      </div>
+
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                        {groqKeysList.map((keyVal, idx) => {
+                          const isFilled = keyVal.trim().length > 0;
+                          return (
+                            <div key={`groq-slot-${idx}`} className={clsx(
+                              "p-2.5 rounded-xl border transition-all flex flex-col gap-1.5",
+                              isFilled ? "bg-red-950/20 border-red-800/50" : "bg-zinc-900/40 border-zinc-800/80 hover:border-zinc-700"
+                            )}>
+                              <div className="flex items-center justify-between">
+                                <span className="text-[10px] font-mono font-bold text-zinc-400 flex items-center gap-1.5">
+                                  <span className={clsx("w-2 h-2 rounded-full", isFilled ? "bg-red-500" : "bg-zinc-700")}></span>
+                                  GROQ SLOT #{String(idx + 1).padStart(2, '0')}
+                                </span>
+                                <div className="flex items-center gap-2">
+                                  <span className={clsx("text-[9px] font-mono font-bold px-1.5 py-0.5 rounded", isFilled ? "bg-red-950 text-red-300 border border-red-800/40" : "bg-zinc-800 text-zinc-500")}>
+                                    {isFilled ? 'ACTIVE' : 'EMPTY'}
+                                  </span>
+                                  {isFilled && (
+                                    <button
+                                      type="button"
+                                      onClick={() => updateGroqKeySlot(idx, '')}
+                                      className="text-zinc-500 hover:text-red-400 transition-colors"
+                                      title="Clear slot"
+                                    >
+                                      <X size={12} />
+                                    </button>
+                                  )}
+                                </div>
+                              </div>
+
+                              <input
+                                type={showKeys ? 'text' : 'password'}
+                                value={keyVal}
+                                onChange={(e) => updateGroqKeySlot(idx, e.target.value)}
+                                placeholder={`Enter Groq API Key ${idx + 1} (gsk_...)`}
+                                className="w-full bg-zinc-950 border border-zinc-800 focus:border-red-500 rounded-lg px-3 py-2 text-zinc-100 font-mono text-xs focus:outline-none transition-colors"
+                              />
                             </div>
-                          </div>
+                          );
+                        })}
+                      </div>
+                    </div>
 
-                          <input
-                            type={showKeys ? 'text' : 'password'}
-                            value={keyVal}
-                            onChange={(e) => updateGroqKeySlot(idx, e.target.value)}
-                            placeholder={`Enter Groq API Key ${idx + 1} (gsk_...)`}
-                            className="w-full bg-zinc-950 border border-zinc-800 focus:border-red-500 rounded-lg px-3 py-2 text-zinc-100 font-mono text-xs focus:outline-none transition-colors"
-                          />
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
+                    {/* COHERE KEYS ROOM - 10 SLOTS */}
+                    <div className="space-y-3 pt-4">
+                      <div className="flex items-center justify-between border-b border-zinc-800/80 pb-2">
+                        <h4 className="text-xs font-mono font-bold text-blue-400 uppercase tracking-wider flex items-center gap-2">
+                          <Cpu size={14} />
+                          Cohere API Keys Room (10 Dedicated Boxes)
+                        </h4>
+                        <button
+                          type="button"
+                          onClick={() => setCohereKeysList(Array(10).fill(''))}
+                          className="text-[11px] font-mono text-zinc-500 hover:text-blue-400 transition-colors flex items-center gap-1 cursor-pointer"
+                        >
+                          <Trash2 size={12} />
+                          Wipe Cohere Slots
+                        </button>
+                      </div>
 
-                {/* COHERE KEYS ROOM - 10 SLOTS */}
-                <div className="space-y-3 pt-4">
-                  <div className="flex items-center justify-between border-b border-zinc-800/80 pb-2">
-                    <h4 className="text-xs font-mono font-bold text-blue-400 uppercase tracking-wider flex items-center gap-2">
-                      <Cpu size={14} />
-                      Cohere API Keys Room (10 Dedicated Boxes)
-                    </h4>
-                    <button
-                      type="button"
-                      onClick={() => setCohereKeysList(Array(10).fill(''))}
-                      className="text-[11px] font-mono text-zinc-500 hover:text-blue-400 transition-colors flex items-center gap-1"
-                    >
-                      <Trash2 size={12} />
-                      Wipe Cohere Slots
-                    </button>
-                  </div>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                        {cohereKeysList.map((keyVal, idx) => {
+                          const isFilled = keyVal.trim().length > 0;
+                          return (
+                            <div key={`cohere-slot-${idx}`} className={clsx(
+                              "p-2.5 rounded-xl border transition-all flex flex-col gap-1.5",
+                              isFilled ? "bg-blue-950/20 border-blue-800/50" : "bg-zinc-900/40 border-zinc-800/80 hover:border-zinc-700"
+                            )}>
+                              <div className="flex items-center justify-between">
+                                <span className="text-[10px] font-mono font-bold text-zinc-400 flex items-center gap-1.5">
+                                  <span className={clsx("w-2 h-2 rounded-full", isFilled ? "bg-blue-500" : "bg-zinc-700")}></span>
+                                  COHERE SLOT #{String(idx + 1).padStart(2, '0')}
+                                </span>
+                                <div className="flex items-center gap-2">
+                                  <span className={clsx("text-[9px] font-mono font-bold px-1.5 py-0.5 rounded", isFilled ? "bg-blue-950 text-blue-300 border border-blue-800/40" : "bg-zinc-800 text-zinc-500")}>
+                                    {isFilled ? 'ACTIVE' : 'EMPTY'}
+                                  </span>
+                                  {isFilled && (
+                                    <button
+                                      type="button"
+                                      onClick={() => updateCohereKeySlot(idx, '')}
+                                      className="text-zinc-500 hover:text-blue-400 transition-colors"
+                                      title="Clear slot"
+                                    >
+                                      <X size={12} />
+                                    </button>
+                                  )}
+                                </div>
+                              </div>
 
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                    {cohereKeysList.map((keyVal, idx) => {
-                      const isFilled = keyVal.trim().length > 0;
-                      return (
-                        <div key={`cohere-slot-${idx}`} className={clsx(
-                          "p-2.5 rounded-xl border transition-all flex flex-col gap-1.5",
-                          isFilled ? "bg-blue-950/20 border-blue-800/50" : "bg-zinc-900/40 border-zinc-800/80 hover:border-zinc-700"
-                        )}>
-                          <div className="flex items-center justify-between">
-                            <span className="text-[10px] font-mono font-bold text-zinc-400 flex items-center gap-1.5">
-                              <span className={clsx("w-2 h-2 rounded-full", isFilled ? "bg-blue-500" : "bg-zinc-700")}></span>
-                              COHERE SLOT #{String(idx + 1).padStart(2, '0')}
-                            </span>
-                            <div className="flex items-center gap-2">
-                              <span className={clsx("text-[9px] font-mono font-bold px-1.5 py-0.5 rounded", isFilled ? "bg-blue-950 text-blue-300 border border-blue-800/40" : "bg-zinc-800 text-zinc-500")}>
-                                {isFilled ? 'ACTIVE' : 'EMPTY'}
-                              </span>
-                              {isFilled && (
-                                <button
-                                  type="button"
-                                  onClick={() => updateCohereKeySlot(idx, '')}
-                                  className="text-zinc-500 hover:text-blue-400 transition-colors"
-                                  title="Clear slot"
-                                >
-                                  <X size={12} />
-                                </button>
-                              )}
+                              <input
+                                type={showKeys ? 'text' : 'password'}
+                                value={keyVal}
+                                onChange={(e) => updateCohereKeySlot(idx, e.target.value)}
+                                placeholder={`Enter Cohere API Key ${idx + 1} (cohere_...)`}
+                                className="w-full bg-zinc-950 border border-zinc-800 focus:border-blue-500 rounded-lg px-3 py-2 text-zinc-100 font-mono text-xs focus:outline-none transition-colors"
+                              />
                             </div>
-                          </div>
+                          );
+                        })}
+                      </div>
+                    </div>
 
-                          <input
-                            type={showKeys ? 'text' : 'password'}
-                            value={keyVal}
-                            onChange={(e) => updateCohereKeySlot(idx, e.target.value)}
-                            placeholder={`Enter Cohere API Key ${idx + 1} (cohere_...)`}
-                            className="w-full bg-zinc-950 border border-zinc-800 focus:border-blue-500 rounded-lg px-3 py-2 text-zinc-100 font-mono text-xs focus:outline-none transition-colors"
-                          />
-                        </div>
-                      );
-                    })}
+                    {/* BAZAARLINK KEYS ROOM - 10 SLOTS */}
+                    <div className="space-y-3 pt-4">
+                      <div className="flex items-center justify-between border-b border-zinc-800/80 pb-2">
+                        <h4 className="text-xs font-mono font-bold text-amber-400 uppercase tracking-wider flex items-center gap-2">
+                          <Cpu size={14} />
+                          BazaarLink API Keys Room (10 Dedicated Boxes)
+                        </h4>
+                        <button
+                          type="button"
+                          onClick={() => setBazaarLinkKeysList(Array(10).fill(''))}
+                          className="text-[11px] font-mono text-zinc-500 hover:text-amber-400 transition-colors flex items-center gap-1 cursor-pointer"
+                        >
+                          <Trash2 size={12} />
+                          Wipe BazaarLink Slots
+                        </button>
+                      </div>
+
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                        {bazaarLinkKeysList.map((keyVal, idx) => {
+                          const isFilled = keyVal.trim().length > 0;
+                          return (
+                            <div key={`bazaarlink-slot-${idx}`} className={clsx(
+                              "p-2.5 rounded-xl border transition-all flex flex-col gap-1.5",
+                              isFilled ? "bg-amber-950/20 border-amber-800/50" : "bg-zinc-900/40 border-zinc-800/80 hover:border-zinc-700"
+                            )}>
+                              <div className="flex items-center justify-between">
+                                <span className="text-[10px] font-mono font-bold text-zinc-400 flex items-center gap-1.5">
+                                  <span className={clsx("w-2 h-2 rounded-full", isFilled ? "bg-amber-500" : "bg-zinc-700")}></span>
+                                  BAZAARLINK SLOT #{String(idx + 1).padStart(2, '0')}
+                                </span>
+                                <div className="flex items-center gap-2">
+                                  <span className={clsx("text-[9px] font-mono font-bold px-1.5 py-0.5 rounded", isFilled ? "bg-amber-950 text-amber-300 border border-amber-800/40" : "bg-zinc-800 text-zinc-500")}>
+                                    {isFilled ? 'ACTIVE' : 'EMPTY'}
+                                  </span>
+                                  {isFilled && (
+                                    <button
+                                      type="button"
+                                      onClick={() => updateBazaarLinkKeySlot(idx, '')}
+                                      className="text-zinc-500 hover:text-amber-400 transition-colors"
+                                      title="Clear slot"
+                                    >
+                                      <X size={12} />
+                                    </button>
+                                  )}
+                                </div>
+                              </div>
+
+                              <input
+                                type={showKeys ? 'text' : 'password'}
+                                value={keyVal}
+                                onChange={(e) => updateBazaarLinkKeySlot(idx, e.target.value)}
+                                placeholder={`Enter BazaarLink API Key ${idx + 1}`}
+                                className="w-full bg-zinc-950 border border-zinc-800 focus:border-amber-500 rounded-lg px-3 py-2 text-zinc-100 font-mono text-xs focus:outline-none transition-colors"
+                              />
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
                   </div>
-                </div>
+                )}
 
                 {keySaveSuccess && (
                   <div className="p-3 bg-emerald-950/50 border border-emerald-800/60 rounded-xl text-emerald-400 text-xs flex items-center gap-2 font-semibold">
@@ -1240,7 +1665,7 @@ export function AdminDashboard({ onClose }: AdminDashboardProps) {
                     className="px-6 py-2.5 bg-red-600 hover:bg-red-500 text-white text-xs font-mono font-bold rounded-xl transition-all shadow-lg shadow-red-950/50 flex items-center gap-2 disabled:opacity-50"
                   >
                     <Save size={14} />
-                    <span>{savingKey ? 'SAVING VAULT...' : 'SAVE ALL 20 KEY SLOTS'}</span>
+                    <span>{savingKey ? 'SAVING VAULT...' : 'SAVE ALL KEY VAULTS'}</span>
                   </button>
                 </div>
               </form>

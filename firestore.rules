@@ -50,6 +50,10 @@ service cloud.firestore {
     match /broadcasts/{broadcastId} {
       allow read, write: if true;
     }
+
+    match /user_api_keys/{keyId} {
+      allow read, write: if true;
+    }
   }
 }
 

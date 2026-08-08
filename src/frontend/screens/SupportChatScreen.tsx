@@ -115,12 +115,12 @@ export function SupportChatScreen({ userId, userName, onClose, isAdminView = fal
             </p>
           </div>
         ) : (
-          messages.map(msg => {
+          messages.map((msg, idx) => {
             const isMe = (isAdminView && msg.isAdmin) || (!isAdminView && !msg.isAdmin);
             const messageTime = msg.createdAt ? new Date(msg.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '';
             
             return (
-              <div key={msg.id} className={twMerge(clsx("flex w-full gap-2.5", isMe ? "justify-end" : "justify-start"))}>
+              <div key={msg.id ? msg.id : `supp-msg-${idx}`} className={twMerge(clsx("flex w-full gap-2.5", isMe ? "justify-end" : "justify-start"))}>
                 {!isMe && (
                   <div className={clsx(
                     "w-7 h-7 rounded-full flex items-center justify-center shrink-0 mt-0.5 text-xs font-bold border",

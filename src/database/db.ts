@@ -1,6 +1,6 @@
 import { collection, doc, setDoc, getDocs, query, where, orderBy, deleteDoc, serverTimestamp, getDoc, onSnapshot } from "firebase/firestore";
 import { db } from "../config/firebase";
-import { Chat, Message, UserProfile, SupportChat, SupportMessage, PricingSettings, BroadcastMessage, UserTier } from "../models/types";
+import { Chat, Message, UserProfile, SupportChat, SupportMessage, PricingSettings, BroadcastMessage, UserTier, UserApiKey } from "../models/types";
 import { v4 as uuidv4 } from "uuid";
 
 export async function getUserProfile(uid: string, email: string | null, displayName: string | null): Promise<UserProfile> {
@@ -275,14 +275,44 @@ export async function markSupportChatRead(userId: string, isAdmin: boolean) {
 export async function getPricingSettings(): Promise<PricingSettings> {
   const docRef = doc(db, 'settings', 'pricing');
   const snap = await getDoc(docRef);
-  if (snap.exists()) {
-    return snap.data() as PricingSettings;
-  }
   const defaultPricing: PricingSettings = {
-    premium: 5000,
     pro: 7000,
-    vip: 10000
+    proYearly: 70000,
+    proDiscount: 16,
+
+    premium: 15000,
+    premiumYearly: 150000,
+    premiumDiscount: 16,
+
+    vip: 30000,
+    vipYearly: 300000,
+    vipDiscount: 16,
+
+    apiKeyMonthly: 20000,
+    apiKeyYearly: 200000,
+    apiKeyDiscount: 20
   };
+
+  if (snap.exists()) {
+    const data = snap.data();
+    return {
+      pro: typeof data.pro === 'number' ? data.pro : defaultPricing.pro,
+      proYearly: typeof data.proYearly === 'number' ? data.proYearly : (data.pro ? data.pro * 10 : defaultPricing.proYearly),
+      proDiscount: typeof data.proDiscount === 'number' ? data.proDiscount : defaultPricing.proDiscount,
+
+      premium: typeof data.premium === 'number' ? data.premium : defaultPricing.premium,
+      premiumYearly: typeof data.premiumYearly === 'number' ? data.premiumYearly : (data.premium ? data.premium * 10 : defaultPricing.premiumYearly),
+      premiumDiscount: typeof data.premiumDiscount === 'number' ? data.premiumDiscount : defaultPricing.premiumDiscount,
+
+      vip: typeof data.vip === 'number' ? data.vip : defaultPricing.vip,
+      vipYearly: typeof data.vipYearly === 'number' ? data.vipYearly : (data.vip ? data.vip * 10 : defaultPricing.vipYearly),
+      vipDiscount: typeof data.vipDiscount === 'number' ? data.vipDiscount : defaultPricing.vipDiscount,
+
+      apiKeyMonthly: typeof data.apiKeyMonthly === 'number' ? data.apiKeyMonthly : defaultPricing.apiKeyMonthly,
+      apiKeyYearly: typeof data.apiKeyYearly === 'number' ? data.apiKeyYearly : defaultPricing.apiKeyYearly,
+      apiKeyDiscount: typeof data.apiKeyDiscount === 'number' ? data.apiKeyDiscount : defaultPricing.apiKeyDiscount,
+    };
+  }
   await setDoc(docRef, defaultPricing);
   return defaultPricing;
 }
@@ -296,7 +326,39 @@ export function listenToPricingSettings(callback: (settings: PricingSettings) =>
   const docRef = doc(db, 'settings', 'pricing');
   return onSnapshot(docRef, (docSnap) => {
     if (docSnap.exists()) {
-      callback(docSnap.data() as PricingSettings);
+      const data = docSnap.data();
+      callback({
+        pro: typeof data.pro === 'number' ? data.pro : 7000,
+        proYearly: typeof data.proYearly === 'number' ? data.proYearly : 70000,
+        proDiscount: typeof data.proDiscount === 'number' ? data.proDiscount : 16,
+
+        premium: typeof data.premium === 'number' ? data.premium : 15000,
+        premiumYearly: typeof data.premiumYearly === 'number' ? data.premiumYearly : 150000,
+        premiumDiscount: typeof data.premiumDiscount === 'number' ? data.premiumDiscount : 16,
+
+        vip: typeof data.vip === 'number' ? data.vip : 30000,
+        vipYearly: typeof data.vipYearly === 'number' ? data.vipYearly : 300000,
+        vipDiscount: typeof data.vipDiscount === 'number' ? data.vipDiscount : 16,
+
+        apiKeyMonthly: typeof data.apiKeyMonthly === 'number' ? data.apiKeyMonthly : 20000,
+        apiKeyYearly: typeof data.apiKeyYearly === 'number' ? data.apiKeyYearly : 200000,
+        apiKeyDiscount: typeof data.apiKeyDiscount === 'number' ? data.apiKeyDiscount : 20,
+      });
+    } else {
+      callback({
+        pro: 7000,
+        proYearly: 70000,
+        proDiscount: 16,
+        premium: 15000,
+        premiumYearly: 150000,
+        premiumDiscount: 16,
+        vip: 30000,
+        vipYearly: 300000,
+        vipDiscount: 16,
+        apiKeyMonthly: 20000,
+        apiKeyYearly: 200000,
+        apiKeyDiscount: 20
+      });
     }
   });
 }
@@ -381,14 +443,21 @@ export async function getSystemAPIKeys(): Promise<SystemAPIKeys> {
       cohereApiKeys = [data.cohereApiKey.trim()];
     }
 
+    let bazaarLinkApiKeys: string[] = Array.isArray(data.bazaarLinkApiKeys) ? data.bazaarLinkApiKeys.filter(k => typeof k === 'string' && k.trim()) : [];
+    if (bazaarLinkApiKeys.length === 0 && data.bazaarLinkApiKey && data.bazaarLinkApiKey.trim()) {
+      bazaarLinkApiKeys = [data.bazaarLinkApiKey.trim()];
+    }
+
     return {
       groqApiKey: data.groqApiKey || (groqApiKeys[0] || ''),
       groqApiKeys,
       cohereApiKey: data.cohereApiKey || (cohereApiKeys[0] || ''),
-      cohereApiKeys
+      cohereApiKeys,
+      bazaarLinkApiKey: data.bazaarLinkApiKey || (bazaarLinkApiKeys[0] || ''),
+      bazaarLinkApiKeys
     };
   }
-  return { groqApiKey: '', groqApiKeys: [], cohereApiKey: '', cohereApiKeys: [] };
+  return { groqApiKey: '', groqApiKeys: [], cohereApiKey: '', cohereApiKeys: [], bazaarLinkApiKey: '', bazaarLinkApiKeys: [] };
 }
 
 export async function updateSystemAPIKeys(keys: SystemAPIKeys): Promise<void> {
@@ -426,5 +495,69 @@ export function listenToBroadcasts(callback: (broadcasts: BroadcastMessage[]) =>
 
 export async function deleteBroadcast(id: string): Promise<void> {
   await deleteDoc(doc(db, 'broadcasts', id));
+}
+
+// User API Keys (nvn_...)
+export async function getUserApiKeys(userId: string): Promise<UserApiKey[]> {
+  try {
+    const q = query(collection(db, "user_api_keys"), where("userId", "==", userId));
+    const snapshot = await getDocs(q);
+    const keys = snapshot.docs.map(doc => doc.data() as UserApiKey);
+    return keys.sort((a, b) => b.createdAt - a.createdAt);
+  } catch (err) {
+    console.error("Error fetching user API keys:", err);
+    return [];
+  }
+}
+
+export async function generateUserApiKey(userId: string, name: string = "Default Key"): Promise<UserApiKey> {
+  const id = uuidv4();
+  const randomHex = Array.from({ length: 32 }, () => Math.floor(Math.random() * 16).toString(16)).join('');
+  const keyString = `nvn_live_${randomHex}`;
+  const now = Date.now();
+
+  const apiKeyData: UserApiKey = {
+    id,
+    userId,
+    name: name.trim() || "API Key",
+    key: keyString,
+    createdAt: now,
+  };
+
+  await setDoc(doc(db, "user_api_keys", id), apiKeyData);
+  return apiKeyData;
+}
+
+export async function deleteUserApiKey(keyId: string): Promise<void> {
+  await deleteDoc(doc(db, "user_api_keys", keyId));
+}
+
+export async function validateUserApiKey(apiKey: string): Promise<{ userId: string; tier: UserTier; isBanned: boolean } | null> {
+  try {
+    if (!apiKey || !apiKey.startsWith("nvn_")) return null;
+    const q = query(collection(db, "user_api_keys"), where("key", "==", apiKey.trim()));
+    const snapshot = await getDocs(q);
+    if (snapshot.empty) return null;
+
+    const keyData = snapshot.docs[0].data() as UserApiKey;
+    
+    // Update lastUsedAt asynchronously
+    setDoc(doc(db, "user_api_keys", keyData.id), { lastUsedAt: Date.now() }, { merge: true }).catch(() => {});
+
+    // Retrieve user profile
+    const userRef = doc(db, "users", keyData.userId);
+    const userSnap = await getDoc(userRef);
+    if (!userSnap.exists()) return null;
+
+    const uData = userSnap.data();
+    return {
+      userId: keyData.userId,
+      tier: (uData.tier as UserTier) || 'free',
+      isBanned: !!uData.isBanned
+    };
+  } catch (err) {
+    console.error("Error validating API key:", err);
+    return null;
+  }
 }
 

@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Plus, MessageSquare, Trash2, Edit2, Settings, LogOut, Shield, Crown, Mail, Search, Sparkles, X, Send, Mic, Terminal, Lock, Cpu, Brain, Flame } from 'lucide-react';
+import { Plus, MessageSquare, Trash2, Edit2, Settings, LogOut, Shield, Crown, Mail, Search, Sparkles, X, Send, Mic, Terminal, Lock, Cpu, Brain, Flame, Key } from 'lucide-react';
 import { Chat } from '../../models/types';
 import { clsx } from 'clsx';
 
@@ -17,6 +17,7 @@ interface SidebarProps {
   onOpenAdmin: () => void;
   onOpenCampaignGenerator: () => void;
   onOpenLiveVoice?: () => void;
+  onOpenApiKeys?: () => void;
   onLogout: () => void;
   isOpen: boolean;
   isAdmin: boolean;
@@ -37,6 +38,7 @@ export function Sidebar({
   onOpenAdmin,
   onOpenCampaignGenerator,
   onOpenLiveVoice,
+  onOpenApiKeys,
   onLogout,
   isOpen,
   isAdmin,
@@ -96,6 +98,15 @@ export function Sidebar({
             >
               <Mic size={14} className="text-red-500" />
               <span>Live Voice Call</span>
+            </button>
+          )}
+          {onOpenApiKeys && (
+            <button
+              onClick={onOpenApiKeys}
+              className="w-full flex items-center gap-2.5 px-3 py-1.5 rounded-lg text-red-400 hover:bg-red-950/30 hover:text-red-300 transition-colors cursor-pointer text-left font-semibold"
+            >
+              <Key size={14} className="text-red-500" />
+              <span>Developer API Keys</span>
             </button>
           )}
           <button

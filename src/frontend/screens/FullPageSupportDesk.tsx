@@ -282,7 +282,7 @@ export function FullPageSupportDesk({
                     No support tickets found
                   </div>
                 ) : (
-                  filteredSupportChats.map(chat => {
+                  filteredSupportChats.map((chat, idx) => {
                     const uProfile = allUsersMap[chat.userId];
                     const isSelected = selectedChatUserId === chat.userId;
                     const hasUnread = chat.unreadAdmin > 0;
@@ -292,7 +292,7 @@ export function FullPageSupportDesk({
 
                     return (
                       <div
-                        key={chat.userId}
+                        key={chat.userId ? chat.userId : chat.id ? chat.id : `chat-desk-${idx}`}
                         onClick={() => {
                           setSelectedChatUserId(chat.userId);
                           setSelectedChatUserName(chat.userName);
