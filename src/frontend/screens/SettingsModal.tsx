@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { X, ArrowLeft, Key, Save, Server, Shield, Lock, Zap, Trash2 } from 'lucide-react';
+import { X, ArrowLeft, Key, Save, Server, Shield, Lock, Zap, Trash2, Bot, ExternalLink } from 'lucide-react';
 import { clsx } from 'clsx';
 
 interface SettingsModalProps {
@@ -63,6 +63,13 @@ export function SettingsModal({ onClose, isAdmin = false, onClearHistory }: Sett
               <div className="flex items-center justify-between">
                 <span className="text-zinc-500">Key Storage:</span>
                 <span className="text-emerald-400 font-bold">Server-Side Hardcoded</span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-zinc-500">Telegram Integration:</span>
+                <span className="text-sky-400 font-bold flex items-center gap-1">
+                  <span className="w-1.5 h-1.5 rounded-full bg-sky-400 animate-pulse" />
+                  Bot Active (868649...)
+                </span>
               </div>
               <div className="flex items-center justify-between">
                 <span className="text-zinc-500">Tier Brain Rules:</span>

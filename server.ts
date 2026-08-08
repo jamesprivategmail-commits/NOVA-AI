@@ -1,5 +1,6 @@
 import express from "express";
 import path from "path";
+import fs from "fs";
 import { createServer as createViteServer } from "vite";
 import Groq from "groq-sdk";
 import helmet from "helmet";
@@ -7,6 +8,7 @@ import rateLimit from "express-rate-limit";
 import dotenv from "dotenv";
 import { doc, getDoc, setDoc } from "firebase/firestore";
 import { db } from "./src/config/firebase.js";
+import { telegramBot } from "./src/telegram/bot.js";
 
 dotenv.config();
 
@@ -529,6 +531,133 @@ async function startServer() {
       res.write(`data: ${JSON.stringify({ text: `\n\n${errNotice}` })}\n\n`);
       res.write("data: [DONE]\n\n");
       res.end();
+    }
+  });
+
+  // Helper function for Telegram Bot AI responses
+  async function generateAiTextForTelegram(userPrompt: string, history: any[] = [], userId?: string): Promise<string> {
+    let fullText = "";
+    const mockRes = {
+      write: (data: string) => {
+        const parts = data.split("\n\n");
+        for (const part of parts) {
+          if (part.startsWith("data: ")) {
+            const raw = part.slice(6).trim();
+            if (raw && raw !== "[DONE]") {
+              try {
+                const parsed = JSON.parse(raw);
+                if (parsed.text) {
+                  fullText += parsed.text;
+                }
+              } catch (_) {}
+            }
+          }
+        }
+      }
+    };
+
+    const { groqKeys, cohereKeys } = await getSystemKeys();
+    const { userTier, brainSettings } = await fetchUserAndTierSettings(userId);
+    const maxTokens = (userTier === 'vip' ? brainSettings.vipMaxTokens
+      : userTier === 'premium' ? brainSettings.premiumMaxTokens
+      : userTier === 'pro' ? brainSettings.proMaxTokens
+      : brainSettings.freeMaxTokens) || 2048;
+
+    const masterPrompt = brainSettings.globalPrompt || "You are VOID AI, an elite AI assistant.";
+    const messages = [...history, { role: "user", text: userPrompt }];
+
+    let executed = false;
+    if (groqKeys.length > 0) {
+      try {
+        await executeGroqWithRotation(messages, masterPrompt, maxTokens, undefined, groqKeys, mockRes);
+        executed = true;
+      } catch (err) {
+        console.warn("[Telegram AI] Groq attempt failed, trying Cohere failover...", err);
+      }
+    }
+
+    if (!executed && cohereKeys.length > 0) {
+      try {
+        await executeCohereWithRotation(messages, masterPrompt, maxTokens, undefined, cohereKeys, mockRes);
+        executed = true;
+      } catch (err) {
+        console.error("[Telegram AI] Cohere failover also failed:", err);
+      }
+    }
+
+    return fullText || "⚡ **VOID AI Notice:** AI engine is currently processing high demand. Please resend your message in a moment.";
+  }
+
+  // Bind AI generator to Telegram Bot Service and start long polling
+  telegramBot.setAiGenerator(generateAiTextForTelegram);
+  telegramBot.start().catch(err => {
+    console.warn("[Telegram Bot] Initial startup error:", err);
+  });
+
+  // Serve VOID AI Logo Image for Telegram Bot
+  app.get("/void-logo.jpg", (req, res) => {
+    const logoPath = path.join(process.cwd(), "src", "assets", "images", "void_ai_logo_1786145082397.jpg");
+    if (fs.existsSync(logoPath)) {
+      res.header("Access-Control-Allow-Origin", "*");
+      res.sendFile(logoPath);
+    } else {
+      res.status(404).send("Image not found");
+    }
+  });
+
+  // Telegram Status Endpoint
+  app.get("/api/telegram/status", async (req, res) => {
+    const isConnected = telegramBot.isConnected();
+    const botInfo = telegramBot.getBotInfo();
+    const rawToken = telegramBot.getToken();
+    const maskedToken = rawToken.length > 10 ? `${rawToken.slice(0, 8)}...${rawToken.slice(-4)}` : "***";
+    
+    res.json({
+      connected: isConnected,
+      botInfo,
+      tokenMasked: maskedToken,
+      botUsername: botInfo?.username || null,
+      botName: botInfo?.first_name || null,
+      appUrl: process.env.APP_URL || "https://ai.studio"
+    });
+  });
+
+  // Update Telegram Token Endpoint
+  app.post("/api/telegram/update-token", async (req, res) => {
+    try {
+      const { token } = req.body;
+      if (!token || typeof token !== 'string' || !token.includes(":")) {
+        return res.status(400).json({ success: false, error: "Invalid Telegram bot token format" });
+      }
+      telegramBot.stop();
+      telegramBot.setToken(token.trim());
+      const check = await telegramBot.verifyToken();
+      if (!check.valid) {
+        return res.status(400).json({ success: false, error: check.error || "Failed to verify token with Telegram API" });
+      }
+      telegramBot.start();
+      res.json({ success: true, message: "Telegram bot token updated & reconnected!", botInfo: check.botInfo });
+    } catch (err: any) {
+      res.status(500).json({ success: false, error: err?.message || "Failed to update Telegram bot" });
+    }
+  });
+
+  // Test Telegram Message Endpoint
+  app.post("/api/telegram/send-test", async (req, res) => {
+    try {
+      const { chatId, message } = req.body;
+      if (!chatId) {
+        return res.status(400).json({ success: false, error: "chatId is required" });
+      }
+      const text = message || "⚡ Test message from VOID AI Platform! Telegram integration is ACTIVE and connected. 🚀";
+      const sent = await telegramBot.sendMessage(Number(chatId), text);
+      if (sent) {
+        res.json({ success: true, message: "Test message sent to Telegram successfully!" });
+      } else {
+        res.status(500).json({ success: false, error: "Failed to send message via Telegram API" });
+      }
+    } catch (err: any) {
+      res.status(500).json({ success: false, error: err?.message || "Error sending Telegram message" });
     }
   });
 

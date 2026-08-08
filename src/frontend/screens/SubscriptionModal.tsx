@@ -130,13 +130,34 @@ export function SubscriptionModal({ onClose, currentTier, onRequestUpgrade }: Su
         
         {/* Body */}
         <div className="p-4 sm:p-6 md:p-8 overflow-y-auto space-y-6">
-          <div className="text-center max-w-xl mx-auto space-y-2">
+          <div className="text-center max-w-2xl mx-auto space-y-3">
             <h3 className="text-xl sm:text-2xl md:text-3xl font-extrabold text-zinc-100 tracking-tight">
               Supercharge your VOID AI Experience
             </h3>
             <p className="text-xs sm:text-sm text-zinc-400 leading-relaxed">
               Upgrade your account to unlock higher message caps, maximum context outputs, faster processing speeds, and live direct admin support.
             </p>
+
+            {/* Top Up Banner */}
+            <div className="p-3.5 bg-sky-950/40 border border-sky-800/80 rounded-2xl flex flex-col sm:flex-row items-center justify-between gap-3 text-left">
+              <div className="space-y-0.5">
+                <span className="text-xs font-bold text-sky-300 flex items-center gap-1.5">
+                  <span className="w-2 h-2 rounded-full bg-sky-400 animate-pulse" />
+                  Need to Top Up Tokens or Renew Plan?
+                </span>
+                <p className="text-[11px] text-zinc-300">
+                  Contact admin directly on Telegram at <strong className="text-sky-300">@nova_tech_1</strong> to get granted instantly with <code className="text-sky-200 bg-sky-950 px-1 rounded">/grant</code>.
+                </p>
+              </div>
+              <a
+                href="https://t.me/nova_tech_1"
+                target="_blank"
+                rel="noreferrer"
+                className="px-4 py-2 bg-sky-600 hover:bg-sky-500 text-white font-bold text-xs rounded-xl transition-all shadow shrink-0 flex items-center gap-1.5 cursor-pointer"
+              >
+                <span>Message @nova_tech_1</span>
+              </a>
+            </div>
           </div>
           
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 items-stretch">

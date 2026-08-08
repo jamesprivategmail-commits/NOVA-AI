@@ -10,6 +10,7 @@ import { SupportChatScreen } from './SupportChatScreen';
 import { FullPageSupportDesk } from './FullPageSupportDesk';
 import { EmailCampaignGenerator } from '../components/EmailCampaignGenerator';
 import { LiveVoiceModal } from '../components/LiveVoiceModal';
+import { TelegramModal } from './TelegramModal';
 import { Chat, Message, UserProfile, BroadcastMessage } from '../../models/types';
 import {
   createChat,
@@ -58,6 +59,7 @@ export function ChatScreen({ userId }: ChatScreenProps) {
   const [showSubscription, setShowSubscription] = useState(false);
   const [showCampaignGenerator, setShowCampaignGenerator] = useState(false);
   const [showLiveVoice, setShowLiveVoice] = useState(false);
+  const [showTelegramModal, setShowTelegramModal] = useState(false);
 
   // Broadcasts state
   const [broadcasts, setBroadcasts] = useState<BroadcastMessage[]>([]);
@@ -473,6 +475,16 @@ export function ChatScreen({ userId }: ChatScreenProps) {
               <span className="hidden sm:inline">Clear History</span>
             </button>
 
+            {/* Telegram Bot Button */}
+            <button
+              onClick={() => setShowTelegramModal(true)}
+              className="px-2.5 sm:px-3 py-1.5 bg-black border border-sky-800/80 hover:border-sky-500 hover:bg-sky-950/40 rounded-xl text-[10px] sm:text-xs font-mono font-bold flex items-center gap-1 sm:gap-1.5 text-sky-400 hover:text-sky-200 transition-all cursor-pointer shrink-0 shadow-sm"
+              title="Open Telegram AI Bot Integration"
+            >
+              <Bot size={13} className="text-sky-400 animate-pulse" />
+              <span className="hidden sm:inline">Telegram Bot</span>
+            </button>
+
             {/* GOD MODE ACTIVE Badge */}
             <div className="px-2 sm:px-3 py-1.5 bg-black border border-red-600/80 hover:bg-red-950/40 rounded-xl text-[10px] sm:text-xs font-mono font-extrabold flex items-center gap-1 sm:gap-1.5 text-red-500 transition-colors cursor-pointer shrink-0 shadow-[0_0_15px_rgba(220,38,38,0.3)]">
               <span className="text-red-500 text-xs sm:text-sm font-bold">⛧</span>
@@ -653,6 +665,13 @@ export function ChatScreen({ userId }: ChatScreenProps) {
           isAdminView={profile.isAdmin || false}
           isSupportStaff={profile.isSupportStaff || false}
           onClose={() => setShowSupport(false)}
+        />
+      )}
+
+      {/* Telegram AI Bot Modal */}
+      {showTelegramModal && (
+        <TelegramModal
+          onClose={() => setShowTelegramModal(false)}
         />
       )}
 
