@@ -1,0 +1,25 @@
+{
+  "short_name": "VOID AI",
+  "name": "VOID AI - Demonic God Mode AI",
+  "description": "Demonic God Mode AI Assistant with Real-Time Intelligence.",
+  "icons": [
+    {
+      "src": "https://i.postimg.cc/8PVBFM75/file-00000000b40c82118dbaef206a9ebedc.png",
+      "type": "image/png",
+      "sizes": "192x192",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "https://i.postimg.cc/8PVBFM75/file-00000000b40c82118dbaef206a9ebedc.png",
+      "type": "image/png",
+      "sizes": "512x512",
+      "purpose": "any maskable"
+    }
+  ],
+  "start_url": "/",
+  "background_color": "#000000",
+  "theme_color": "#000000",
+  "display": "standalone",
+  "orientation": "portrait",
+  "scope": "/"
+}
