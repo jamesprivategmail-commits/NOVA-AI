@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { UserProfile, SupportChat, PricingSettings, AIBrainSettings, SystemAPIKeys, BroadcastMessage, UserTier } from '../../models/types';
-import { listenToAllUsers, updateUserTier, updateUserStatus, updateUserVerification, updateUserSupportStaff, listenToAllSupportChats, getPricingSettings, updatePricingSettings, getAIBrainSettings, updateAIBrainSettings, getSystemAPIKeys, updateSystemAPIKeys, sendBroadcastMessage, listenToBroadcasts, deleteBroadcast } from '../../database/db';
-import { X, ArrowLeft, Shield, Crown, User, RefreshCw, Ban, CheckCircle, BadgeCheck, MessageSquare, ChevronUp, ChevronDown, DollarSign, Cpu, Save, Sparkles, Key, Eye, EyeOff, Lock, ShieldCheck, Trash2, Radio, Megaphone, Maximize2, Search, Check } from 'lucide-react';
+import { UserProfile, SupportChat, PricingSettings, AIBrainSettings, SystemAPIKeys, BroadcastMessage, UserTier, WalletTransaction } from '../../models/types';
+import { listenToAllUsers, updateUserTier, updateUserStatus, updateUserVerification, updateUserSupportStaff, listenToAllSupportChats, getPricingSettings, updatePricingSettings, getAIBrainSettings, updateAIBrainSettings, getSystemAPIKeys, updateSystemAPIKeys, sendBroadcastMessage, listenToBroadcasts, deleteBroadcast, grantUserWalletFunds, withdrawUserWalletFunds, resetUserWalletBalance, listenToWalletTransactions } from '../../database/db';
+import { X, ArrowLeft, Shield, Crown, User, RefreshCw, Ban, CheckCircle, BadgeCheck, MessageSquare, ChevronUp, ChevronDown, DollarSign, Cpu, Save, Sparkles, Key, Eye, EyeOff, Lock, ShieldCheck, Trash2, Radio, Megaphone, Maximize2, Search, Check, Wallet, CreditCard, History, Plus } from 'lucide-react';
 import { clsx } from 'clsx';
 import { SupportChatScreen } from './SupportChatScreen';
 import { FullPageSupportDesk } from './FullPageSupportDesk';
@@ -14,7 +14,15 @@ export function AdminDashboard({ onClose }: AdminDashboardProps) {
   const [users, setUsers] = useState<UserProfile[]>([]);
   const [loading, setLoading] = useState(true);
   const [userSearchQuery, setUserSearchQuery] = useState('');
-  const [activeTab, setActiveTab] = useState<'users' | 'broadcast' | 'support' | 'pricing' | 'brain' | 'apikeys'>('users');
+  const [activeTab, setActiveTab] = useState<'users' | 'wallet' | 'broadcast' | 'support' | 'pricing' | 'brain' | 'apikeys'>('users');
+  
+  // Wallet Funding state
+  const [fundingUser, setFundingUser] = useState<UserProfile | null>(null);
+  const [walletUserSearch, setWalletUserSearch] = useState<string>('');
+  const [fundAmount, setFundAmount] = useState<number>(10000);
+  const [fundNote, setFundNote] = useState<string>('Admin Wallet Credit');
+  const [isGranting, setIsGranting] = useState<boolean>(false);
+  const [allWalletTxs, setAllWalletTxs] = useState<WalletTransaction[]>([]);
   
   const [supportChats, setSupportChats] = useState<SupportChat[]>([]);
   const [activeSupportUserId, setActiveSupportUserId] = useState<string | null>(null);
@@ -110,13 +118,73 @@ export function AdminDashboard({ onClose }: AdminDashboardProps) {
       bKeys.slice(0, 10).forEach((k, idx) => { bList[idx] = k; });
       setBazaarLinkKeysList(bList);
     });
+
+    const unsubTxs = listenToWalletTransactions(null, (list) => {
+      setAllWalletTxs(list);
+    });
     
     return () => {
       unsubUsers();
       unsubChats();
       unsubBroadcasts();
+      unsubTxs();
     };
   }, []);
+
+  const handleGrantFunds = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    if (!fundingUser) return;
+    if (!fundAmount || fundAmount === 0) {
+      alert("Please enter a valid non-zero funding amount.");
+      return;
+    }
+    setIsGranting(true);
+    try {
+      const res = await grantUserWalletFunds(fundingUser.uid, fundAmount, fundNote || (fundAmount >= 0 ? "Admin Wallet Grant" : "Admin Wallet Debit"));
+      alert(`🎉 Successfully ${fundAmount >= 0 ? 'credited' : 'debited'} ₦${Math.abs(fundAmount).toLocaleString()} for ${fundingUser.displayName || fundingUser.email || 'User'}!\n\nNew Wallet Balance: ₦${res.newBalance.toLocaleString()}`);
+      setFundingUser(null);
+    } catch (err: any) {
+      console.error("Failed to process wallet transaction:", err);
+      alert("Error processing wallet transaction: " + err.message);
+    } finally {
+      setIsGranting(false);
+    }
+  };
+
+  const handleWithdrawFunds = async (targetUser: UserProfile) => {
+    const currentBalance = targetUser.walletBalance || 0;
+    if (currentBalance <= 0) {
+      alert("User wallet balance is ₦0. Nothing to withdraw.");
+      return;
+    }
+    const inputAmount = prompt(`Withdraw / Debit funds for ${targetUser.displayName || targetUser.email || 'User'}:\nCurrent Wallet Balance: ₦${currentBalance.toLocaleString()}\n\nEnter amount to withdraw in Naira (or leave as full balance):`, currentBalance.toString());
+    if (inputAmount === null) return;
+    const withdrawAmt = Number(inputAmount);
+    if (isNaN(withdrawAmt) || withdrawAmt <= 0) {
+      alert("Invalid withdrawal amount.");
+      return;
+    }
+    if (confirm(`Are you sure you want to withdraw ₦${withdrawAmt.toLocaleString()} from ${targetUser.displayName || targetUser.email}?`)) {
+      try {
+        const res = await withdrawUserWalletFunds(targetUser.uid, withdrawAmt, "Admin Security Withdrawal");
+        alert(`Successfully withdrew ₦${withdrawAmt.toLocaleString()} from user's wallet.\n\nNew Balance: ₦${res.newBalance.toLocaleString()}`);
+      } catch (err: any) {
+        alert("Withdrawal failed: " + err.message);
+      }
+    }
+  };
+
+  const handleResetWallet = async (targetUser: UserProfile) => {
+    const currentBalance = targetUser.walletBalance || 0;
+    if (confirm(`⚠️ EMERGENCY SECURITY RESET / FREEZE:\nAre you sure you want to reset ${targetUser.displayName || targetUser.email || 'User'}'s wallet balance from ₦${currentBalance.toLocaleString()} to ₦0?\n\nThis will prevent unauthorized purchases and log a security reset transaction.`)) {
+      try {
+        await resetUserWalletBalance(targetUser.uid, "Emergency Security Reset / Anti-Hack Freeze");
+        alert(`Wallet balance for ${targetUser.displayName || targetUser.email} has been reset to ₦0.`);
+      } catch (err: any) {
+        alert("Reset failed: " + err.message);
+      }
+    }
+  };
 
   const handleToggleSupportStaff = async (uid: string, currentStaffStatus: boolean) => {
     try {
@@ -369,6 +437,19 @@ export function AdminDashboard({ onClose }: AdminDashboardProps) {
         </button>
 
         <button 
+          onClick={() => setActiveTab('wallet')}
+          className={clsx(
+            "px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 shrink-0 border",
+            activeTab === 'wallet' 
+              ? "bg-emerald-600 border-emerald-500 text-white shadow-md shadow-emerald-950/40" 
+              : "bg-[#161B22] border-[#30363D] text-slate-300 hover:text-white hover:bg-[#21262D]"
+          )}
+        >
+          <Wallet size={15} className="text-emerald-400" />
+          <span>Wallet & Finances (₦)</span>
+        </button>
+
+        <button 
           onClick={() => setActiveTab('broadcast')}
           className={clsx(
             "px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 shrink-0 border",
@@ -502,13 +583,14 @@ export function AdminDashboard({ onClose }: AdminDashboardProps) {
                         <th className="py-3.5 px-4 font-bold cursor-pointer hover:text-slate-200 transition-colors" onClick={() => handleSort('status')}>
                           <div className="flex items-center gap-1">Status & Tier {sortField === 'status' && (sortDirection === 'asc' ? <ChevronUp size={14} /> : <ChevronDown size={14} />)}</div>
                         </th>
+                        <th className="py-3.5 px-4 font-bold text-emerald-400">Wallet Balance</th>
                         <th className="py-3.5 px-4 font-bold text-right">Actions / Controls</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-[#30363D]/60">
                       {filteredUsers.length === 0 ? (
                         <tr>
-                          <td colSpan={5} className="py-12 text-center text-xs text-slate-500 font-mono">
+                          <td colSpan={6} className="py-12 text-center text-xs text-slate-500 font-mono">
                             No users matched "{userSearchQuery}"
                           </td>
                         </tr>
@@ -561,8 +643,42 @@ export function AdminDashboard({ onClose }: AdminDashboardProps) {
                             </span>
                           </div>
                         </td>
+                        <td className="py-3 px-2 font-mono font-bold text-emerald-400 text-xs">
+                          ₦{(user.walletBalance || 0).toLocaleString()}
+                        </td>
                         <td className="py-3 px-2 text-right">
                           <div className="flex items-center justify-end gap-1.5">
+                            <button
+                              onClick={() => {
+                                setFundingUser(user);
+                                setFundAmount(10000);
+                                setFundNote('Admin Wallet Credit');
+                              }}
+                              className="px-2.5 py-1 rounded-md text-xs font-mono font-bold transition-all bg-emerald-600/20 border border-emerald-500/40 text-emerald-300 hover:bg-emerald-600 hover:text-white flex items-center gap-1 cursor-pointer"
+                              title="Grant or credit funds to this user's wallet"
+                            >
+                              <Wallet size={12} />
+                              <span>₦{(user.walletBalance || 0).toLocaleString()}</span>
+                            </button>
+                            {(user.walletBalance || 0) > 0 && (
+                              <>
+                                <button
+                                  onClick={() => handleWithdrawFunds(user)}
+                                  className="px-2 py-1 rounded-md text-xs font-mono font-bold transition-all border bg-amber-950/80 border-amber-800 hover:border-amber-500 text-amber-400 flex items-center gap-1 shadow-sm cursor-pointer"
+                                  title="Withdraw / Debit funds from user's wallet"
+                                >
+                                  <span>Withdraw</span>
+                                </button>
+                                <button
+                                  onClick={() => handleResetWallet(user)}
+                                  className="px-2 py-1 rounded-md text-xs font-mono font-bold transition-all border bg-red-950/80 border-red-800 hover:border-red-500 text-red-400 flex items-center gap-1 shadow-sm cursor-pointer"
+                                  title="Emergency security reset / freeze (Set wallet to ₦0)"
+                                >
+                                  <span>Freeze/Reset</span>
+                                </button>
+                              </>
+                            )}
+                            <div className="w-px h-5 bg-zinc-800 mx-0.5"></div>
                             <button
                               onClick={() => handleUpdateTier(user.uid, 'free')}
                               className={clsx("px-2.5 py-1 rounded-md text-xs font-semibold transition-colors border", user.tier === 'free' ? "bg-zinc-800 border-zinc-700 text-zinc-200" : "bg-transparent border-zinc-800 text-zinc-500 hover:text-zinc-300 hover:border-zinc-700")}
@@ -647,7 +763,266 @@ export function AdminDashboard({ onClose }: AdminDashboardProps) {
               </div>
             </div>
           </div>
-        )) : activeTab === 'broadcast' ? (
+        )) : activeTab === 'wallet' ? (
+          <div className="space-y-6 max-w-7xl mx-auto font-mono">
+            
+            {/* Top Financial Stat Summary */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              <div className="p-5 bg-[#0D1117] border border-emerald-900/60 rounded-2xl space-y-2 shadow-xl">
+                <div className="flex items-center justify-between text-emerald-400">
+                  <span className="text-xs font-bold uppercase tracking-widest text-slate-400">TOTAL SYSTEM WALLET BALANCE</span>
+                  <Wallet size={20} />
+                </div>
+                <div className="text-3xl font-black text-emerald-400 font-mono">
+                  ₦{users.reduce((acc, u) => acc + (u.walletBalance || 0), 0).toLocaleString()}
+                </div>
+                <p className="text-[11px] text-slate-400">Combined unspent credit across all registered user accounts.</p>
+              </div>
+
+              <div className="p-5 bg-[#0D1117] border border-blue-900/60 rounded-2xl space-y-2 shadow-xl">
+                <div className="flex items-center justify-between text-blue-400">
+                  <span className="text-xs font-bold uppercase tracking-widest text-slate-400">ACTIVE FUNDED WALLETS</span>
+                  <CreditCard size={20} />
+                </div>
+                <div className="text-3xl font-black text-blue-400 font-mono">
+                  {users.filter(u => (u.walletBalance || 0) > 0).length} <span className="text-sm font-normal text-slate-400">/ {users.length} Users</span>
+                </div>
+                <p className="text-[11px] text-slate-400">User accounts currently holding ₦1 or more in credit.</p>
+              </div>
+
+              <div className="p-5 bg-[#0D1117] border border-amber-900/60 rounded-2xl space-y-2 shadow-xl">
+                <div className="flex items-center justify-between text-amber-400">
+                  <span className="text-xs font-bold uppercase tracking-widest text-slate-400">WALLET AUDIT LOGS</span>
+                  <History size={20} />
+                </div>
+                <div className="text-3xl font-black text-amber-400 font-mono">
+                  {allWalletTxs.length}
+                </div>
+                <p className="text-[11px] text-slate-400">Total recorded wallet top-ups, grants, & purchases.</p>
+              </div>
+            </div>
+
+            {/* Quick Wallet Grant Panel */}
+            <div className="p-6 bg-[#0D1117] border border-red-900/60 rounded-2xl space-y-5 shadow-[0_0_30px_rgba(220,38,38,0.15)] relative overflow-hidden">
+              <div className="absolute top-0 right-0 w-64 h-64 bg-red-600/5 rounded-full blur-3xl pointer-events-none" />
+              
+              <div className="flex items-center justify-between border-b border-[#30363D] pb-4">
+                <div className="flex items-center gap-3">
+                  <div className="p-2.5 bg-red-950 border border-red-800 text-red-400 rounded-xl shadow-[0_0_15px_rgba(220,38,38,0.3)]">
+                    <Wallet size={20} />
+                  </div>
+                  <div>
+                    <h3 className="text-base font-black text-white uppercase tracking-wider flex items-center gap-2 font-mono">
+                      <span>USER WALLET FUNDING PORTAL</span>
+                      <span className="text-[10px] px-2 py-0.5 rounded-full bg-red-950 text-red-400 border border-red-800">SYSTEM VIP</span>
+                    </h3>
+                    <p className="text-xs text-slate-400">
+                      Instantly search any user by email address to grant or debit wallet credits with live balance reflection.
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* User Search & Selection Box */}
+              <div className="space-y-3">
+                <div className="flex flex-col sm:flex-row gap-3">
+                  <div className="relative flex-1">
+                    <Search className="absolute left-3.5 top-3.5 text-slate-400" size={16} />
+                    <input
+                      type="text"
+                      placeholder="Search user by email or name..."
+                      value={walletUserSearch}
+                      onChange={(e) => setWalletUserSearch(e.target.value)}
+                      className="w-full pl-10 pr-4 py-3 bg-[#161B22] border border-[#30363D] focus:border-red-500 rounded-xl text-xs text-white placeholder-slate-500 outline-none transition-all shadow-inner font-mono"
+                    />
+                    {walletUserSearch && (
+                      <button
+                        type="button"
+                        onClick={() => setWalletUserSearch('')}
+                        className="absolute right-3 top-3 text-xs text-slate-500 hover:text-white"
+                      >
+                        Clear
+                      </button>
+                    )}
+                  </div>
+
+                  <div className="sm:w-80">
+                    <select
+                      value={fundingUser?.uid || ''}
+                      onChange={(e) => {
+                        const target = users.find(u => u.uid === e.target.value);
+                        setFundingUser(target || null);
+                      }}
+                      className="w-full bg-[#161B22] border border-[#30363D] focus:border-red-500 rounded-xl p-3 text-xs text-red-200 outline-none cursor-pointer font-mono font-bold"
+                    >
+                      <option value="">-- Choose User Account ({users.filter(u => !walletUserSearch || u.email?.toLowerCase().includes(walletUserSearch.toLowerCase()) || u.displayName?.toLowerCase().includes(walletUserSearch.toLowerCase())).length} found) --</option>
+                      {users
+                        .filter(u => !walletUserSearch || u.email?.toLowerCase().includes(walletUserSearch.toLowerCase()) || u.displayName?.toLowerCase().includes(walletUserSearch.toLowerCase()))
+                        .map(u => (
+                          <option key={u.uid} value={u.uid}>
+                            {u.email || u.displayName || 'User'} — Wallet: ₦{(u.walletBalance || 0).toLocaleString()}
+                          </option>
+                        ))}
+                    </select>
+                  </div>
+                </div>
+
+                {/* Selected User Info Card */}
+                {fundingUser && (
+                  <div className="p-3.5 bg-gradient-to-r from-red-950/60 via-zinc-900 to-black border border-red-900/60 rounded-xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 shadow-md">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-xl bg-red-900/40 border border-red-700/60 flex items-center justify-center text-red-300 font-bold uppercase font-mono">
+                        {(fundingUser.email || 'U')[0]}
+                      </div>
+                      <div>
+                        <div className="text-xs font-bold text-white flex items-center gap-2">
+                          <span>{fundingUser.displayName || 'User'}</span>
+                          <span className="text-[10px] text-red-400 font-mono bg-red-950 px-2 py-0.5 rounded border border-red-900">
+                            {fundingUser.email}
+                          </span>
+                        </div>
+                        <div className="text-[11px] text-slate-400 font-mono mt-0.5">
+                          UID: {fundingUser.uid} | Tier: <span className="text-amber-400 uppercase font-bold">{fundingUser.tier || 'free'}</span>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="text-right sm:text-right w-full sm:w-auto border-t sm:border-t-0 pt-2 sm:pt-0 border-zinc-800">
+                      <div className="text-[10px] text-slate-400 font-mono uppercase">Current Balance</div>
+                      <div className="text-lg font-black text-emerald-400 font-mono">
+                        ₦{(fundingUser.walletBalance || 0).toLocaleString()}
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              <form onSubmit={handleGrantFunds} className="space-y-4 pt-2">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  {/* Fund Amount */}
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-bold text-slate-300 uppercase tracking-wider block font-mono">AMOUNT TO CREDIT (₦)</label>
+                    <input
+                      type="number"
+                      required
+                      value={fundAmount}
+                      onChange={(e) => setFundAmount(Number(e.target.value))}
+                      placeholder="e.g. 10000"
+                      className="w-full bg-[#161B22] border border-[#30363D] focus:border-red-500 rounded-xl p-3 text-sm text-emerald-400 font-black outline-none font-mono shadow-inner"
+                    />
+                  </div>
+
+                  {/* Reason Note */}
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-bold text-slate-300 uppercase tracking-wider block font-mono">REASON / DEPOSIT NOTE</label>
+                    <input
+                      type="text"
+                      value={fundNote}
+                      onChange={(e) => setFundNote(e.target.value)}
+                      placeholder="e.g. Direct Bank Transfer Deposit"
+                      className="w-full bg-[#161B22] border border-[#30363D] focus:border-red-500 rounded-xl p-3 text-xs text-white outline-none"
+                    />
+                  </div>
+                </div>
+
+                {/* Quick Amount Chips */}
+                <div className="flex flex-wrap items-center gap-2 pt-1">
+                  <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider mr-2 font-mono">QUICK AMOUNTS:</span>
+                  {[5000, 10000, 20000, 50000, 100000, 200000, 300000].map((amt) => (
+                    <button
+                      key={amt}
+                      type="button"
+                      onClick={() => setFundAmount(amt)}
+                      className={clsx(
+                        "px-3 py-1.5 rounded-lg text-xs font-bold font-mono transition-all border cursor-pointer",
+                        fundAmount === amt 
+                          ? "bg-red-700 border-red-500 text-white shadow-[0_0_10px_rgba(220,38,38,0.4)]" 
+                          : "bg-[#161B22] border-[#30363D] text-slate-300 hover:text-white hover:border-red-700"
+                      )}
+                    >
+                      +₦{amt.toLocaleString()}
+                    </button>
+                  ))}
+                </div>
+
+                <div className="pt-2 flex justify-end">
+                  <button
+                    type="submit"
+                    disabled={!fundingUser || isGranting}
+                    className={clsx(
+                      "px-6 py-3 rounded-xl text-xs font-bold uppercase tracking-wider text-white transition-all shadow-lg flex items-center gap-2 cursor-pointer font-mono",
+                      fundingUser && !isGranting 
+                        ? "bg-red-600 hover:bg-red-500 font-black shadow-[0_0_20px_rgba(220,38,38,0.5)]" 
+                        : "bg-zinc-800 text-zinc-500 cursor-not-allowed"
+                    )}
+                  >
+                    <Wallet size={16} />
+                    <span>{isGranting ? 'Processing Transaction...' : `Credit ₦${(fundAmount || 0).toLocaleString()} to User`}</span>
+                  </button>
+                </div>
+              </form>
+            </div>
+
+            {/* Live Wallet Audit Transactions Log */}
+            <div className="bg-[#0D1117] border border-[#30363D] rounded-2xl overflow-hidden shadow-2xl space-y-3 p-5">
+              <h3 className="text-xs font-bold text-amber-400 uppercase tracking-widest flex items-center gap-2">
+                <History size={16} />
+                <span>REAL-TIME SYSTEM WALLET TRANSACTION AUDIT LOG</span>
+              </h3>
+
+              <div className="overflow-x-auto">
+                <table className="w-full text-left text-xs whitespace-nowrap">
+                  <thead>
+                    <tr className="text-slate-400 border-b border-[#30363D] bg-[#161B22]/80">
+                      <th className="py-3 px-3 font-bold">DATE & TIME</th>
+                      <th className="py-3 px-3 font-bold">USER UID</th>
+                      <th className="py-3 px-3 font-bold">TRANSACTION TYPE</th>
+                      <th className="py-3 px-3 font-bold">DESCRIPTION</th>
+                      <th className="py-3 px-3 font-bold text-right">AMOUNT</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-[#30363D]/60">
+                    {allWalletTxs.length === 0 ? (
+                      <tr>
+                        <td colSpan={5} className="py-8 text-center text-xs text-slate-500">
+                          No wallet transactions recorded yet.
+                        </td>
+                      </tr>
+                    ) : (
+                      allWalletTxs.map((tx) => (
+                        <tr key={tx.id} className="hover:bg-zinc-800/40 transition-colors">
+                          <td className="py-3 px-3 text-slate-400 font-mono text-[11px]">
+                            {new Date(tx.createdAt).toLocaleString()}
+                          </td>
+                          <td className="py-3 px-3 text-slate-300 font-mono text-xs">
+                            {tx.userId.slice(0, 12)}...
+                          </td>
+                          <td className="py-3 px-3">
+                            <span className={clsx(
+                              "px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider",
+                              tx.type === 'admin_grant' ? "bg-emerald-950 text-emerald-300 border border-emerald-800" :
+                              tx.type === 'subscription_purchase' ? "bg-blue-950 text-blue-300 border border-blue-800" :
+                              "bg-purple-950 text-purple-300 border border-purple-800"
+                            )}>
+                              {tx.type}
+                            </span>
+                          </td>
+                          <td className="py-3 px-3 text-slate-200">
+                            {tx.description}
+                          </td>
+                          <td className={clsx("py-3 px-3 text-right font-mono font-bold text-xs", tx.amount >= 0 ? "text-emerald-400" : "text-red-400")}>
+                            {tx.amount >= 0 ? `+₦${tx.amount.toLocaleString()}` : `-₦${Math.abs(tx.amount).toLocaleString()}`}
+                          </td>
+                        </tr>
+                      ))
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+          </div>
+        ) : activeTab === 'broadcast' ? (
             <div className="space-y-6 max-w-4xl mx-auto">
               <div className="bg-zinc-950 border border-red-900/30 rounded-xl p-6 space-y-4">
                 <div className="flex items-center gap-2 text-red-500 font-bold text-base">
@@ -1681,6 +2056,123 @@ export function AdminDashboard({ onClose }: AdminDashboardProps) {
             initialTargetUserName={activeSupportUserName || undefined}
             onClose={() => setShowFullSupportDesk(false)}
           />
+        )}
+
+        {/* Funding User Modal Overlay */}
+        {fundingUser && (
+          <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
+            <div className="bg-[#0D1117] border border-[#30363D] rounded-2xl p-6 max-w-md w-full space-y-5 shadow-2xl font-mono text-slate-100 animate-fadeIn">
+              <div className="flex items-center justify-between border-b border-[#30363D] pb-3">
+                <div className="flex items-center gap-2 text-emerald-400 font-bold text-sm uppercase">
+                  <Wallet size={18} />
+                  <span>CREDIT USER WALLET</span>
+                </div>
+                <button
+                  onClick={() => setFundingUser(null)}
+                  className="text-slate-400 hover:text-white p-1 rounded-lg hover:bg-zinc-800 cursor-pointer"
+                >
+                  <X size={18} />
+                </button>
+              </div>
+
+              <div className="space-y-1 bg-[#161B22] p-3 rounded-xl border border-[#30363D]">
+                <div className="text-xs font-bold text-white">{fundingUser.displayName || fundingUser.email || 'User'}</div>
+                <div className="text-[11px] text-slate-400">{fundingUser.email || fundingUser.uid}</div>
+                <div className="text-xs font-mono font-bold text-emerald-400 pt-1">
+                  Current Balance: ₦{(fundingUser.walletBalance || 0).toLocaleString()}
+                </div>
+              </div>
+
+              <form onSubmit={handleGrantFunds} className="space-y-4">
+                <div className="space-y-1.5">
+                  <label className="text-xs font-bold text-slate-300 uppercase tracking-wider block">CREDIT / DEBIT AMOUNT (₦)</label>
+                  <input
+                    type="number"
+                    required
+                    value={fundAmount}
+                    onChange={(e) => setFundAmount(Number(e.target.value))}
+                    placeholder="e.g. 10000"
+                    className="w-full bg-[#161B22] border border-[#30363D] focus:border-emerald-500 rounded-xl p-3 text-sm font-bold text-emerald-400 outline-none font-mono"
+                  />
+                  <p className="text-[10px] text-slate-500">Tip: Positive = grant funds, negative = debit balance.</p>
+                </div>
+
+                <div className="flex flex-wrap gap-2">
+                  {[5000, 10000, 20000, 50000, 100000].map((amt) => (
+                    <button
+                      key={amt}
+                      type="button"
+                      onClick={() => setFundAmount(amt)}
+                      className={clsx(
+                        "px-2.5 py-1 rounded-lg text-xs font-mono font-bold border transition-all cursor-pointer",
+                        fundAmount === amt ? "bg-emerald-600 text-white border-emerald-500" : "bg-[#161B22] border-[#30363D] text-slate-300"
+                      )}
+                    >
+                      +₦{amt.toLocaleString()}
+                    </button>
+                  ))}
+                </div>
+
+                <div className="space-y-1.5">
+                  <label className="text-xs font-bold text-slate-300 uppercase tracking-wider block">NOTE / REASON</label>
+                  <input
+                    type="text"
+                    value={fundNote}
+                    onChange={(e) => setFundNote(e.target.value)}
+                    placeholder="e.g. Bank Deposit Confirmed"
+                    className="w-full bg-[#161B22] border border-[#30363D] focus:border-emerald-500 rounded-xl p-2.5 text-xs text-white outline-none"
+                  />
+                </div>
+
+                <div className="flex items-center gap-2 pt-2">
+                  <button
+                    type="button"
+                    onClick={() => setFundingUser(null)}
+                    className="w-1/3 py-2.5 rounded-xl border border-[#30363D] text-slate-300 hover:text-white text-xs font-bold uppercase tracking-wider cursor-pointer"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={isGranting}
+                    className="w-2/3 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-black uppercase tracking-wider transition-all cursor-pointer shadow-lg shadow-emerald-950/50"
+                  >
+                    {isGranting ? 'Processing...' : 'Apply Credit / Debit'}
+                  </button>
+                </div>
+
+                {(fundingUser.walletBalance || 0) > 0 && (
+                  <div className="pt-3 border-t border-[#30363D] space-y-2">
+                    <span className="text-[10px] font-bold text-red-400 uppercase tracking-wider block">SECURITY ACTIONS</span>
+                    <div className="grid grid-cols-2 gap-2">
+                      <button
+                        type="button"
+                        onClick={async () => {
+                          const target = fundingUser;
+                          setFundingUser(null);
+                          await handleWithdrawFunds(target);
+                        }}
+                        className="py-2 px-3 rounded-xl bg-amber-950/80 border border-amber-800 hover:border-amber-500 text-amber-300 text-[11px] font-bold uppercase tracking-wider transition-all cursor-pointer"
+                      >
+                        Withdraw Funds
+                      </button>
+                      <button
+                        type="button"
+                        onClick={async () => {
+                          const target = fundingUser;
+                          setFundingUser(null);
+                          await handleResetWallet(target);
+                        }}
+                        className="py-2 px-3 rounded-xl bg-red-950/80 border border-red-800 hover:border-red-500 text-red-300 text-[11px] font-bold uppercase tracking-wider transition-all cursor-pointer"
+                      >
+                        Reset to ₦0
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </form>
+            </div>
+          </div>
         )}
       </div>
     </div>

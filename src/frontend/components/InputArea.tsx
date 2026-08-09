@@ -1,11 +1,12 @@
 import React, { useState, useRef, useEffect, useLayoutEffect } from 'react';
-import { Send, Square, Paperclip, Mic, MicOff, X, Image as ImageIcon, FileText } from 'lucide-react';
+import { Send, Square, Paperclip, Mic, MicOff, X, Image as ImageIcon, FileText, Plus, AudioLines } from 'lucide-react';
 import { clsx } from 'clsx';
 
 interface InputAreaProps {
   onSend: (text: string) => void;
   isLoading: boolean;
   onStop?: () => void;
+  onOpenLiveVoice?: () => void;
 }
 
 interface Attachment {
@@ -14,7 +15,7 @@ interface Attachment {
   dataUrl?: string;
 }
 
-export function InputArea({ onSend, isLoading, onStop }: InputAreaProps) {
+export function InputArea({ onSend, isLoading, onStop, onOpenLiveVoice }: InputAreaProps) {
   const [text, setText] = useState('');
   const [isListening, setIsListening] = useState(false);
   const [attachment, setAttachment] = useState<Attachment | null>(null);
@@ -23,18 +24,15 @@ export function InputArea({ onSend, isLoading, onStop }: InputAreaProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const recognitionRef = useRef<any>(null);
 
-  // Smooth auto-resize textarea without layout thrashing
   useLayoutEffect(() => {
     const textarea = textareaRef.current;
     if (!textarea) return;
 
-    // Reset height temporarily to compute scrollHeight accurately
     textarea.style.height = 'auto';
-    const newHeight = Math.min(Math.max(textarea.scrollHeight, 44), 200);
+    const newHeight = Math.min(Math.max(textarea.scrollHeight, 36), 140);
     textarea.style.height = `${newHeight}px`;
   }, [text]);
 
-  // Speech Recognition setup
   useEffect(() => {
     if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
       const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
@@ -54,7 +52,6 @@ export function InputArea({ onSend, isLoading, onStop }: InputAreaProps) {
         };
 
         recognition.onerror = (event: any) => {
-          console.warn('Speech recognition status:', event.error);
           setIsListening(false);
           if (event.error !== 'no-speech' && event.error !== 'aborted') {
             setSpeechError('Voice input unavailable');
@@ -75,7 +72,7 @@ export function InputArea({ onSend, isLoading, onStop }: InputAreaProps) {
 
   const toggleSpeechRecognition = () => {
     if (!recognitionRef.current) {
-      setSpeechError('Voice input not supported on this device/browser');
+      setSpeechError('Voice input not supported on this browser');
       setTimeout(() => setSpeechError(null), 3000);
       return;
     }
@@ -91,7 +88,6 @@ export function InputArea({ onSend, isLoading, onStop }: InputAreaProps) {
         recognitionRef.current.start();
         setIsListening(true);
       } catch (err) {
-        console.warn('Failed to start speech recognition', err);
         setIsListening(false);
       }
     }
@@ -110,7 +106,6 @@ export function InputArea({ onSend, isLoading, onStop }: InputAreaProps) {
       });
     };
     reader.readAsDataURL(file);
-    // Reset file input value so same file can be re-uploaded if needed
     e.target.value = '';
   };
 
@@ -129,13 +124,12 @@ export function InputArea({ onSend, isLoading, onStop }: InputAreaProps) {
       setText('');
       setAttachment(null);
       if (textareaRef.current) {
-        textareaRef.current.style.height = '44px';
+        textareaRef.current.style.height = '36px';
       }
     }
   };
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
-    // Ignore Enter if composing (e.g. mobile autocomplete or IME)
     if (e.nativeEvent.isComposing) return;
 
     if (e.key === 'Enter' && !e.shiftKey) {
@@ -145,10 +139,10 @@ export function InputArea({ onSend, isLoading, onStop }: InputAreaProps) {
   };
 
   return (
-    <div className="w-full max-w-6xl mx-auto px-2 sm:px-4 pb-2 sm:pb-4 md:px-6">
+    <div className="w-full max-w-2xl mx-auto px-2.5 pb-2 pt-0.5">
       {/* Speech Error Banner */}
       {speechError && (
-        <div className="mb-2 p-2 px-3 bg-red-950/80 border border-red-800/80 rounded-xl text-xs text-red-200 animate-fadeIn flex items-center justify-between">
+        <div className="mb-1.5 p-1.5 px-2.5 bg-red-950/90 border border-red-800 rounded-lg text-[11px] text-red-200 flex items-center justify-between">
           <span>{speechError}</span>
           <button onClick={() => setSpeechError(null)} className="p-0.5 text-red-300 hover:text-white">
             <X size={12} />
@@ -158,28 +152,28 @@ export function InputArea({ onSend, isLoading, onStop }: InputAreaProps) {
 
       {/* Attachment Preview Card */}
       {attachment && (
-        <div className="mb-2 p-2 px-3 bg-[#161B22] border border-[#30363D] rounded-xl flex items-center justify-between gap-3 text-xs text-slate-200 animate-fadeIn">
-          <div className="flex items-center gap-2 truncate">
+        <div className="mb-1.5 p-1.5 px-2.5 bg-zinc-900 border border-zinc-700 rounded-lg flex items-center justify-between gap-2 text-xs text-slate-200 animate-fadeIn">
+          <div className="flex items-center gap-1.5 truncate">
             {attachment.type.startsWith('image/') ? (
-              <ImageIcon size={16} className="text-red-400 shrink-0" />
+              <ImageIcon size={14} className="text-sky-400 shrink-0" />
             ) : (
-              <FileText size={16} className="text-blue-400 shrink-0" />
+              <FileText size={14} className="text-purple-400 shrink-0" />
             )}
-            <span className="truncate font-mono">{attachment.name}</span>
+            <span className="truncate font-mono text-[11px]">{attachment.name}</span>
           </div>
           <button
             type="button"
             onClick={() => setAttachment(null)}
-            className="p-1 hover:bg-[#21262D] rounded-lg text-slate-400 hover:text-white transition-colors"
+            className="p-0.5 hover:bg-zinc-800 rounded text-slate-400 hover:text-white transition-colors"
           >
-            <X size={14} />
+            <X size={12} />
           </button>
         </div>
       )}
 
-      {/* Main Input Box Container */}
-      <div className="relative flex items-end w-full bg-black/95 border border-red-600/80 focus-within:border-red-500 focus-within:shadow-[0_0_25px_rgba(239,68,68,0.4)] rounded-2xl shadow-[0_0_20px_rgba(220,38,38,0.25)] transition-all">
-        {/* File upload hidden input */}
+      {/* Main Pill Input Box - Compact Demonic Red Box */}
+      <div className="relative flex items-center w-full bg-gradient-to-r from-red-950/90 via-black to-zinc-950 border border-red-800/80 focus-within:border-red-500 rounded-full shadow-[0_0_20px_rgba(220,38,38,0.25)] transition-all px-2 py-1 gap-1.5">
+        {/* Hidden File Input */}
         <input
           type="file"
           ref={fileInputRef}
@@ -188,91 +182,73 @@ export function InputArea({ onSend, isLoading, onStop }: InputAreaProps) {
           className="hidden"
         />
 
-        {/* Attachment button */}
+        {/* Plus (+) Button */}
         <button
           type="button"
           onClick={() => fileInputRef.current?.click()}
-          className="p-2.5 sm:p-3 pl-3 sm:pl-4 text-red-500/80 hover:text-red-400 transition-colors shrink-0 mb-0.5"
+          className="w-7 h-7 rounded-full bg-red-950/80 hover:bg-red-900 border border-red-800 text-red-300 flex items-center justify-center shrink-0 transition-colors cursor-pointer shadow"
           title="Attach image or file"
         >
-          <Paperclip size={18} />
+          <Plus size={18} />
         </button>
 
-        {/* Speech / Voice button */}
-        <button
-          type="button"
-          onClick={toggleSpeechRecognition}
-          className={clsx(
-            "p-2.5 sm:p-3 text-red-500/80 hover:text-red-400 transition-colors shrink-0 mb-0.5",
-            isListening && "text-red-500 animate-pulse"
-          )}
-          title={isListening ? "Stop listening" : "Voice input"}
-        >
-          {isListening ? <MicOff size={18} className="text-red-500" /> : <Mic size={18} />}
-        </button>
-
-        {/* Auto-expanding Textarea */}
+        {/* Text Input Field */}
         <textarea
           ref={textareaRef}
           value={text}
           onChange={(e) => setText(e.target.value)}
           onKeyDown={handleKeyDown}
-          placeholder="Ask me anything..."
+          placeholder="Ask VOID AI..."
           rows={1}
           autoCapitalize="sentences"
           autoCorrect="on"
           spellCheck={true}
-          className="flex-1 min-h-[44px] max-h-[200px] bg-transparent text-slate-100 placeholder:text-red-900/80 border-0 focus:ring-0 resize-none py-2.5 px-2 outline-none text-base md:text-sm leading-relaxed font-mono"
+          className="flex-1 min-h-[32px] max-h-[140px] bg-transparent text-red-100 placeholder:text-red-500/60 border-0 focus:ring-0 resize-none py-1.5 px-1 outline-none text-xs sm:text-sm leading-snug font-mono"
         />
 
-        {/* Clear prompt text button if typing */}
-        {text.length > 0 && (
+        {/* Mic Button */}
+        <button
+          type="button"
+          onClick={toggleSpeechRecognition}
+          className={clsx(
+            "w-7 h-7 rounded-full bg-red-950/80 hover:bg-red-900 border border-red-800 text-red-300 flex items-center justify-center shrink-0 transition-colors cursor-pointer shadow",
+            isListening && "text-red-400 animate-pulse bg-red-900"
+          )}
+          title={isListening ? "Stop listening" : "Voice input"}
+        >
+          {isListening ? <MicOff size={15} className="text-red-400" /> : <Mic size={16} />}
+        </button>
+
+        {/* Send / Live Voice Audio Button */}
+        {isLoading ? (
           <button
             type="button"
-            onClick={() => setText('')}
-            className="p-1.5 text-red-600 hover:text-red-400 transition-colors shrink-0 mb-1 rounded-lg hover:bg-red-950/40 mr-1"
-            title="Clear prompt text"
+            onClick={onStop}
+            className="w-7 h-7 bg-red-700 hover:bg-red-600 text-white rounded-full transition-all flex items-center justify-center shrink-0 cursor-pointer shadow-[0_0_12px_rgba(220,38,38,0.5)]"
+            title="Stop generating"
           >
-            <X size={15} />
+            <Square size={12} fill="currentColor" />
+          </button>
+        ) : text.trim() || attachment ? (
+          <button
+            type="button"
+            onClick={handleSend}
+            className="w-7 h-7 bg-red-600 hover:bg-red-500 text-white rounded-full transition-all flex items-center justify-center shrink-0 cursor-pointer shadow-[0_0_15px_rgba(220,38,38,0.6)] active:scale-95"
+            title="Send message"
+          >
+            <Send size={13} fill="currentColor" />
+          </button>
+        ) : (
+          <button
+            type="button"
+            onClick={onOpenLiveVoice}
+            className="w-7 h-7 bg-red-600 hover:bg-red-500 text-white rounded-full transition-all flex items-center justify-center shrink-0 cursor-pointer shadow-[0_0_15px_rgba(220,38,38,0.6)] hover:scale-105"
+            title="Live voice mode"
+          >
+            <AudioLines size={15} />
           </button>
         )}
-
-        {/* Send / Stop button */}
-        <div className="p-2 shrink-0">
-          {isLoading ? (
-            <button
-              type="button"
-              onClick={onStop}
-              className="p-2 bg-red-600 hover:bg-red-500 text-white rounded-xl transition-all shadow-[0_0_15px_rgba(239,68,68,0.5)] flex items-center justify-center group"
-              title="Stop generating"
-            >
-              <Square size={15} fill="currentColor" className="group-hover:scale-95 transition-transform" />
-            </button>
-          ) : (
-            <button
-              type="button"
-              onClick={handleSend}
-              disabled={!text.trim() && !attachment}
-              className={clsx(
-                "p-2.5 rounded-xl transition-all flex items-center justify-center shadow-lg",
-                text.trim() || attachment
-                  ? "bg-red-600 hover:bg-red-500 text-white cursor-pointer active:scale-95 shadow-[0_0_15px_rgba(239,68,68,0.6)]"
-                  : "bg-red-950/40 text-red-900 cursor-not-allowed border border-red-950"
-              )}
-              title="Send message"
-            >
-              <Send size={16} fill="currentColor" />
-            </button>
-          )}
-        </div>
-      </div>
-
-      {/* Footer info */}
-      <div className="flex items-center justify-between text-[10px] text-red-900/80 mt-1.5 px-1 font-mono">
-        <span>VOID AI Engine</span>
-        <span className="hidden sm:inline">Press Shift + Enter for newline</span>
       </div>
     </div>
   );
 }
-

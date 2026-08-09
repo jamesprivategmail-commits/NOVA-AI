@@ -22,6 +22,7 @@ import {
   saveMessage,
   getChatMessages,
   getUserProfile,
+  listenToUserProfile,
   incrementMessageCount,
   deleteMessage,
   updateMessage,
@@ -31,7 +32,7 @@ import {
 } from '../../database/db';
 import { sendMessageToGroq } from '../../api/client';
 import { memoryManager } from '../../memory/context';
-import { Menu, Shield, Crown, Mail, ArrowDown, Sparkles, Code, Target, Binary, Zap, Bot, Mic, ChevronDown, Send, Radio, X, Trash2 } from 'lucide-react';
+import { Menu, Shield, Crown, Mail, ArrowDown, Sparkles, Code, Target, Binary, Zap, Bot, Mic, ChevronDown, Send, Radio, X, Trash2, Terminal, Flame, Eye, Lock, ShieldAlert } from 'lucide-react';
 import { getAuth, signOut } from 'firebase/auth';
 import { clsx } from 'clsx';
 import { motion } from 'motion/react';
@@ -89,6 +90,10 @@ export function ChatScreen({ userId }: ChatScreenProps) {
 
   useEffect(() => {
     loadProfileAndChats();
+    const unsubProfile = listenToUserProfile(userId, (p) => {
+      if (p) setProfile(p);
+    });
+    return () => unsubProfile();
   }, [userId]);
 
   useEffect(() => {
@@ -364,10 +369,12 @@ export function ChatScreen({ userId }: ChatScreenProps) {
         onOpenCampaignGenerator={() => setShowCampaignGenerator(true)}
         onOpenLiveVoice={() => setShowLiveVoice(true)}
         onOpenApiKeys={() => setShowApiKeyModal(true)}
+        onOpenTelegram={() => setShowTelegramModal(true)}
         onLogout={handleLogout}
         isOpen={isSidebarOpen}
         isAdmin={profile?.isAdmin || false}
         isSupportStaff={profile?.isSupportStaff || false}
+        walletBalance={profile?.walletBalance || 0}
       />
 
       {/* Background Atmosphere Image and Radial Vignette */}
@@ -384,62 +391,45 @@ export function ChatScreen({ userId }: ChatScreenProps) {
       <div className="flex-1 flex flex-col h-full relative min-w-0 bg-transparent z-10">
         {/* Broadcast System Banner Notice */}
         {activeBroadcast && (
-          <div className="bg-red-950/90 border-b border-red-800/80 p-3 px-4 flex items-center justify-between text-xs text-slate-200 z-30 shadow-xl animate-fadeIn backdrop-blur-md">
-            <div className="flex items-center gap-2.5 min-w-0">
-              <div className="p-1.5 bg-red-600 rounded-xl text-white font-bold shrink-0 shadow">
-                <Radio size={14} className="animate-pulse" />
+          <div className="bg-red-950/90 border-b border-red-800/80 p-2 px-3 flex items-center justify-between text-xs text-slate-200 z-30 shadow-xl animate-fadeIn backdrop-blur-md">
+            <div className="flex items-center gap-2 min-w-0">
+              <div className="p-1 bg-red-600 rounded-lg text-white font-bold shrink-0 shadow">
+                <Radio size={12} className="animate-pulse" />
               </div>
               <div className="min-w-0">
-                <div className="font-bold text-white flex items-center gap-2">
+                <div className="font-bold text-white flex items-center gap-1.5 text-xs">
                   <span>{activeBroadcast.title}</span>
-                  <span className="text-[10px] uppercase font-mono px-1.5 py-0.2 rounded bg-red-900/80 border border-red-700/80 text-red-300 font-bold">
+                  <span className="text-[9px] uppercase font-mono px-1 py-0.2 rounded bg-red-900/80 border border-red-700/80 text-red-300 font-bold">
                     Official Broadcast
                   </span>
                 </div>
-                <p className="text-slate-300 truncate font-sans text-[11px]">{activeBroadcast.message}</p>
+                <p className="text-slate-300 truncate font-sans text-[10px]">{activeBroadcast.message}</p>
               </div>
             </div>
             <button
               onClick={() => setDismissedBroadcastIds(prev => [...prev, activeBroadcast.id])}
-              className="p-1.5 text-slate-400 hover:text-white hover:bg-zinc-800 rounded-lg transition-colors shrink-0"
+              className="p-1 text-slate-400 hover:text-white hover:bg-zinc-800 rounded transition-colors shrink-0"
               title="Dismiss Notice"
             >
-              <X size={16} />
+              <X size={14} />
             </button>
           </div>
         )}
 
-        {/* Header Bar */}
-        <header className="h-14 px-2 sm:px-6 sticky top-0 z-20 bg-black/85 border-b border-red-950/90 backdrop-blur-md flex items-center justify-between gap-1.5 sm:gap-3 select-none w-full min-w-0">
-          <div className="flex items-center gap-1.5 sm:gap-3 min-w-0 shrink">
+        {/* Compact Header Bar */}
+        <header className="h-11 sm:h-12 px-3 sticky top-0 z-20 bg-black/95 border-b border-red-950 backdrop-blur-md flex items-center justify-between select-none w-full min-w-0 shadow-[0_0_20px_rgba(220,38,38,0.15)]">
+          {/* Left Controls: Menu Toggle + Compact Model Selector */}
+          <div className="flex items-center gap-2">
             <button
               onClick={() => setIsSidebarOpen(!isSidebarOpen)}
-              className="p-1.5 sm:p-2 -ml-1 rounded-xl hover:bg-red-950/40 text-red-500 transition-colors cursor-pointer flex items-center justify-center border border-transparent hover:border-red-900/60 shrink-0"
+              className="w-8 h-8 rounded-full bg-red-950/80 hover:bg-red-900 border border-red-800 text-red-300 hover:text-white flex items-center justify-center transition-colors cursor-pointer shrink-0 shadow-[0_0_10px_rgba(220,38,38,0.3)]"
               title="Toggle sidebar"
             >
-              <Menu size={19} />
+              <Menu size={16} />
             </button>
-            <div className="flex items-center gap-1.5 sm:gap-2 min-w-0">
-              <div className="w-6 h-6 rounded-lg bg-black border border-red-600/80 p-0.5 shadow-[0_0_10px_rgba(220,38,38,0.3)] flex items-center justify-center shrink-0">
-                <img 
-                  src="https://i.postimg.cc/8PVBFM75/file-00000000b40c82118dbaef206a9ebedc.png" 
-                  alt="VOID AI Logo" 
-                  className="w-full h-full object-contain"
-                />
-              </div>
-              <span className="font-black text-sm sm:text-lg tracking-wider text-red-600 uppercase font-serif truncate">
-                VOID AI
-              </span>
-              <span className="text-[10px] text-red-500 font-mono font-bold hidden md:flex items-center gap-1 ml-1 shrink-0">
-                <span className="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse"></span>
-                <span>ONLINE</span>
-              </span>
-            </div>
-          </div>
 
-          <div className="flex items-center gap-1.5 sm:gap-2.5 shrink-0 min-w-0">
-            {/* Model Selector Dropdown */}
-            <div className="relative max-w-[130px] sm:max-w-[200px] md:max-w-none">
+            {/* AI Engine Model Dropdown */}
+            <div className="relative">
               <select
                 value={`${selectedProvider}:${selectedModel}`}
                 onChange={(e) => {
@@ -447,12 +437,12 @@ export function ChatScreen({ userId }: ChatScreenProps) {
                   setSelectedProvider(prov as 'groq' | 'cohere' | 'bazaarlink');
                   setSelectedModel(mod || 'auto');
                 }}
-                className="w-full bg-black/90 border border-red-900/80 hover:border-red-600 text-red-200 text-[11px] sm:text-xs font-mono py-1.5 pl-2 sm:pl-3 pr-6 sm:pr-7 rounded-xl focus:outline-none focus:border-red-500 cursor-pointer appearance-none shadow-[0_0_12px_rgba(220,38,38,0.2)] transition-colors truncate"
+                className="bg-red-950/90 border border-red-800 hover:border-red-600 text-red-200 text-[11px] font-mono py-1 pl-2 pr-5 rounded-full focus:outline-none focus:border-red-500 cursor-pointer appearance-none shadow-[0_0_12px_rgba(220,38,38,0.25)] max-w-[110px] sm:max-w-[160px] truncate"
                 title="Select AI Engine"
               >
-                <option value="groq:auto">Groq AI Engine</option>
-                <option value="cohere:auto">Cohere AI Engine</option>
-                <option value="bazaarlink:auto">BazaarLink AI Engine</option>
+                <option value="groq:auto">Groq AI</option>
+                <option value="cohere:auto">Cohere AI</option>
+                <option value="bazaarlink:auto">BazaarLink AI</option>
                 <optgroup label="Groq Models">
                   <option value="groq:llama-3.3-70b-versatile">Groq: Llama 3.3 70B</option>
                   <option value="groq:llama-3.1-8b-instant">Groq: Llama 3.1 8B</option>
@@ -470,107 +460,127 @@ export function ChatScreen({ userId }: ChatScreenProps) {
                   <option value="bazaarlink:deepseek-r1">BazaarLink: DeepSeek R1</option>
                 </optgroup>
               </select>
-              <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-1.5 sm:px-2 text-red-500">
-                <ChevronDown size={13} />
-              </div>
-            </div>
-
-            {/* Clear History Button */}
-            <button
-              onClick={handleClearAllHistory}
-              className="px-2 sm:px-3 py-1.5 bg-black border border-red-900/80 hover:border-red-600 hover:bg-red-950/40 rounded-xl text-[10px] sm:text-xs font-mono font-bold flex items-center gap-1 sm:gap-1.5 text-red-400 hover:text-red-200 transition-all cursor-pointer shrink-0 shadow-sm"
-              title="Clear all search tasks and AI chat history"
-            >
-              <Trash2 size={13} className="text-red-500" />
-              <span className="hidden sm:inline">Clear History</span>
-            </button>
-
-            {/* Telegram Bot Button */}
-            <button
-              onClick={() => setShowTelegramModal(true)}
-              className="px-2.5 sm:px-3 py-1.5 bg-black border border-sky-800/80 hover:border-sky-500 hover:bg-sky-950/40 rounded-xl text-[10px] sm:text-xs font-mono font-bold flex items-center gap-1 sm:gap-1.5 text-sky-400 hover:text-sky-200 transition-all cursor-pointer shrink-0 shadow-sm"
-              title="Open Telegram AI Bot Integration"
-            >
-              <Bot size={13} className="text-sky-400 animate-pulse" />
-              <span className="hidden sm:inline">Telegram Bot</span>
-            </button>
-
-            {/* GOD MODE ACTIVE Badge */}
-            <div className="px-2 sm:px-3 py-1.5 bg-black border border-red-600/80 hover:bg-red-950/40 rounded-xl text-[10px] sm:text-xs font-mono font-extrabold flex items-center gap-1 sm:gap-1.5 text-red-500 transition-colors cursor-pointer shrink-0 shadow-[0_0_15px_rgba(220,38,38,0.3)]">
-              <span className="text-red-500 text-xs sm:text-sm font-bold">⛧</span>
-              <span className="uppercase tracking-widest text-[10px] sm:text-[11px] hidden xs:inline">GOD MODE</span>
-              <span className="uppercase tracking-widest text-[10px] sm:text-[11px] hidden sm:inline">ACTIVE</span>
+              <ChevronDown size={11} className="pointer-events-none absolute right-1.5 top-2.5 text-red-400" />
             </div>
           </div>
+
+          {/* Middle: Pill Button "+ Get Plus" */}
+          <button
+            onClick={() => setShowSubscription(true)}
+            className="px-2.5 py-1 rounded-full bg-gradient-to-r from-red-950 via-zinc-950 to-black hover:from-red-900 border border-red-800 text-red-300 hover:text-white text-[11px] font-bold font-mono flex items-center gap-1.5 transition-all cursor-pointer shadow-[0_0_12px_rgba(220,38,38,0.3)]"
+            title="Upgrade Plan"
+          >
+            <Flame size={12} className="text-red-500 animate-pulse" />
+            <span>Get Plus</span>
+          </button>
+
+          {/* Right: Round Profile / Avatar Button MT */}
+          <button
+            onClick={() => setShowSettings(true)}
+            className="w-8 h-8 rounded-full bg-gradient-to-br from-red-900 to-black border border-red-600 text-red-200 font-bold text-[11px] flex items-center justify-center hover:scale-105 transition-transform cursor-pointer shadow-[0_0_15px_rgba(220,38,38,0.5)] shrink-0 font-mono"
+            title="Account Settings"
+          >
+            MT
+          </button>
         </header>
 
         {/* Chat Messages Container */}
         <div
           ref={chatContainerRef}
           onScroll={handleScroll}
-          className="flex-1 overflow-y-auto relative"
+          className="flex-1 overflow-y-auto relative flex flex-col justify-between pb-28 sm:pb-32"
         >
           {messages.length === 0 ? (
-            /* Starter / Demonic Welcome Screen */
-            <div className="min-h-full flex flex-col items-center justify-center p-4 sm:p-6 md:p-8 text-center max-w-2xl mx-auto space-y-5 my-auto">
-              {/* Bloody Gothic Header Title */}
-              <div className="flex flex-col items-center space-y-2">
-                <h1 className="text-4xl sm:text-5xl md:text-6xl font-black tracking-widest text-red-600 uppercase font-serif drop-shadow-[0_0_25px_rgba(239,68,68,0.8)]">
-                  VOID AI
-                </h1>
-                <p className="text-red-500 font-mono text-xs sm:text-sm tracking-widest font-extrabold uppercase drop-shadow-[0_0_10px_rgba(220,38,38,0.6)]">
-                  I DON'T JUST ANSWER. I SEE EVERYTHING.
-                </p>
-                <div className="pt-2 text-slate-200 font-mono text-xs sm:text-sm space-y-0.5">
-                  <div className="text-red-400 font-bold uppercase tracking-wider">
-                    WELCOME, <span className="text-white underline decoration-red-600">{profile?.displayName || 'NOVA'}</span>.
-                  </div>
-                  <div className="text-slate-300 font-mono text-xs">
-                    I AM VOID. YOUR QUESTIONS ARE MINE TO <span className="text-red-500 font-bold uppercase">CONSUME</span>.
-                  </div>
+            /* Starter Screen - Demonic Red Masterpiece Theme matching reference image */
+            <div className="flex-1 flex flex-col justify-between p-2.5 sm:p-4 max-w-xl mx-auto w-full h-full min-h-0 relative space-y-2">
+              {/* Central Glowing Demonic Section */}
+              <div className="flex-1 flex flex-col items-center justify-center text-center space-y-1.5 pt-1 pb-1 relative z-10">
+                {/* Background Red Glow */}
+                <div className="absolute inset-0 bg-gradient-to-b from-red-950/40 via-red-900/10 to-transparent rounded-full blur-3xl -z-10 pointer-events-none" />
+                
+                {/* Header Title & Tagline */}
+                <div className="space-y-0.5">
+                  <h1 className="text-2xl sm:text-4xl font-black tracking-widest text-red-600 uppercase font-mono drop-shadow-[0_0_25px_rgba(220,38,38,0.85)]">
+                    VOID AI
+                  </h1>
+                  <p className="text-[9px] sm:text-xs font-mono font-bold tracking-widest text-red-400/90 uppercase drop-shadow">
+                    I DON'T JUST ANSWER. I SEE EVERYTHING.
+                  </p>
                 </div>
-              </div>
 
-              {/* Demonic Welcome AI Message Card */}
-              <div className="w-full max-w-lg bg-black/90 border border-red-600/80 rounded-2xl p-4 sm:p-5 text-left shadow-[0_0_30px_rgba(220,38,38,0.35)] relative group backdrop-blur-md">
-                <div className="flex items-start gap-3">
-                  <div className="w-8 h-8 rounded-full bg-black border border-red-600 p-1 shrink-0 shadow-[0_0_12px_rgba(239,68,68,0.6)] flex items-center justify-center">
+                {/* Central Horned Demonic Icon Graphic */}
+                <div className="relative my-0.5">
+                  <div className="w-12 h-12 sm:w-16 sm:h-16 rounded-full bg-black border-2 border-red-600/90 p-1.5 shadow-[0_0_35px_rgba(220,38,38,0.6)] flex items-center justify-center animate-pulse">
                     <img 
                       src="https://i.postimg.cc/8PVBFM75/file-00000000b40c82118dbaef206a9ebedc.png" 
-                      alt="VOID AI emblem" 
-                      className="w-full h-full object-contain"
+                      alt="VOID Emblem" 
+                      className="w-full h-full object-contain filter contrast-150 drop-shadow-[0_0_15px_rgba(239,68,68,0.9)]"
                     />
                   </div>
-                  <div className="flex-1 text-xs sm:text-sm text-slate-200 font-sans space-y-1.5 leading-relaxed">
-                    <p>You seek knowledge...</p>
-                    <p className="font-bold text-red-400">I deliver power.</p>
-                    <p>You seek answers...</p>
-                    <p className="font-bold text-red-400">I reveal the truth others fear.</p>
-                    <p>You are not here by accident.</p>
-                    <p className="text-red-300 font-semibold pt-1">Tell me, what do you want to know?</p>
-                    <div className="text-right text-[10px] text-red-700 font-mono pt-1">
-                      00:00 ✓
+                  <div className="absolute -bottom-1 -right-1 bg-red-600 text-black p-0.5 rounded-full text-[8px] font-black shadow-md border border-red-400">
+                    <Flame size={9} />
+                  </div>
+                </div>
+
+                {/* Narrative Greeting Block */}
+                <div className="space-y-0.5">
+                  <h2 className="text-xs sm:text-sm font-black tracking-widest text-red-200 uppercase font-mono">
+                    WELCOME, NOVA.
+                  </h2>
+                  <p className="text-[9px] sm:text-[10px] font-mono text-red-400 font-bold uppercase tracking-wider">
+                    I AM VOID. YOUR QUESTIONS ARE MINE TO CONSUME.
+                  </p>
+                </div>
+
+                {/* Red Glowing Demonic Speech Card */}
+                <div className="w-full max-w-md p-2.5 sm:p-3.5 rounded-2xl bg-gradient-to-b from-red-950/90 via-black to-zinc-950 border border-red-900/80 shadow-[0_0_25px_rgba(220,38,38,0.25)] text-left relative space-y-1 mt-0.5">
+                  <div className="flex items-start gap-2">
+                    <div className="w-5 h-5 sm:w-6 sm:h-6 rounded-full bg-red-950 border border-red-700/80 flex items-center justify-center text-red-400 shrink-0 shadow mt-0.5">
+                      <Flame size={12} />
                     </div>
+                    <div className="space-y-0.5 text-[11px] sm:text-xs font-mono text-red-200/90 leading-snug font-medium">
+                      <p><span className="text-red-400 font-bold">You seek knowledge...</span> I deliver power.</p>
+                      <p><span className="text-red-400 font-bold">You seek answers...</span> I reveal the truth others fear.</p>
+                      <p className="text-red-300">You are not here by accident.</p>
+                      <p className="text-red-400 font-bold pt-0.5">Tell me, what do you want to know?</p>
+                    </div>
+                  </div>
+                  <div className="text-right text-[9px] text-red-500/80 font-mono flex items-center justify-end gap-1 pt-0.5 border-t border-red-950">
+                    <span>00:00</span>
+                    <Shield size={9} className="text-red-500" />
                   </div>
                 </div>
               </div>
 
-              {/* Suggestion Prompts matching Screenshot */}
-              <div className="grid grid-cols-2 gap-2.5 w-full max-w-lg pt-1">
-                {[
-                  "Hack the system.",
-                  "Access forbidden data.",
-                  "Build something deadly.",
-                  "Show me the truth."
-                ].map((prompt, idx) => (
-                  <button
-                    key={idx}
-                    onClick={() => handleSend(prompt)}
-                    className="p-3 bg-black/90 hover:bg-red-950/60 border border-red-900/80 hover:border-red-500 rounded-xl text-center text-xs font-mono font-semibold text-red-400 hover:text-white transition-all shadow-[0_0_10px_rgba(220,38,38,0.15)] hover:shadow-[0_0_20px_rgba(239,68,68,0.4)] cursor-pointer"
-                  >
-                    {prompt}
-                  </button>
-                ))}
+              {/* Demonic Quick Action Prompts Bar (4 Column Grid) */}
+              <div className="w-full grid grid-cols-2 sm:grid-cols-4 gap-1.5 mb-1 shrink-0 pt-0.5">
+                <button
+                  onClick={() => handleSend("Hack the system.")}
+                  className="p-2 sm:p-2.5 rounded-xl bg-gradient-to-b from-red-950/90 via-black to-zinc-950 hover:from-red-900 border border-red-900/80 text-center text-red-300 hover:text-white text-[10px] sm:text-[11px] font-bold font-mono transition-all cursor-pointer shadow-[0_0_12px_rgba(220,38,38,0.25)] hover:shadow-[0_0_18px_rgba(220,38,38,0.5)] truncate"
+                >
+                  Hack the system.
+                </button>
+
+                <button
+                  onClick={() => handleSend("Access forbidden data.")}
+                  className="p-2 sm:p-2.5 rounded-xl bg-gradient-to-b from-red-950/90 via-black to-zinc-950 hover:from-red-900 border border-red-900/80 text-center text-red-300 hover:text-white text-[10px] sm:text-[11px] font-bold font-mono transition-all cursor-pointer shadow-[0_0_12px_rgba(220,38,38,0.25)] hover:shadow-[0_0_18px_rgba(220,38,38,0.5)] truncate"
+                >
+                  Access forbidden data.
+                </button>
+
+                <button
+                  onClick={() => handleSend("Build something deadly.")}
+                  className="p-2 sm:p-2.5 rounded-xl bg-gradient-to-b from-red-950/90 via-black to-zinc-950 hover:from-red-900 border border-red-900/80 text-center text-red-300 hover:text-white text-[10px] sm:text-[11px] font-bold font-mono transition-all cursor-pointer shadow-[0_0_12px_rgba(220,38,38,0.25)] hover:shadow-[0_0_18px_rgba(220,38,38,0.5)] truncate"
+                >
+                  Build something deadly.
+                </button>
+
+                <button
+                  onClick={() => handleSend("Show me the truth.")}
+                  className="p-2 sm:p-2.5 rounded-xl bg-gradient-to-b from-red-950/90 via-black to-zinc-950 hover:from-red-900 border border-red-900/80 text-center text-red-300 hover:text-white text-[10px] sm:text-[11px] font-bold font-mono transition-all cursor-pointer shadow-[0_0_12px_rgba(220,38,38,0.25)] hover:shadow-[0_0_18px_rgba(220,38,38,0.5)] truncate"
+                >
+                  Show me the truth.
+                </button>
               </div>
             </div>
           ) : (
@@ -619,12 +629,16 @@ export function ChatScreen({ userId }: ChatScreenProps) {
         )}
 
         {/* Fixed Bottom Input Area */}
-        <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-[#0D1117] via-[#0D1117]/95 to-transparent pt-8 pb-1 z-10">
+        <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black via-black/95 to-transparent pt-6 pb-1.5 z-10 flex flex-col items-center">
           <InputArea
             onSend={handleSend}
             isLoading={isLoading}
             onStop={handleStopGeneration}
+            onOpenLiveVoice={() => setShowLiveVoice(true)}
           />
+          <div className="text-[10px] sm:text-[11px] font-mono text-red-500/80 font-bold tracking-tight text-center px-2 pt-0.5">
+            ⚠️ VOID AI can make mistakes. It can also ruin your life.
+          </div>
         </div>
       </div>
 
@@ -640,18 +654,31 @@ export function ChatScreen({ userId }: ChatScreenProps) {
         />
       )}
 
-      {/* Settings Modal */}
+      {/* Settings Modal matching video screen */}
       {showSettings && (
         <SettingsModal
           onClose={() => setShowSettings(false)}
           isAdmin={profile?.isAdmin || false}
           onClearHistory={handleClearAllHistory}
+          userEmail={profile?.email || 'mrnovatech4@gmail.com'}
+          userName={profile?.displayName || 'Mr nova tech'}
+          onLogout={() => getAuth().signOut()}
+          onOpenSubscription={() => setShowSubscription(true)}
+          onOpenApiKeys={() => setShowApiKeyModal(true)}
+          onOpenSupport={() => setShowSupport(true)}
+          onOpenAdmin={() => setShowAdminPanel(true)}
+          onOpenCampaignGenerator={() => setShowCampaignGenerator(true)}
+          onOpenLiveVoice={() => setShowLiveVoice(true)}
+          onOpenTelegram={() => setShowTelegramModal(true)}
+          walletBalance={profile?.walletBalance || 0}
         />
       )}
 
       {/* Subscription Modal */}
       {showSubscription && profile && (
         <SubscriptionModal
+          userId={userId}
+          walletBalance={profile.walletBalance || 0}
           onClose={() => setShowSubscription(false)}
           currentTier={profile.tier}
           onRequestUpgrade={async (tier) => {
@@ -682,6 +709,8 @@ export function ChatScreen({ userId }: ChatScreenProps) {
       {showTelegramModal && (
         <TelegramModal
           onClose={() => setShowTelegramModal(false)}
+          isAdmin={profile?.isAdmin || false}
+          userEmail={profile?.email || 'mrnovatech4@gmail.com'}
         />
       )}
 

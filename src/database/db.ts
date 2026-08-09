@@ -1,14 +1,31 @@
 import { collection, doc, setDoc, getDocs, query, where, orderBy, deleteDoc, serverTimestamp, getDoc, onSnapshot } from "firebase/firestore";
 import { db } from "../config/firebase";
-import { Chat, Message, UserProfile, SupportChat, SupportMessage, PricingSettings, BroadcastMessage, UserTier, UserApiKey } from "../models/types";
+import { Chat, Message, UserProfile, SupportChat, SupportMessage, PricingSettings, BroadcastMessage, UserTier, UserApiKey, WalletTransaction } from "../models/types";
 import { v4 as uuidv4 } from "uuid";
+
+export function listenToUserProfile(uid: string, callback: (user: UserProfile | null) => void) {
+  const userRef = doc(db, "users", uid);
+  return onSnapshot(userRef, (snap) => {
+    if (snap.exists()) {
+      callback(snap.data() as UserProfile);
+    } else {
+      callback(null);
+    }
+  }, (err) => {
+    console.error("Error listening to user profile:", err);
+  });
+}
 
 export async function getUserProfile(uid: string, email: string | null, displayName: string | null): Promise<UserProfile> {
   const userRef = doc(db, "users", uid);
   const userSnap = await getDoc(userRef);
   
   if (userSnap.exists()) {
-    return userSnap.data() as UserProfile;
+    const data = userSnap.data() as UserProfile;
+    if (data.walletBalance === undefined) {
+      data.walletBalance = 0;
+    }
+    return data;
   }
   
   // Default new user profile
@@ -22,6 +39,8 @@ export async function getUserProfile(uid: string, email: string | null, displayN
     isAdmin: email === 'mrnovatech4@gmail.com', // automatically make specific user admin
     isBanned: false,
     isVerified: false,
+    walletBalance: 0,
+    hasApiKeyAccess: false,
   };
   
   await setDoc(userRef, newUserProfile);
@@ -559,5 +578,194 @@ export async function validateUserApiKey(apiKey: string): Promise<{ userId: stri
     console.error("Error validating API key:", err);
     return null;
   }
+}
+
+// WALLET SYSTEM FUNCTIONS
+export async function grantUserWalletFunds(
+  uid: string, 
+  amount: number, 
+  description: string = "Admin Grant / Wallet Funding"
+): Promise<{ newBalance: number }> {
+  const userRef = doc(db, "users", uid);
+  const userSnap = await getDoc(userRef);
+  
+  let currentBalance = 0;
+  let userName = "User";
+  let userEmail = "";
+
+  if (userSnap.exists()) {
+    const data = userSnap.data() as UserProfile;
+    currentBalance = data.walletBalance || 0;
+    userName = data.displayName || data.email || "User";
+    userEmail = data.email || "";
+  }
+
+  const newBalance = Math.max(0, currentBalance + amount);
+  await setDoc(userRef, { walletBalance: newBalance }, { merge: true });
+
+  // Record Transaction
+  const txId = uuidv4();
+  const tx: WalletTransaction = {
+    id: txId,
+    userId: uid,
+    userName,
+    userEmail,
+    amount,
+    type: amount >= 0 ? 'admin_grant' : 'refund',
+    description,
+    createdAt: Date.now()
+  };
+  await setDoc(doc(db, "wallet_transactions", txId), tx);
+
+  return { newBalance };
+}
+
+export async function withdrawUserWalletFunds(
+  uid: string, 
+  amountToWithdraw: number, 
+  description: string = "Admin Security Withdrawal"
+): Promise<{ newBalance: number }> {
+  return grantUserWalletFunds(uid, -Math.abs(amountToWithdraw), description);
+}
+
+export async function resetUserWalletBalance(
+  uid: string, 
+  reason: string = "Emergency Security Freeze / Balance Reset"
+): Promise<{ newBalance: number }> {
+  const userRef = doc(db, "users", uid);
+  const userSnap = await getDoc(userRef);
+  
+  let currentBalance = 0;
+  let userName = "User";
+  let userEmail = "";
+
+  if (userSnap.exists()) {
+    const data = userSnap.data() as UserProfile;
+    currentBalance = data.walletBalance || 0;
+    userName = data.displayName || data.email || "User";
+    userEmail = data.email || "";
+  }
+
+  await setDoc(userRef, { walletBalance: 0 }, { merge: true });
+
+  if (currentBalance > 0) {
+    const txId = uuidv4();
+    const tx: WalletTransaction = {
+      id: txId,
+      userId: uid,
+      userName,
+      userEmail,
+      amount: -currentBalance,
+      type: 'refund',
+      description: `${reason} (Reset ₦${currentBalance.toLocaleString()} to ₦0)`,
+      createdAt: Date.now()
+    };
+    await setDoc(doc(db, "wallet_transactions", txId), tx);
+  }
+
+  return { newBalance: 0 };
+}
+
+export async function purchaseTierWithWallet(
+  uid: string, 
+  tier: UserTier, 
+  cost: number, 
+  billingCycleText: string = "Monthly Plan"
+): Promise<{ success: boolean; message: string; newBalance?: number }> {
+  const userRef = doc(db, "users", uid);
+  const userSnap = await getDoc(userRef);
+
+  if (!userSnap.exists()) {
+    return { success: false, message: "User profile not found." };
+  }
+
+  const user = userSnap.data() as UserProfile;
+  const currentBalance = user.walletBalance || 0;
+
+  if (currentBalance < cost) {
+    return { 
+      success: false, 
+      message: `Insufficient Wallet Balance! Required: ₦${cost.toLocaleString()}, Current Balance: ₦${currentBalance.toLocaleString()}. Please ask Admin to fund your wallet.` 
+    };
+  }
+
+  const newBalance = currentBalance - cost;
+  await setDoc(userRef, { tier, walletBalance: newBalance }, { merge: true });
+
+  // Record transaction
+  const txId = uuidv4();
+  const tx: WalletTransaction = {
+    id: txId,
+    userId: uid,
+    userName: user.displayName || user.email || "User",
+    userEmail: user.email || "",
+    amount: -cost,
+    type: 'subscription_purchase',
+    description: `Purchased ${tier.toUpperCase()} Subscription (${billingCycleText})`,
+    createdAt: Date.now()
+  };
+  await setDoc(doc(db, "wallet_transactions", txId), tx);
+
+  return { success: true, message: `Successfully upgraded to ${tier.toUpperCase()} plan!`, newBalance };
+}
+
+export async function purchaseApiKeyAccessWithWallet(
+  uid: string, 
+  cost: number, 
+  billingCycleText: string = "Monthly Suite"
+): Promise<{ success: boolean; message: string; newBalance?: number }> {
+  const userRef = doc(db, "users", uid);
+  const userSnap = await getDoc(userRef);
+
+  if (!userSnap.exists()) {
+    return { success: false, message: "User profile not found." };
+  }
+
+  const user = userSnap.data() as UserProfile;
+  const currentBalance = user.walletBalance || 0;
+
+  if (currentBalance < cost) {
+    return { 
+      success: false, 
+      message: `Insufficient Wallet Balance! Required: ₦${cost.toLocaleString()}, Current Balance: ₦${currentBalance.toLocaleString()}. Please contact Admin to fund your wallet.` 
+    };
+  }
+
+  const newBalance = currentBalance - cost;
+  await setDoc(userRef, { hasApiKeyAccess: true, walletBalance: newBalance }, { merge: true });
+
+  // Record transaction
+  const txId = uuidv4();
+  const tx: WalletTransaction = {
+    id: txId,
+    userId: uid,
+    userName: user.displayName || user.email || "User",
+    userEmail: user.email || "",
+    amount: -cost,
+    type: 'apikey_purchase',
+    description: `Purchased Developer API Key Access Suite (${billingCycleText})`,
+    createdAt: Date.now()
+  };
+  await setDoc(doc(db, "wallet_transactions", txId), tx);
+
+  return { success: true, message: `Successfully unlocked Developer API Key Suite Access!`, newBalance };
+}
+
+export function listenToWalletTransactions(userId: string | null, callback: (txs: WalletTransaction[]) => void) {
+  let q;
+  if (userId) {
+    q = query(collection(db, "wallet_transactions"), where("userId", "==", userId));
+  } else {
+    q = query(collection(db, "wallet_transactions"), orderBy("createdAt", "desc"));
+  }
+
+  return onSnapshot(q, (snapshot) => {
+    const list = snapshot.docs.map(doc => doc.data() as WalletTransaction);
+    list.sort((a, b) => b.createdAt - a.createdAt);
+    callback(list);
+  }, (err) => {
+    console.error("Error listening to wallet transactions:", err);
+    callback([]);
+  });
 }
 

@@ -68,6 +68,19 @@ export interface UserProfile {
   isSupportStaff?: boolean;
   isBanned?: boolean;
   isVerified?: boolean;
+  walletBalance?: number;
+  hasApiKeyAccess?: boolean;
+}
+
+export interface WalletTransaction {
+  id: string;
+  userId: string;
+  userName?: string;
+  userEmail?: string;
+  amount: number; // Positive for credit, negative for debit/purchase
+  type: 'admin_grant' | 'subscription_purchase' | 'apikey_purchase' | 'refund';
+  description: string;
+  createdAt: number;
 }
 
 export interface BroadcastMessage {

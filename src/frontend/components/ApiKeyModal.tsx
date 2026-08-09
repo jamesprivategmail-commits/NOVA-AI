@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { X, Key, Plus, Copy, Check, Trash2, Code2, ShieldAlert, Sparkles, Terminal, Cpu, DollarSign, Activity, Crown, Lock, Tag, Layers } from 'lucide-react';
+import { X, Key, Plus, Copy, Check, Trash2, Code2, ShieldAlert, Sparkles, Terminal, Cpu, DollarSign, Activity, Crown, Lock, Tag, Layers, Wallet, Send } from 'lucide-react';
 import { UserApiKey, UserProfile, PricingSettings } from '../../models/types';
-import { getUserApiKeys, generateUserApiKey, deleteUserApiKey, listenToPricingSettings } from '../../database/db';
+import { getUserApiKeys, generateUserApiKey, deleteUserApiKey, listenToPricingSettings, purchaseApiKeyAccessWithWallet } from '../../database/db';
 import { clsx } from 'clsx';
 
 interface ApiKeyModalProps {
@@ -17,6 +17,7 @@ export function ApiKeyModal({ user, isOpen, onClose, onOpenSubscription }: ApiKe
   const [loading, setLoading] = useState(true);
   const [newKeyName, setNewKeyName] = useState('');
   const [generating, setGenerating] = useState(false);
+  const [buyingSuite, setBuyingSuite] = useState(false);
   const [copiedKeyId, setCopiedKeyId] = useState<string | null>(null);
   const [newlyCreatedKey, setNewlyCreatedKey] = useState<string | null>(null);
   const [visibleKeyIds, setVisibleKeyIds] = useState<Set<string>>(new Set());
@@ -24,7 +25,8 @@ export function ApiKeyModal({ user, isOpen, onClose, onOpenSubscription }: ApiKe
   const [apiBillingCycle, setApiBillingCycle] = useState<'monthly' | 'yearly'>('monthly');
 
   const appUrl = typeof window !== 'undefined' ? window.location.origin : 'https://voidai.app';
-  const isPaidTier = !!(user?.tier && user.tier !== 'free');
+  const isPaidTier = !!(user?.tier && user.tier !== 'free') || !!user?.hasApiKeyAccess;
+  const walletBalance = user?.walletBalance || 0;
 
   useEffect(() => {
     const unsub = listenToPricingSettings((settings) => setPricing(settings));
@@ -47,6 +49,40 @@ export function ApiKeyModal({ user, isOpen, onClose, onOpenSubscription }: ApiKe
       console.error("Failed to load user API keys:", err);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleWalletPurchaseApiSuite = async () => {
+    if (!user?.uid) return;
+    const cost = apiBillingCycle === 'yearly' ? (pricing?.apiKeyYearly ?? 200000) : (pricing?.apiKeyMonthly ?? 20000);
+
+    if (walletBalance < cost) {
+      alert(`Insufficient Wallet Balance!\n\nYour Balance: ₦${walletBalance.toLocaleString()}\nRequired: ₦${cost.toLocaleString()}\n\nPlease ask Admin to fund your wallet.`);
+      return;
+    }
+
+    if (!confirm(`Purchase Developer API Key Suite Access for ₦${cost.toLocaleString()} using your Wallet Balance?`)) {
+      return;
+    }
+
+    setBuyingSuite(true);
+    try {
+      const res = await purchaseApiKeyAccessWithWallet(user.uid, cost, apiBillingCycle === 'yearly' ? 'Yearly Suite' : 'Monthly Suite');
+      if (res.success) {
+        alert(`🎉 ${res.message}\nNew Wallet Balance: ₦${(res.newBalance || 0).toLocaleString()}`);
+        user.hasApiKeyAccess = true;
+        if (res.newBalance !== undefined) {
+          user.walletBalance = res.newBalance;
+        }
+        setActiveTab('keys');
+      } else {
+        alert(`⚠️ ${res.message}`);
+      }
+    } catch (err: any) {
+      console.error(err);
+      alert("Failed to purchase API key suite: " + err.message);
+    } finally {
+      setBuyingSuite(false);
     }
   };
 
@@ -105,43 +141,40 @@ export function ApiKeyModal({ user, isOpen, onClose, onOpenSubscription }: ApiKe
     <div className="fixed inset-0 z-50 bg-[#050205] overflow-y-auto min-h-screen text-slate-100 font-mono flex flex-col animate-fadeIn selection:bg-red-900 selection:text-white">
       
       {/* Top Header Bar */}
-      <header className="sticky top-0 z-40 bg-black/95 border-b border-red-950 backdrop-blur-md px-4 md:px-8 py-4 flex items-center justify-between shadow-[0_10px_30px_rgba(0,0,0,0.8)]">
-        <div className="flex items-center gap-4">
+      <header className="sticky top-0 z-40 bg-black/95 border-b border-red-950 backdrop-blur-md px-3 sm:px-6 py-2.5 flex items-center justify-between shadow-[0_10px_20px_rgba(0,0,0,0.8)]">
+        <div className="flex items-center gap-3">
           <button
             onClick={onClose}
-            className="flex items-center gap-2 px-3.5 py-2 bg-red-950/80 hover:bg-red-900 border border-red-800/80 text-red-300 hover:text-white font-bold text-xs rounded-xl transition-all cursor-pointer shadow-md group"
+            className="flex items-center gap-1.5 px-2.5 py-1.5 bg-red-950/80 hover:bg-red-900 border border-red-800/80 text-red-300 hover:text-white font-bold text-[11px] rounded-lg transition-all cursor-pointer shadow group"
           >
-            <X size={16} className="group-hover:-translate-x-0.5 transition-transform" />
-            <span className="uppercase tracking-wider">← Back to Chat</span>
+            <X size={14} className="group-hover:-translate-x-0.5 transition-transform" />
+            <span className="uppercase tracking-wider">Back</span>
           </button>
 
-          <div className="h-6 w-px bg-red-950 hidden sm:block" />
+          <div className="h-5 w-px bg-red-950 hidden sm:block" />
 
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-black border border-red-600/80 p-2 shadow-[0_0_20px_rgba(220,38,38,0.4)] flex items-center justify-center text-red-500 shrink-0">
-              <Key size={22} />
+          <div className="flex items-center gap-2">
+            <div className="w-8 h-8 rounded-lg bg-black border border-red-600/80 p-1.5 shadow-[0_0_15px_rgba(220,38,38,0.3)] flex items-center justify-center text-red-500 shrink-0">
+              <Key size={18} />
             </div>
             <div>
-              <div className="flex items-center gap-2 flex-wrap">
-                <h1 className="text-base md:text-xl font-black text-red-500 uppercase tracking-widest">
-                  DEVELOPER API KEYS & BILLING
+              <div className="flex items-center gap-1.5 flex-wrap">
+                <h1 className="text-xs sm:text-sm font-black text-red-500 uppercase tracking-widest">
+                  DEVELOPER API KEYS
                 </h1>
-                <span className="text-[10px] px-2.5 py-0.5 rounded-full bg-red-950 text-red-400 border border-red-800/80 font-bold uppercase tracking-wider">
-                  nvn_live_... PREFIX
+                <span className="text-[9px] px-2 py-0.2 rounded-full bg-red-950 text-red-400 border border-red-800/80 font-bold uppercase tracking-wider">
+                  nvn_live_...
                 </span>
               </div>
-              <p className="text-xs text-slate-400 hidden sm:block">
-                Generate keys to connect VOID AI models directly to standalone apps, commercial bots, and automated software workflows.
-              </p>
             </div>
           </div>
         </div>
 
         {/* Right User Status Badges */}
-        <div className="flex items-center gap-3">
-          <div className="hidden lg:flex items-center gap-2 px-3 py-1.5 bg-black border border-zinc-800 rounded-xl text-xs">
-            <Crown size={14} className="text-amber-400" />
-            <span className="text-slate-300 font-bold">User Tier:</span>
+        <div className="flex items-center gap-2">
+          <div className="hidden sm:flex items-center gap-1.5 px-2.5 py-1 bg-black border border-zinc-800 rounded-lg text-[10px]">
+            <Crown size={12} className="text-amber-400" />
+            <span className="text-slate-300 font-bold">Tier:</span>
             <span className="text-amber-400 font-extrabold uppercase">{user?.tier || 'free'}</span>
           </div>
 
@@ -149,73 +182,73 @@ export function ApiKeyModal({ user, isOpen, onClose, onOpenSubscription }: ApiKe
             href="https://t.me/nova_tech_1"
             target="_blank"
             rel="noreferrer"
-            className="px-3.5 py-2 bg-red-600/20 hover:bg-red-600 border border-red-600/80 text-red-400 hover:text-white font-bold text-xs rounded-xl transition-all flex items-center gap-1.5 cursor-pointer uppercase tracking-wider shadow-md"
+            className="px-2.5 py-1.5 bg-red-600/20 hover:bg-red-600 border border-red-600/80 text-red-400 hover:text-white font-bold text-[10px] rounded-lg transition-all flex items-center gap-1 cursor-pointer uppercase tracking-wider shadow"
           >
-            <span>Admin Support</span>
+            <span>Admin</span>
           </a>
         </div>
       </header>
 
-      {/* Main Spacious Workspace Content */}
-      <main className="max-w-6xl mx-auto w-full p-4 md:p-8 space-y-8 flex-1">
+      {/* Main Compact Workspace Content */}
+      <main className="max-w-5xl mx-auto w-full p-3 sm:p-5 space-y-4 flex-1">
         
         {/* Banner Alert on Brain Sync */}
-        <div className="p-4 md:p-5 bg-gradient-to-r from-red-950/80 via-black to-zinc-950 border border-red-900/80 rounded-2xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 shadow-xl">
-          <div className="flex items-center gap-3">
-            <div className="p-2.5 bg-red-950 border border-red-800 text-red-400 rounded-xl shrink-0">
-              <Cpu size={20} />
+        <div className="p-3 bg-gradient-to-r from-red-950/80 via-black to-zinc-950 border border-red-900/80 rounded-xl flex items-center justify-between gap-2 shadow-md">
+          <div className="flex items-center gap-2.5">
+            <div className="p-1.5 bg-red-950 border border-red-800 text-red-400 rounded-lg shrink-0">
+              <Cpu size={16} />
             </div>
             <div>
-              <h3 className="text-sm font-bold text-red-400 uppercase tracking-wider flex items-center gap-2">
-                <span>Real-Time AI Brain Engine Synchronization</span>
-                <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+              <h3 className="text-[11px] sm:text-xs font-bold text-red-400 uppercase tracking-wider flex items-center gap-1.5">
+                <span>AI Brain Synchronization</span>
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
               </h3>
-              <p className="text-xs text-slate-300 leading-relaxed mt-0.5">
-                All developer API keys automatically inherit real-time system prompt rules, fallback provider trees, and model parameters configured in the AI Brain settings.
+              <p className="text-[10px] text-slate-300 leading-tight">
+                Keys inherit active prompt rules, provider fallbacks, and model parameters.
               </p>
             </div>
           </div>
         </div>
 
-        {/* Spacious Tab Controls */}
-        <div className="flex border-b border-red-950 bg-black/60 rounded-2xl p-1.5 gap-2 overflow-x-auto shadow-inner">
+        {/* Compact Tab Controls */}
+        <div className="flex border-b border-red-950 bg-black/60 rounded-xl p-1 gap-1 overflow-x-auto shadow-inner text-xs">
           <button
             onClick={() => setActiveTab('keys')}
             className={clsx(
-              "flex-1 min-w-[180px] flex items-center justify-center gap-2.5 px-5 py-3 rounded-xl text-xs md:text-sm font-bold transition-all cursor-pointer uppercase tracking-wider",
+              "flex-1 min-w-[130px] flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg text-[11px] font-bold transition-all cursor-pointer uppercase tracking-wider",
               activeTab === 'keys' 
-                ? "bg-red-600 text-white shadow-lg shadow-red-950" 
+                ? "bg-red-600 text-white shadow" 
                 : "text-slate-400 hover:text-white hover:bg-zinc-900/60"
             )}
           >
-            <Key size={16} />
-            <span>1. API Keys Vault ({apiKeys.length})</span>
+            <Key size={13} />
+            <span>1. Keys Vault ({apiKeys.length})</span>
           </button>
 
           <button
             onClick={() => setActiveTab('billing')}
             className={clsx(
-              "flex-1 min-w-[180px] flex items-center justify-center gap-2.5 px-5 py-3 rounded-xl text-xs md:text-sm font-bold transition-all cursor-pointer uppercase tracking-wider",
+              "flex-1 min-w-[130px] flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg text-[11px] font-bold transition-all cursor-pointer uppercase tracking-wider",
               activeTab === 'billing' 
-                ? "bg-red-600 text-white shadow-lg shadow-red-950" 
+                ? "bg-red-600 text-white shadow" 
                 : "text-slate-400 hover:text-white hover:bg-zinc-900/60"
             )}
           >
-            <DollarSign size={16} />
-            <span>2. Token & Subscription Pricing</span>
+            <DollarSign size={13} />
+            <span>2. Pricing & Plans</span>
           </button>
 
           <button
             onClick={() => setActiveTab('code')}
             className={clsx(
-              "flex-1 min-w-[180px] flex items-center justify-center gap-2.5 px-5 py-3 rounded-xl text-xs md:text-sm font-bold transition-all cursor-pointer uppercase tracking-wider",
+              "flex-1 min-w-[130px] flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg text-[11px] font-bold transition-all cursor-pointer uppercase tracking-wider",
               activeTab === 'code' 
-                ? "bg-red-600 text-white shadow-lg shadow-red-950" 
+                ? "bg-red-600 text-white shadow" 
                 : "text-slate-400 hover:text-white hover:bg-zinc-900/60"
             )}
           >
-            <Code2 size={16} />
-            <span>3. Integration Guide & SDKs</span>
+            <Code2 size={13} />
+            <span>3. Integration Guide</span>
           </button>
         </div>
 
@@ -471,19 +504,35 @@ export function ApiKeyModal({ user, isOpen, onClose, onOpenSubscription }: ApiKe
 
                 <div className="p-6 bg-black/90 border border-red-950 rounded-2xl flex flex-col justify-between space-y-3">
                   <div>
-                    <span className="text-xs font-bold text-slate-400 uppercase tracking-widest block">PURCHASE & RENEWAL</span>
+                    <span className="text-xs font-bold text-slate-400 uppercase tracking-widest block">INSTANT WALLET UNLOCK</span>
                     <p className="text-xs text-slate-300 leading-relaxed mt-1">
-                      Contact <strong className="text-red-400">@nova_tech_1</strong> on Telegram for bulk commercial API key grants or instant setup.
+                      Wallet Balance: <strong className="text-emerald-400">₦{walletBalance.toLocaleString()}</strong>. Purchase API access suite directly with your balance.
                     </p>
                   </div>
-                  <a
-                    href="https://t.me/nova_tech_1"
-                    target="_blank"
-                    rel="noreferrer"
-                    className="px-4 py-3 bg-red-600 hover:bg-red-500 text-white font-bold text-xs rounded-xl text-center transition-all shadow-lg cursor-pointer block uppercase tracking-wider"
-                  >
-                    Get API Key Access
-                  </a>
+                  {user?.hasApiKeyAccess ? (
+                    <div className="px-4 py-3 bg-emerald-950 border border-emerald-700 text-emerald-300 font-bold text-xs rounded-xl text-center uppercase tracking-wider">
+                      ✓ API Suite Active
+                    </div>
+                  ) : (
+                    <button
+                      onClick={handleWalletPurchaseApiSuite}
+                      disabled={buyingSuite}
+                      className={clsx(
+                        "px-4 py-3 text-white font-bold text-xs rounded-xl text-center transition-all shadow-lg cursor-pointer flex items-center justify-center gap-2 uppercase tracking-wider",
+                        walletBalance >= (apiBillingCycle === 'yearly' ? (pricing?.apiKeyYearly ?? 200000) : (pricing?.apiKeyMonthly ?? 20000))
+                          ? "bg-emerald-600 hover:bg-emerald-500 font-black"
+                          : "bg-red-900 hover:bg-red-800 border border-red-700",
+                        buyingSuite ? "animate-pulse" : ""
+                      )}
+                    >
+                      <Wallet size={15} />
+                      <span>
+                        {buyingSuite 
+                          ? 'Processing...' 
+                          : `Pay ₦${(apiBillingCycle === 'yearly' ? (pricing?.apiKeyYearly ?? 200000) : (pricing?.apiKeyMonthly ?? 20000)).toLocaleString()} from Wallet`}
+                      </span>
+                    </button>
+                  )}
                 </div>
               </div>
             </div>

@@ -3,9 +3,12 @@ import { X, Bot, CheckCircle2, RefreshCw, Send, ExternalLink, ShieldCheck, Zap, 
 
 interface TelegramModalProps {
   onClose: () => void;
+  isAdmin?: boolean;
+  userEmail?: string;
 }
 
-export function TelegramModal({ onClose }: TelegramModalProps) {
+export function TelegramModal({ onClose, isAdmin = true, userEmail = 'mrnovatech4@gmail.com' }: TelegramModalProps) {
+  const isOwner = isAdmin || userEmail === 'mrnovatech4@gmail.com';
   const [status, setStatus] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [tokenInput, setTokenInput] = useState('');
@@ -230,28 +233,34 @@ export function TelegramModal({ onClose }: TelegramModalProps) {
             </div>
           </div>
 
-          {/* Token Override Form */}
+          {/* Token Override Form - Admin Restricted */}
           <div className="p-4 bg-zinc-950 border border-zinc-800 rounded-xl space-y-3">
             <span className="text-xs font-bold text-zinc-200 flex items-center gap-1.5">
               <Key size={14} className="text-emerald-400" />
-              Update Bot Token (Optional)
+              Update Bot Token (Admin Only)
             </span>
-            <div className="flex gap-2">
-              <input
-                type="password"
-                placeholder="New Bot Token (8686494399:AA...)"
-                value={tokenInput}
-                onChange={(e) => setTokenInput(e.target.value)}
-                className="flex-1 bg-zinc-900 border border-zinc-800 text-zinc-200 text-xs rounded-lg px-3 py-2 font-mono focus:outline-none focus:border-emerald-500"
-              />
-              <button
-                onClick={handleUpdateToken}
-                disabled={updatingToken || !tokenInput.trim()}
-                className="px-4 py-2 bg-emerald-950 border border-emerald-800 hover:bg-emerald-900 text-emerald-200 font-mono font-bold text-xs rounded-lg transition-colors cursor-pointer shrink-0"
-              >
-                {updatingToken ? 'Connecting...' : 'Update'}
-              </button>
-            </div>
+            {isOwner ? (
+              <div className="flex gap-2">
+                <input
+                  type="password"
+                  placeholder="New Bot Token (8686494399:AA...)"
+                  value={tokenInput}
+                  onChange={(e) => setTokenInput(e.target.value)}
+                  className="flex-1 bg-zinc-900 border border-zinc-800 text-zinc-200 text-xs rounded-lg px-3 py-2 font-mono focus:outline-none focus:border-emerald-500"
+                />
+                <button
+                  onClick={handleUpdateToken}
+                  disabled={updatingToken || !tokenInput.trim()}
+                  className="px-4 py-2 bg-emerald-950 border border-emerald-800 hover:bg-emerald-900 text-emerald-200 font-mono font-bold text-xs rounded-lg transition-colors cursor-pointer shrink-0"
+                >
+                  {updatingToken ? 'Connecting...' : 'Update'}
+                </button>
+              </div>
+            ) : (
+              <div className="p-3 bg-red-950/40 border border-red-900/60 rounded-lg text-[11px] text-red-300 font-mono flex items-center justify-between">
+                <span>🔒 Token modification locked to System Owner (@mrnovatech4)</span>
+              </div>
+            )}
           </div>
         </div>
       </div>

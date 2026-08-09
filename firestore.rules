@@ -54,6 +54,10 @@ service cloud.firestore {
     match /user_api_keys/{keyId} {
       allow read, write: if true;
     }
+
+    match /wallet_transactions/{txId} {
+      allow read, write: if true;
+    }
   }
 }
 

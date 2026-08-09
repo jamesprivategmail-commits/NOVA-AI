@@ -40,23 +40,22 @@ export const MessageBubble = React.memo(function MessageBubble({ message, isStre
   return (
     <div
       className={clsx(
-        "group w-full py-3.5 px-2 sm:px-4 md:px-6 transition-colors",
-        isUser ? "bg-transparent" : "bg-black/80 border-y border-red-950/80 shadow-[inset_0_0_20px_rgba(150,0,0,0.1)]"
+        "group w-full py-2 px-2 sm:px-3 md:px-4 transition-colors",
+        isUser ? "bg-transparent" : "bg-black/80 border-y border-red-950/80 shadow-[inset_0_0_15px_rgba(150,0,0,0.1)]"
       )}
     >
       <div className={clsx(
-        "max-w-6xl mx-auto flex w-full gap-2.5 sm:gap-3.5 md:gap-4 relative items-start",
+        "max-w-4xl mx-auto flex w-full gap-2 relative items-start",
         isUser ? "flex-row-reverse" : "flex-row"
       )}>
         {/* Avatar */}
         <div className="shrink-0 mt-0.5">
           {isUser ? (
-            <div className="w-8 h-8 sm:w-9 sm:h-9 md:w-10 md:h-10 rounded-xl bg-black border border-red-800/80 flex items-center justify-center text-red-400 font-mono text-xs font-bold shadow-[0_0_10px_rgba(220,38,38,0.2)]">
-              <User size={16} className="sm:hidden" />
-              <User size={18} className="hidden sm:block" />
+            <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-black border border-red-800/80 flex items-center justify-center text-red-400 font-mono text-xs font-bold shadow-[0_0_8px_rgba(220,38,38,0.2)]">
+              <User size={14} />
             </div>
           ) : (
-            <div className="w-8 h-8 sm:w-9 sm:h-9 md:w-10 md:h-10 rounded-xl bg-black border border-red-600/80 p-0.5 sm:p-1 flex items-center justify-center shadow-[0_0_15px_rgba(220,38,38,0.4)]">
+            <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-black border border-red-600/80 p-0.5 flex items-center justify-center shadow-[0_0_10px_rgba(220,38,38,0.3)]">
               <img 
                 src="https://i.postimg.cc/8PVBFM75/file-00000000b40c82118dbaef206a9ebedc.png" 
                 alt="VOID AI" 
