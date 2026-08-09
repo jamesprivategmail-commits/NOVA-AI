@@ -94,9 +94,9 @@ export function SubscriptionModal({ userId, walletBalance = 0, onClose, currentT
       priceStr: '₦0',
       interval: '/forever',
       discountTag: null,
-      description: 'Standard AI assistant access for everyday casual prompts.',
+      description: 'Standard AI assistant access with 5 free messages every 3 hours.',
       features: [
-        '5 messages per day',
+        '5 free messages per 3 hours',
         'Standard response speed',
         'Basic email campaign generator',
         'Community user support'
@@ -113,9 +113,9 @@ export function SubscriptionModal({ userId, walletBalance = 0, onClose, currentT
       priceStr: `₦${getPlanCost('pro').toLocaleString()}`,
       interval: isYearly ? '/year' : '/month',
       discountTag: isYearly ? `${pricing?.proDiscount ?? 16}% OFF` : null,
-      description: 'Enhanced speeds and 50 messages/day for active users.',
+      description: 'Enhanced speeds with 20 messages every 3 hours.',
       features: [
-        '50 messages per day',
+        '20 messages per 3 hours',
         'Fast response generation',
         'Extended context tokens (1,024 max)',
         'Full Email Marketing Suite',
@@ -134,9 +134,9 @@ export function SubscriptionModal({ userId, walletBalance = 0, onClose, currentT
       priceStr: `₦${getPlanCost('premium').toLocaleString()}`,
       interval: isYearly ? '/year' : '/month',
       discountTag: isYearly ? `${pricing?.premiumDiscount ?? 16}% OFF` : null,
-      description: 'High volume limits & multi-stage strategy suite.',
+      description: 'High volume limits with 50 messages every 3 hours.',
       features: [
-        '250 messages per day',
+        '50 messages per 3 hours',
         'High-priority generation speed',
         '2,048 token max output limit',
         'Custom file exporter (PDF/CSV/Code)',
@@ -154,9 +154,9 @@ export function SubscriptionModal({ userId, walletBalance = 0, onClose, currentT
       priceStr: `₦${getPlanCost('vip').toLocaleString()}`,
       interval: isYearly ? '/year' : '/month',
       discountTag: isYearly ? `${pricing?.vipDiscount ?? 16}% OFF` : null,
-      description: 'Unrestricted elite AI capabilities and maximum context.',
+      description: 'Unrestricted elite AI capabilities with unlimited messages.',
       features: [
-        'Unlimited daily messages',
+        'UNLIMITED messages (No rate limits)',
         'Maximum output length (4,096 tokens)',
         'Custom AI Brain settings override',
         'Dedicated VIP Account Manager',

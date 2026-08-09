@@ -71,8 +71,8 @@ export function AdminDashboard({ onClose }: AdminDashboardProps) {
     premiumPrompt: "Premium Tier Brain: Full campaign strategy suite, multi-stage funnel email sequences, conversion rate optimization hacks.",
     vipPrompt: "VIP Tier Brain: Unrestricted elite AI capabilities, custom bespoke campaign designs, 1-on-1 copy teardowns.",
     freeLimit: 5,
-    proLimit: 50,
-    premiumLimit: 250,
+    proLimit: 20,
+    premiumLimit: 50,
     vipLimit: 99999,
     freeMaxTokens: 512,
     proMaxTokens: 1024,
@@ -1200,7 +1200,7 @@ export function AdminDashboard({ onClose }: AdminDashboardProps) {
                       </label>
                       <div className="space-y-2">
                         <div>
-                          <span className="text-[10px] text-zinc-400 block mb-1">Daily Msgs Limit</span>
+                          <span className="text-[10px] text-zinc-400 block mb-1">3-Hour Msgs Limit</span>
                           <input
                             type="number"
                             value={brain.freeLimit}
@@ -1227,7 +1227,7 @@ export function AdminDashboard({ onClose }: AdminDashboardProps) {
                       </label>
                       <div className="space-y-2">
                         <div>
-                          <span className="text-[10px] text-zinc-400 block mb-1">Daily Msgs Limit</span>
+                          <span className="text-[10px] text-zinc-400 block mb-1">3-Hour Msgs Limit</span>
                           <input
                             type="number"
                             value={brain.proLimit}
@@ -1254,7 +1254,7 @@ export function AdminDashboard({ onClose }: AdminDashboardProps) {
                       </label>
                       <div className="space-y-2">
                         <div>
-                          <span className="text-[10px] text-zinc-400 block mb-1">Daily Msgs Limit</span>
+                          <span className="text-[10px] text-zinc-400 block mb-1">3-Hour Msgs Limit</span>
                           <input
                             type="number"
                             value={brain.premiumLimit}
@@ -1281,7 +1281,7 @@ export function AdminDashboard({ onClose }: AdminDashboardProps) {
                       </label>
                       <div className="space-y-2">
                         <div>
-                          <span className="text-[10px] text-zinc-400 block mb-1">Daily Msgs Limit</span>
+                          <span className="text-[10px] text-zinc-400 block mb-1">3-Hour Msgs Limit</span>
                           <input
                             type="number"
                             value={brain.vipLimit}

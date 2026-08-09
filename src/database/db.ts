@@ -29,6 +29,7 @@ export async function getUserProfile(uid: string, email: string | null, displayN
   }
   
   // Default new user profile
+  const now = Date.now();
   const newUserProfile: UserProfile = {
     uid,
     email,
@@ -36,6 +37,7 @@ export async function getUserProfile(uid: string, email: string | null, displayN
     tier: 'free',
     messageCount: 0,
     lastMessageDate: new Date().toISOString().split('T')[0],
+    lastResetTime: now,
     isAdmin: email === 'mrnovatech4@gmail.com', // automatically make specific user admin
     isBanned: false,
     isVerified: false,
@@ -51,6 +53,8 @@ export async function incrementMessageCount(uid: string): Promise<UserProfile> {
   const userRef = doc(db, "users", uid);
   const userSnap = await getDoc(userRef);
   
+  const now = Date.now();
+  const THREE_HOURS_MS = 3 * 60 * 60 * 1000;
   const today = new Date().toISOString().split('T')[0];
   let profile: UserProfile;
 
@@ -62,6 +66,7 @@ export async function incrementMessageCount(uid: string): Promise<UserProfile> {
       tier: 'free',
       messageCount: 0,
       lastMessageDate: today,
+      lastResetTime: now,
       isAdmin: false,
       isBanned: false,
       isVerified: false,
@@ -70,14 +75,20 @@ export async function incrementMessageCount(uid: string): Promise<UserProfile> {
     profile = userSnap.data() as UserProfile;
   }
   
-  let newCount = (profile.messageCount || 0) + 1;
-  if (profile.lastMessageDate !== today) {
-    newCount = 1; // reset daily
+  let lastResetTime = profile.lastResetTime || 0;
+  let newCount = profile.messageCount || 0;
+
+  if (!lastResetTime || (now - lastResetTime >= THREE_HOURS_MS)) {
+    newCount = 1; // Reset count for new 3-hour window
+    lastResetTime = now;
+  } else {
+    newCount += 1;
   }
   
   const updatedProfile: UserProfile = {
     ...profile,
     messageCount: newCount,
+    lastResetTime: lastResetTime,
     lastMessageDate: today
   };
   
@@ -396,8 +407,8 @@ export async function getAIBrainSettings(): Promise<AIBrainSettings> {
     vipPrompt: "VIP Tier Brain: Unrestricted elite AI capabilities, custom bespoke campaign designs, 1-on-1 copy teardowns.",
 
     freeLimit: 5,
-    proLimit: 50,
-    premiumLimit: 250,
+    proLimit: 20,
+    premiumLimit: 50,
     vipLimit: 99999,
 
     freeMaxTokens: 512,

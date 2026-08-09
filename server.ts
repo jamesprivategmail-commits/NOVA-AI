@@ -81,6 +81,7 @@ async function fetchUserAndTierSettings(userId?: string) {
   let isAdmin = false;
   let messageCount = 0;
   let lastMessageDate = "";
+  let lastResetTime = 0;
 
   if (userId) {
     try {
@@ -93,6 +94,7 @@ async function fetchUserAndTierSettings(userId?: string) {
         isAdmin = !!uData.isAdmin;
         messageCount = uData.messageCount || 0;
         lastMessageDate = uData.lastMessageDate || "";
+        lastResetTime = uData.lastResetTime || 0;
       }
     } catch (err) {
       console.warn("Could not fetch user profile from Firestore in backend:", err);
@@ -106,8 +108,8 @@ async function fetchUserAndTierSettings(userId?: string) {
     premiumPrompt: "Premium Tier Brain: Full campaign strategy suite, multi-stage funnel email sequences, conversion rate optimization hacks.",
     vipPrompt: "VIP Tier Brain: Unrestricted elite AI capabilities, custom bespoke campaign designs, 1-on-1 copy teardowns.",
     freeLimit: 5,
-    proLimit: 50,
-    premiumLimit: 250,
+    proLimit: 20,
+    premiumLimit: 50,
     vipLimit: 99999,
     freeMaxTokens: 512,
     proMaxTokens: 1024,
@@ -148,6 +150,7 @@ async function fetchUserAndTierSettings(userId?: string) {
     isAdmin,
     messageCount,
     lastMessageDate,
+    lastResetTime,
     brainSettings
   };
 }
@@ -564,12 +567,19 @@ async function incrementUserMessageCountServer(userId: string) {
     const userSnap = await getDoc(userRef);
     if (userSnap.exists()) {
       const uData = userSnap.data();
+      const now = Date.now();
+      const THREE_HOURS_MS = 3 * 60 * 60 * 1000;
       const today = new Date().toISOString().split('T')[0];
-      let newCount = (uData.messageCount || 0) + 1;
-      if (uData.lastMessageDate !== today) {
+      let lastResetTime = uData.lastResetTime || 0;
+      let newCount = uData.messageCount || 0;
+
+      if (!lastResetTime || (now - lastResetTime >= THREE_HOURS_MS)) {
         newCount = 1;
+        lastResetTime = now;
+      } else {
+        newCount += 1;
       }
-      await setDoc(userRef, { messageCount: newCount, lastMessageDate: today }, { merge: true });
+      await setDoc(userRef, { messageCount: newCount, lastResetTime, lastMessageDate: today }, { merge: true });
     }
   } catch (err) {
     console.warn("Error incrementing message count in backend:", err);
@@ -607,7 +617,7 @@ async function startServer() {
       const { groqKeys, cohereKeys, bazaarLinkKeys } = await getSystemKeys();
 
       // Retrieve user profile directly from Firestore backend
-      const { userTier: dbTier, isBanned, isAdmin, messageCount, lastMessageDate, brainSettings } = await fetchUserAndTierSettings(userId);
+      const { userTier: dbTier, isBanned, isAdmin, messageCount, lastMessageDate, lastResetTime, brainSettings } = await fetchUserAndTierSettings(userId);
       const tier = dbTier || 'free';
 
       if (isBanned) {
@@ -617,17 +627,25 @@ async function startServer() {
         return;
       }
 
-      // Enforce daily message limits per tier
-      const today = new Date().toISOString().split('T')[0];
+      // Enforce 3-hour message limits per tier
+      const now = Date.now();
+      const THREE_HOURS_MS = 3 * 60 * 60 * 1000;
       const limitForTier = tier === 'vip' ? brainSettings.vipLimit 
         : tier === 'premium' ? brainSettings.premiumLimit 
         : tier === 'pro' ? brainSettings.proLimit 
         : brainSettings.freeLimit;
 
-      const currentCount = lastMessageDate === today ? (messageCount || 0) : 0;
+      const isWithin3Hours = lastResetTime > 0 && (now - lastResetTime < THREE_HOURS_MS);
+      const currentCount = isWithin3Hours ? (messageCount || 0) : 0;
 
       if (tier !== 'vip' && currentCount >= limitForTier) {
-        res.write(`data: ${JSON.stringify({ text: `\n\n**Tier Limit Exceeded:** You have reached your daily limit of ${limitForTier} messages on the ${tier.toUpperCase()} plan. Please upgrade your plan to continue.` })}\n\n`);
+        const msRemaining = Math.max(0, THREE_HOURS_MS - (now - lastResetTime));
+        const minsRemaining = Math.ceil(msRemaining / 60000);
+        const hours = Math.floor(minsRemaining / 60);
+        const mins = minsRemaining % 60;
+        const timeStr = hours > 0 ? `${hours}h ${mins}m` : `${mins}m`;
+
+        res.write(`data: ${JSON.stringify({ text: `\n\n**Tier Limit Exceeded:** You have reached your limit of ${limitForTier} messages per 3 hours on the ${tier.toUpperCase()} plan. Your limit will reset in ${timeStr}. Upgrade your plan for higher limits.` })}\n\n`);
         res.write("data: [DONE]\n\n");
         res.end();
         return;
@@ -748,20 +766,28 @@ async function startServer() {
       const { messages = [], stream = false, model, max_tokens } = req.body;
 
       const { groqKeys, cohereKeys, bazaarLinkKeys } = await getSystemKeys();
-      const { messageCount, lastMessageDate, brainSettings } = await fetchUserAndTierSettings(userId);
+      const { messageCount, lastMessageDate, lastResetTime, brainSettings } = await fetchUserAndTierSettings(userId);
 
-      // Enforce daily tier limits
-      const today = new Date().toISOString().split('T')[0];
+      // Enforce 3-hour tier limits
+      const now = Date.now();
+      const THREE_HOURS_MS = 3 * 60 * 60 * 1000;
       const limitForTier = tier === 'vip' ? brainSettings.vipLimit 
         : tier === 'premium' ? brainSettings.premiumLimit 
         : tier === 'pro' ? brainSettings.proLimit 
         : brainSettings.freeLimit;
 
-      const currentCount = lastMessageDate === today ? (messageCount || 0) : 0;
+      const isWithin3Hours = lastResetTime > 0 && (now - lastResetTime < THREE_HOURS_MS);
+      const currentCount = isWithin3Hours ? (messageCount || 0) : 0;
       if (tier !== 'vip' && currentCount >= limitForTier) {
+        const msRemaining = Math.max(0, THREE_HOURS_MS - (now - lastResetTime));
+        const minsRemaining = Math.ceil(msRemaining / 60000);
+        const hours = Math.floor(minsRemaining / 60);
+        const mins = minsRemaining % 60;
+        const timeStr = hours > 0 ? `${hours}h ${mins}m` : `${mins}m`;
+
         return res.status(429).json({
           error: {
-            message: `Daily message limit of ${limitForTier} reached for your ${tier.toUpperCase()} tier. Please upgrade your plan on VOID AI.`,
+            message: `Message limit of ${limitForTier} per 3 hours reached for your ${tier.toUpperCase()} tier. Resets in ${timeStr}. Please upgrade your plan on VOID AI.`,
             type: "rate_limit_error",
             code: "rate_limit_exceeded"
           }

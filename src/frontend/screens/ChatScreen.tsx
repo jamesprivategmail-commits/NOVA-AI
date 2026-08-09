@@ -191,28 +191,36 @@ export function ChatScreen({ userId }: ChatScreenProps) {
       alert('Your account has been restricted. Please contact support.');
       return false;
     }
-    // Only VIP tier bypasses daily message limits
+    // VIP tier is unlimited
     if (profile.tier === 'vip') return true;
 
-    const today = new Date().toISOString().split('T')[0];
-    const isToday = profile.lastMessageDate === today;
-    const currentCount = isToday ? (profile.messageCount || 0) : 0;
+    const now = Date.now();
+    const THREE_HOURS_MS = 3 * 60 * 60 * 1000;
+    const lastResetTime = profile.lastResetTime || 0;
+    const isWithin3Hours = lastResetTime > 0 && (now - lastResetTime < THREE_HOURS_MS);
+    const currentCount = isWithin3Hours ? (profile.messageCount || 0) : 0;
+
+    const msRemaining = Math.max(0, THREE_HOURS_MS - (now - lastResetTime));
+    const minsRemaining = Math.ceil(msRemaining / 60000);
+    const hours = Math.floor(minsRemaining / 60);
+    const mins = minsRemaining % 60;
+    const timeStr = hours > 0 ? `${hours}h ${mins}m` : `${mins}m`;
 
     if (profile.tier === 'free') {
       if (currentCount >= 5) {
-        alert('Free tier limit reached (5 messages per day). Please upgrade your plan.');
+        alert(`Free tier limit reached (5 free messages per 3 hours). Your limit resets in ${timeStr}. Upgrade your plan for higher limits.`);
         setShowSubscription(true);
         return false;
       }
     } else if (profile.tier === 'pro') {
-      if (currentCount >= 50) {
-        alert('Pro tier limit reached (50 messages per day). Please upgrade your plan.');
+      if (currentCount >= 20) {
+        alert(`Pro tier limit reached (20 messages per 3 hours). Your limit resets in ${timeStr}. Upgrade your plan for higher limits.`);
         setShowSubscription(true);
         return false;
       }
     } else if (profile.tier === 'premium') {
-      if (currentCount >= 250) {
-        alert('Premium tier limit reached (250 messages per day). Please upgrade your plan.');
+      if (currentCount >= 50) {
+        alert(`Premium tier limit reached (50 messages per 3 hours). Your limit resets in ${timeStr}. Upgrade your plan for higher limits.`);
         setShowSubscription(true);
         return false;
       }
