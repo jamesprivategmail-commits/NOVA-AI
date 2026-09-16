@@ -5,7 +5,7 @@ A modern, full-stack AI Assistant application powered by React, Tailwind CSS, Ex
 ## Features
 
 - **Multi-Model Support**: Native support for Google Gemini, Groq, and Cohere models.
-- **Admin Panel**: Manage users, assign VIP/Premium tiers, and ban abusive users.
+- **Admin Panel**: Manage users, assign VIP/Premium tiers, hii ban abusive users.
 - **Message Controls**: Edit, Delete, and Copy messages effortlessly.
 - **Real-Time Streaming**: Stream responses using WebStreams and SSE.
 - **Syntax Highlighting & Markdown**: Developer-friendly response formatting.
