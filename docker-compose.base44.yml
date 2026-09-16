@@ -1,0 +1,15 @@
+services:
+  app:
+    image: node:20-alpine
+    working_dir: /app
+    volumes:
+      - ./:/app
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=development
+      # Vite >= 6.1 appends this to allowedHosts so the preview proxy host is accepted
+      - __VITE_ADDITIONAL_SERVER_ALLOWED_HOSTS
+      - BASE44_PUBLIC_HOST_SUFFIX
+    command: sh -c "npm install --no-audit --no-fund && npm run dev"
+    restart: unless-stopped

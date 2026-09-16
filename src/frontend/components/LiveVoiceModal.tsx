@@ -211,15 +211,15 @@ export function LiveVoiceModal({ onClose, userId, userTier = 'free' }: LiveVoice
   };
 
   return (
-    <div className="fixed inset-0 z-50 bg-black/95 backdrop-blur-2xl flex flex-col justify-between items-center p-6 sm:p-10 select-none overflow-hidden">
+    <div className="fixed inset-0 z-50 bg-black/95  flex flex-col justify-between items-center p-6 sm:p-10 select-none overflow-hidden">
       {/* Top Header */}
-      <div className="w-full max-w-2xl flex items-center justify-between text-zinc-400">
+      <div className="w-full max-w-2xl flex items-center justify-between text-[#8d8d91]">
         <div className="flex items-center gap-2">
           <span className="relative flex h-3 w-3">
             <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
-            <span className="relative inline-flex rounded-full h-3 w-3 bg-red-500"></span>
+            <span className="relative inline-flex rounded-full h-3 w-3 bg-[#3f86ff]"></span>
           </span>
-          <span className="text-xs font-mono font-bold tracking-widest uppercase text-zinc-200">
+          <span className="text-xs font-bold tracking-widest uppercase text-white">
             VOID AI • Live Voice Mode
           </span>
         </div>
@@ -229,7 +229,7 @@ export function LiveVoiceModal({ onClose, userId, userTier = 'free' }: LiveVoice
             onClick={toggleAudioOutput}
             className={clsx(
               "p-2.5 rounded-full border transition-all",
-              isAudioEnabled ? "bg-zinc-900 border-zinc-700 text-zinc-200 hover:bg-zinc-800" : "bg-red-950/60 border-red-800 text-red-400"
+              isAudioEnabled ? "bg-[#252527] border-[#38383b] text-white hover:bg-[#38383b]" : "bg-[#252527] border-[#38383b] text-[#8d8d91]"
             )}
             title={isAudioEnabled ? "Mute Voice Output" : "Enable Voice Output"}
           >
@@ -255,12 +255,12 @@ export function LiveVoiceModal({ onClose, userId, userTier = 'free' }: LiveVoice
             className={clsx(
               "absolute w-64 h-64 sm:w-80 sm:h-80 rounded-full blur-3xl transition-colors duration-500",
               isSpeaking
-                ? "bg-gradient-to-r from-red-600 via-amber-600 to-purple-600"
+                ? "bg-gradient-to-r from-[#3f86ff] via-amber-600 to-purple-600"
                 : isListening
                 ? "bg-gradient-to-r from-blue-600 to-indigo-600"
                 : isThinking
                 ? "bg-gradient-to-r from-purple-600 to-pink-600 animate-pulse"
-                : "bg-zinc-800"
+                : "bg-[#38383b]"
             )}
           />
 
@@ -279,33 +279,33 @@ export function LiveVoiceModal({ onClose, userId, userTier = 'free' }: LiveVoice
             className={clsx(
               "relative z-10 w-44 h-44 sm:w-52 sm:h-52 rounded-full flex flex-col items-center justify-center shadow-2xl transition-all duration-500 border-2",
               isSpeaking
-                ? "bg-gradient-to-br from-red-900 via-red-950 to-black border-red-500/80 shadow-red-950/80"
+                ? "bg-gradient-to-br from-[#202022] via-[#202022] to-[#2b0709] border-[#3f86ff]/80 /80"
                 : isListening
-                ? "bg-gradient-to-br from-blue-900 via-zinc-950 to-black border-blue-500/80 shadow-blue-950/80"
+                ? "bg-gradient-to-br from-blue-900 via-[#202022] to-[#2b0709] border-blue-500/80 shadow-blue-950/80"
                 : isThinking
-                ? "bg-gradient-to-br from-purple-900 via-zinc-950 to-black border-purple-500/80 shadow-purple-950/80"
-                : "bg-zinc-900 border-zinc-800 shadow-zinc-950"
+                ? "bg-gradient-to-br from-purple-900 via-[#202022] to-[#2b0709] border-purple-500/80 shadow-purple-950/80"
+                : "bg-[#252527] border-[#38383b] shadow-zinc-950"
             )}
           >
             {isThinking ? (
               <div className="flex flex-col items-center gap-2">
                 <Sparkles size={36} className="text-purple-400 animate-spin" />
-                <span className="text-xs font-mono font-bold text-purple-300 tracking-wider">THINKING</span>
+                <span className="text-xs font-bold text-purple-300 tracking-wider">THINKING</span>
               </div>
             ) : isSpeaking ? (
               <div className="flex flex-col items-center gap-2">
-                <Radio size={36} className="text-red-400 animate-pulse" />
-                <span className="text-xs font-mono font-bold text-red-300 tracking-wider">SPEAKING</span>
+                <Radio size={36} className="text-[#8d8d91] animate-pulse" />
+                <span className="text-xs font-bold text-[#8d8d91] tracking-wider">SPEAKING</span>
               </div>
             ) : isListening ? (
               <div className="flex flex-col items-center gap-2">
                 <Mic size={36} className="text-blue-400 animate-bounce" />
-                <span className="text-xs font-mono font-bold text-blue-300 tracking-wider">LISTENING</span>
+                <span className="text-xs font-bold text-blue-300 tracking-wider">LISTENING</span>
               </div>
             ) : (
               <div className="flex flex-col items-center gap-2">
-                <MicOff size={36} className="text-zinc-500" />
-                <span className="text-xs font-mono font-bold text-zinc-500 tracking-wider">TAP TO START</span>
+                <MicOff size={36} className="text-[#8d8d91]" />
+                <span className="text-xs font-bold text-[#8d8d91] tracking-wider">TAP TO START</span>
               </div>
             )}
           </motion.button>
@@ -314,19 +314,19 @@ export function LiveVoiceModal({ onClose, userId, userTier = 'free' }: LiveVoice
         {/* Live Transcript Display */}
         <div className="w-full text-center px-4 space-y-2 min-h-[90px] flex flex-col justify-center">
           {transcript && (
-            <p className="text-xs sm:text-sm text-zinc-400 italic bg-zinc-900/60 border border-zinc-800/60 rounded-xl p-3 max-w-sm mx-auto truncate">
+            <p className="text-xs sm:text-sm text-[#8d8d91] italic bg-[#252527]/60 border border-[#38383b]/60 rounded-xl p-3 max-w-sm mx-auto truncate">
               "{transcript}"
             </p>
           )}
 
           {aiResponseText && (
-            <p className="text-sm sm:text-base font-medium text-zinc-100 max-w-md mx-auto line-clamp-3 leading-relaxed">
+            <p className="text-sm sm:text-base font-medium text-white max-w-md mx-auto line-clamp-3 leading-relaxed">
               {aiResponseText}
             </p>
           )}
 
           {!transcript && !aiResponseText && (
-            <p className="text-xs text-zinc-500 font-mono">
+            <p className="text-xs text-[#8d8d91] ">
               Speak naturally. VOID AI listens and replies instantly.
             </p>
           )}
@@ -334,14 +334,14 @@ export function LiveVoiceModal({ onClose, userId, userTier = 'free' }: LiveVoice
       </div>
 
       {/* Bottom Control Bar */}
-      <div className="w-full max-w-md flex items-center justify-center gap-6 pt-4 border-t border-zinc-900">
+      <div className="w-full max-w-md flex items-center justify-center gap-6 pt-4 border-t border-[#38383b]">
         <button
           onClick={toggleMute}
           className={clsx(
             "p-4 rounded-full border transition-all shadow-lg flex items-center justify-center",
             isMuted 
-              ? "bg-red-950/80 border-red-800 text-red-400" 
-              : "bg-zinc-900 border-zinc-800 text-zinc-200 hover:bg-zinc-800"
+              ? "bg-[#252527] border-[#38383b] text-[#8d8d91]" 
+              : "bg-[#252527] border-[#38383b] text-white hover:bg-[#38383b]"
           )}
           title={isMuted ? "Unmute Mic" : "Mute Mic"}
         >
@@ -350,7 +350,7 @@ export function LiveVoiceModal({ onClose, userId, userTier = 'free' }: LiveVoice
 
         <button
           onClick={onClose}
-          className="p-5 rounded-full bg-red-600 hover:bg-red-500 text-white shadow-xl shadow-red-950/80 transition-all hover:scale-105 active:scale-95"
+          className="p-5 rounded-full bg-[#3f86ff] hover:opacity-90 text-white shadow-xl /80 transition-all hover:scale-105 active:scale-95"
           title="End Live Voice Call"
         >
           <PhoneOff size={28} />

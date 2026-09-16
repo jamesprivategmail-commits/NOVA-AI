@@ -88,27 +88,27 @@ export function TelegramModal({ onClose, isAdmin = true, userEmail = 'mrnovatech
   const telegramBotLink = botUsername ? `https://t.me/${botUsername}` : null;
 
   return (
-    <div className="fixed inset-0 bg-black/80 backdrop-blur-md z-50 flex items-center justify-center p-4">
-      <div className="bg-zinc-900 border border-zinc-800 rounded-2xl w-full max-w-lg flex flex-col overflow-hidden shadow-2xl max-h-[90vh]">
+    <div className="fixed inset-0 bg-black/80  z-50 flex items-center justify-center p-4">
+      <div className="bg-[#252527] border border-[#38383b] rounded-2xl w-full max-w-lg flex flex-col overflow-hidden shadow-2xl max-h-[90vh]">
         {/* Header */}
-        <div className="flex items-center justify-between p-5 border-b border-zinc-800 bg-zinc-950/80">
+        <div className="flex items-center justify-between p-5 border-b border-[#38383b] bg-[#202022]/80">
           <div className="flex items-center gap-3">
             <div className="p-2.5 bg-sky-950/80 border border-sky-800/80 rounded-xl text-sky-400">
               <Bot size={22} />
             </div>
             <div>
-              <h2 className="text-lg font-bold text-zinc-100 tracking-tight flex items-center gap-2">
+              <h2 className="text-lg font-bold text-white tracking-tight flex items-center gap-2">
                 Telegram AI Bot
-                <span className="text-[10px] bg-sky-950 border border-sky-800 text-sky-400 font-mono font-bold px-2 py-0.5 rounded-full uppercase">
+                <span className="text-[10px] bg-sky-950 border border-sky-800 text-sky-400 font-bold px-2 py-0.5 rounded-full uppercase">
                   Connected
                 </span>
               </h2>
-              <p className="text-xs text-zinc-400">Chat with VOID AI directly on Telegram</p>
+              <p className="text-xs text-[#8d8d91]">Chat with VOID AI directly on Telegram</p>
             </div>
           </div>
           <button
             onClick={onClose}
-            className="p-2 text-zinc-400 hover:text-zinc-100 hover:bg-zinc-800 rounded-lg transition-colors cursor-pointer"
+            className="p-2 text-[#8d8d91] hover:text-white hover:bg-[#38383b] rounded-lg transition-colors cursor-pointer"
           >
             <X size={20} />
           </button>
@@ -117,29 +117,29 @@ export function TelegramModal({ onClose, isAdmin = true, userEmail = 'mrnovatech
         {/* Content Body */}
         <div className="p-5 space-y-5 overflow-y-auto">
           {notice && (
-            <div className={`p-3.5 rounded-xl border text-xs flex items-center justify-between font-mono ${
+            <div className={`p-3.5 rounded-xl border text-xs flex items-center justify-between ${
               notice.type === 'success' 
                 ? 'bg-emerald-950/60 border-emerald-800 text-emerald-300' 
-                : 'bg-red-950/60 border-red-800 text-red-300'
+                : 'bg-[#252527] border-[#38383b] text-[#8d8d91]'
             }`}>
               <span>{notice.message}</span>
-              <button onClick={() => setNotice(null)} className="text-zinc-400 hover:text-white cursor-pointer ml-2">
+              <button onClick={() => setNotice(null)} className="text-[#8d8d91] hover:text-white cursor-pointer ml-2">
                 <X size={14} />
               </button>
             </div>
           )}
 
           {/* Connection Status Card */}
-          <div className="p-4 bg-zinc-950 border border-zinc-800 rounded-xl space-y-3">
+          <div className="p-4 bg-[#202022] border border-[#38383b] rounded-xl space-y-3">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <div className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse" />
-                <span className="text-xs font-bold text-zinc-200">Bot Connection Status:</span>
+                <span className="text-xs font-bold text-white">Bot Connection Status:</span>
               </div>
               <button
                 onClick={fetchStatus}
                 disabled={loading}
-                className="text-[11px] text-zinc-400 hover:text-sky-400 flex items-center gap-1 transition-colors cursor-pointer"
+                className="text-[11px] text-[#8d8d91] hover:text-sky-400 flex items-center gap-1 transition-colors cursor-pointer"
               >
                 <RefreshCw size={12} className={loading ? 'animate-spin' : ''} />
                 <span>Refresh</span>
@@ -147,15 +147,15 @@ export function TelegramModal({ onClose, isAdmin = true, userEmail = 'mrnovatech
             </div>
 
             <div className="grid grid-cols-2 gap-3 text-xs">
-              <div className="p-2.5 bg-zinc-900 border border-zinc-800/80 rounded-lg">
-                <span className="text-zinc-500 block text-[10px] font-mono uppercase">Bot Username</span>
-                <span className="font-bold text-sky-400 font-mono">
+              <div className="p-2.5 bg-[#252527] border border-[#38383b]/80 rounded-lg">
+                <span className="text-[#8d8d91] block text-[10px] uppercase">Bot Username</span>
+                <span className="font-bold text-sky-400 ">
                   {botUsername ? `@${botUsername}` : '8686494399 Bot'}
                 </span>
               </div>
-              <div className="p-2.5 bg-zinc-900 border border-zinc-800/80 rounded-lg">
-                <span className="text-zinc-500 block text-[10px] font-mono uppercase">Token Configured</span>
-                <span className="font-bold text-emerald-400 font-mono">
+              <div className="p-2.5 bg-[#252527] border border-[#38383b]/80 rounded-lg">
+                <span className="text-[#8d8d91] block text-[10px] uppercase">Token Configured</span>
+                <span className="font-bold text-emerald-400 ">
                   {status?.tokenMasked || '86864943...8SM'}
                 </span>
               </div>
@@ -177,7 +177,7 @@ export function TelegramModal({ onClose, isAdmin = true, userEmail = 'mrnovatech
                 href="https://t.me/BotFather"
                 target="_blank"
                 rel="noreferrer"
-                className="w-full py-2.5 px-4 bg-zinc-800 hover:bg-zinc-700 text-zinc-200 font-bold text-xs rounded-xl transition-all flex items-center justify-center gap-2 cursor-pointer"
+                className="w-full py-2.5 px-4 bg-[#38383b] hover:bg-[#454547] text-white font-bold text-xs rounded-xl transition-all flex items-center justify-center gap-2 cursor-pointer"
               >
                 <ExternalLink size={14} />
                 <span>Open Telegram App</span>
@@ -186,24 +186,24 @@ export function TelegramModal({ onClose, isAdmin = true, userEmail = 'mrnovatech
           </div>
 
           {/* Quick Telegram Bot User Guide */}
-          <div className="p-4 bg-zinc-950/60 border border-zinc-800/80 rounded-xl space-y-2 text-xs">
-            <h3 className="font-bold text-zinc-200 flex items-center gap-1.5">
+          <div className="p-4 bg-[#202022]/60 border border-[#38383b]/80 rounded-xl space-y-2 text-xs">
+            <h3 className="font-bold text-white flex items-center gap-1.5">
               <Zap size={15} className="text-amber-400" />
               How Telegram Login & Authentication Works
             </h3>
-            <ul className="text-zinc-400 space-y-1.5 list-disc list-inside text-[11px] leading-relaxed">
-              <li>Message the bot on Telegram and send <code className="text-sky-300 font-mono bg-zinc-900 px-1 py-0.5 rounded">/login</code> to start account authentication.</li>
+            <ul className="text-[#8d8d91] space-y-1.5 list-disc list-inside text-[11px] leading-relaxed">
+              <li>Message the bot on Telegram and send <code className="text-sky-300 bg-[#252527] px-1 py-0.5 rounded">/login</code> to start account authentication.</li>
               <li>Provide your registered website <strong>email address</strong> when prompted.</li>
               <li>Enter your website account <strong>password</strong> to verify your identity securely.</li>
-              <li>Or log in directly in one line: <code className="text-sky-300 font-mono bg-zinc-900 px-1 py-0.5 rounded">/login email@example.com password</code>.</li>
+              <li>Or log in directly in one line: <code className="text-sky-300 bg-[#252527] px-1 py-0.5 rounded">/login email@example.com password</code>.</li>
               <li>Once verified, all your Pro/Premium/VIP tier limits, saved history, and website settings apply automatically!</li>
-              <li>Send <code className="text-sky-300 font-mono bg-zinc-900 px-1 py-0.5 rounded">/logout</code> anytime to end your Telegram session.</li>
+              <li>Send <code className="text-sky-300 bg-[#252527] px-1 py-0.5 rounded">/logout</code> anytime to end your Telegram session.</li>
             </ul>
           </div>
 
           {/* Test Message Tool */}
-          <div className="p-4 bg-zinc-950 border border-zinc-800 rounded-xl space-y-3">
-            <span className="text-xs font-bold text-zinc-200 flex items-center gap-1.5">
+          <div className="p-4 bg-[#202022] border border-[#38383b] rounded-xl space-y-3">
+            <span className="text-xs font-bold text-white flex items-center gap-1.5">
               <Send size={14} className="text-sky-400" />
               Test Message Sender
             </span>
@@ -213,19 +213,19 @@ export function TelegramModal({ onClose, isAdmin = true, userEmail = 'mrnovatech
                 placeholder="Telegram Chat ID (e.g. 123456789)"
                 value={testChatId}
                 onChange={(e) => setTestChatId(e.target.value)}
-                className="w-full bg-zinc-900 border border-zinc-800 text-zinc-200 text-xs rounded-lg px-3 py-2 font-mono focus:outline-none focus:border-sky-500"
+                className="w-full bg-[#252527] border border-[#38383b] text-white text-xs rounded-lg px-3 py-2 focus:outline-none focus:border-sky-500"
               />
               <input
                 type="text"
                 placeholder="Custom test message (Optional)"
                 value={testMessage}
                 onChange={(e) => setTestMessage(e.target.value)}
-                className="w-full bg-zinc-900 border border-zinc-800 text-zinc-200 text-xs rounded-lg px-3 py-2 focus:outline-none focus:border-sky-500"
+                className="w-full bg-[#252527] border border-[#38383b] text-white text-xs rounded-lg px-3 py-2 focus:outline-none focus:border-sky-500"
               />
               <button
                 onClick={handleSendTest}
                 disabled={testSending || !testChatId.trim()}
-                className="w-full py-2 bg-zinc-800 hover:bg-zinc-700 disabled:opacity-50 text-zinc-200 font-bold text-xs rounded-lg transition-colors cursor-pointer flex items-center justify-center gap-1.5"
+                className="w-full py-2 bg-[#38383b] hover:bg-[#454547] disabled:opacity-50 text-white font-bold text-xs rounded-lg transition-colors cursor-pointer flex items-center justify-center gap-1.5"
               >
                 {testSending ? <RefreshCw size={12} className="animate-spin" /> : <Send size={12} />}
                 <span>Send Test Telegram Message</span>
@@ -234,8 +234,8 @@ export function TelegramModal({ onClose, isAdmin = true, userEmail = 'mrnovatech
           </div>
 
           {/* Token Override Form - Admin Restricted */}
-          <div className="p-4 bg-zinc-950 border border-zinc-800 rounded-xl space-y-3">
-            <span className="text-xs font-bold text-zinc-200 flex items-center gap-1.5">
+          <div className="p-4 bg-[#202022] border border-[#38383b] rounded-xl space-y-3">
+            <span className="text-xs font-bold text-white flex items-center gap-1.5">
               <Key size={14} className="text-emerald-400" />
               Update Bot Token (Admin Only)
             </span>
@@ -246,18 +246,18 @@ export function TelegramModal({ onClose, isAdmin = true, userEmail = 'mrnovatech
                   placeholder="New Bot Token (8686494399:AA...)"
                   value={tokenInput}
                   onChange={(e) => setTokenInput(e.target.value)}
-                  className="flex-1 bg-zinc-900 border border-zinc-800 text-zinc-200 text-xs rounded-lg px-3 py-2 font-mono focus:outline-none focus:border-emerald-500"
+                  className="flex-1 bg-[#252527] border border-[#38383b] text-white text-xs rounded-lg px-3 py-2 focus:outline-none focus:border-emerald-500"
                 />
                 <button
                   onClick={handleUpdateToken}
                   disabled={updatingToken || !tokenInput.trim()}
-                  className="px-4 py-2 bg-emerald-950 border border-emerald-800 hover:bg-emerald-900 text-emerald-200 font-mono font-bold text-xs rounded-lg transition-colors cursor-pointer shrink-0"
+                  className="px-4 py-2 bg-emerald-950 border border-emerald-800 hover:bg-emerald-900 text-emerald-200 font-bold text-xs rounded-lg transition-colors cursor-pointer shrink-0"
                 >
                   {updatingToken ? 'Connecting...' : 'Update'}
                 </button>
               </div>
             ) : (
-              <div className="p-3 bg-red-950/40 border border-red-900/60 rounded-lg text-[11px] text-red-300 font-mono flex items-center justify-between">
+              <div className="p-3 bg-[#252527]/40 border border-[#38383b] rounded-lg text-[11px] text-[#8d8d91] flex items-center justify-between">
                 <span>🔒 Token modification locked to System Owner (@mrnovatech4)</span>
               </div>
             )}

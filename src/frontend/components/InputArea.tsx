@@ -142,9 +142,9 @@ export function InputArea({ onSend, isLoading, onStop, onOpenLiveVoice }: InputA
     <div className="w-full max-w-2xl mx-auto px-2.5 pb-2 pt-0.5">
       {/* Speech Error Banner */}
       {speechError && (
-        <div className="mb-1.5 p-1.5 px-2.5 bg-red-950/90 border border-red-800 rounded-lg text-[11px] text-red-200 flex items-center justify-between">
+        <div className="mb-1.5 p-1.5 px-2.5 bg-[#252527]/90 border border-[#38383b] rounded-lg text-[11px] text-[#8d8d91] flex items-center justify-between">
           <span>{speechError}</span>
-          <button onClick={() => setSpeechError(null)} className="p-0.5 text-red-300 hover:text-white">
+          <button onClick={() => setSpeechError(null)} className="p-0.5 text-[#8d8d91] hover:text-white">
             <X size={12} />
           </button>
         </div>
@@ -171,8 +171,8 @@ export function InputArea({ onSend, isLoading, onStop, onOpenLiveVoice }: InputA
         </div>
       )}
 
-      {/* Main Pill Input Box - Compact Demonic Red Box */}
-      <div className="relative flex items-center w-full bg-gradient-to-r from-red-950/90 via-black to-zinc-950 border border-red-800/80 focus-within:border-red-500 rounded-full shadow-[0_0_20px_rgba(220,38,38,0.25)] transition-all px-2 py-1 gap-1.5">
+      {/* Clean pill composer — NOVA style */}
+      <div className="relative flex items-center w-full bg-[#202022] border border-[#38383b] focus-within:border-[#454547] rounded-full transition-all px-2 py-1.5 gap-1.5">
         {/* Hidden File Input */}
         <input
           type="file"
@@ -186,7 +186,7 @@ export function InputArea({ onSend, isLoading, onStop, onOpenLiveVoice }: InputA
         <button
           type="button"
           onClick={() => fileInputRef.current?.click()}
-          className="w-7 h-7 rounded-full bg-red-950/80 hover:bg-red-900 border border-red-800 text-red-300 flex items-center justify-center shrink-0 transition-colors cursor-pointer shadow"
+          className="w-8 h-8 rounded-full bg-[#252527] hover:bg-[#38383b] text-white flex items-center justify-center shrink-0 transition-colors cursor-pointer"
           title="Attach image or file"
         >
           <Plus size={18} />
@@ -198,12 +198,12 @@ export function InputArea({ onSend, isLoading, onStop, onOpenLiveVoice }: InputA
           value={text}
           onChange={(e) => setText(e.target.value)}
           onKeyDown={handleKeyDown}
-          placeholder="Ask VOID AI..."
+          placeholder="Message VOID AI"
           rows={1}
           autoCapitalize="sentences"
           autoCorrect="on"
           spellCheck={true}
-          className="flex-1 min-h-[32px] max-h-[140px] bg-transparent text-red-100 placeholder:text-red-500/60 border-0 focus:ring-0 resize-none py-1.5 px-1 outline-none text-xs sm:text-sm leading-snug font-mono"
+          className="flex-1 min-h-[32px] max-h-[140px] bg-transparent text-white placeholder:text-[#8d8d91] border-0 focus:ring-0 resize-none py-1.5 px-1 outline-none text-sm leading-snug"
         />
 
         {/* Mic Button */}
@@ -211,12 +211,12 @@ export function InputArea({ onSend, isLoading, onStop, onOpenLiveVoice }: InputA
           type="button"
           onClick={toggleSpeechRecognition}
           className={clsx(
-            "w-7 h-7 rounded-full bg-red-950/80 hover:bg-red-900 border border-red-800 text-red-300 flex items-center justify-center shrink-0 transition-colors cursor-pointer shadow",
-            isListening && "text-red-400 animate-pulse bg-red-900"
+            "w-8 h-8 rounded-full bg-[#252527] hover:bg-[#38383b] text-white flex items-center justify-center shrink-0 transition-colors cursor-pointer",
+            isListening && "text-[#3f86ff] bg-[#252527]"
           )}
           title={isListening ? "Stop listening" : "Voice input"}
         >
-          {isListening ? <MicOff size={15} className="text-red-400" /> : <Mic size={16} />}
+          {isListening ? <MicOff size={16} className="text-[#3f86ff]" /> : <Mic size={17} />}
         </button>
 
         {/* Send / Live Voice Audio Button */}
@@ -224,7 +224,7 @@ export function InputArea({ onSend, isLoading, onStop, onOpenLiveVoice }: InputA
           <button
             type="button"
             onClick={onStop}
-            className="w-7 h-7 bg-red-700 hover:bg-red-600 text-white rounded-full transition-all flex items-center justify-center shrink-0 cursor-pointer shadow-[0_0_12px_rgba(220,38,38,0.5)]"
+            className="w-8 h-8 bg-[#3f86ff] hover:opacity-90 text-white rounded-full transition-all flex items-center justify-center shrink-0 cursor-pointer"
             title="Stop generating"
           >
             <Square size={12} fill="currentColor" />
@@ -233,19 +233,19 @@ export function InputArea({ onSend, isLoading, onStop, onOpenLiveVoice }: InputA
           <button
             type="button"
             onClick={handleSend}
-            className="w-7 h-7 bg-red-600 hover:bg-red-500 text-white rounded-full transition-all flex items-center justify-center shrink-0 cursor-pointer shadow-[0_0_15px_rgba(220,38,38,0.6)] active:scale-95"
+            className="w-8 h-8 bg-[#3f86ff] hover:opacity-90 text-white rounded-full transition-all flex items-center justify-center shrink-0 cursor-pointer active:scale-95"
             title="Send message"
           >
-            <Send size={13} fill="currentColor" />
+            <Send size={14} fill="currentColor" />
           </button>
         ) : (
           <button
             type="button"
             onClick={onOpenLiveVoice}
-            className="w-7 h-7 bg-red-600 hover:bg-red-500 text-white rounded-full transition-all flex items-center justify-center shrink-0 cursor-pointer shadow-[0_0_15px_rgba(220,38,38,0.6)] hover:scale-105"
+            className="w-8 h-8 bg-[#252527] hover:bg-[#38383b] text-white rounded-full transition-all flex items-center justify-center shrink-0 cursor-pointer"
             title="Live voice mode"
           >
-            <AudioLines size={15} />
+            <AudioLines size={16} />
           </button>
         )}
       </div>

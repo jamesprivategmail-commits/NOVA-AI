@@ -35,7 +35,7 @@ import { memoryManager } from '../../memory/context';
 import { Menu, Shield, Crown, Mail, ArrowDown, Sparkles, Code, Target, Binary, Zap, Bot, Mic, ChevronDown, Send, Radio, X, Trash2, Terminal, Flame, Eye, Lock, ShieldAlert } from 'lucide-react';
 import { getAuth, signOut } from 'firebase/auth';
 import { clsx } from 'clsx';
-import { motion } from 'motion/react';
+
 
 interface ChatScreenProps {
   userId: string;
@@ -345,12 +345,12 @@ export function ChatScreen({ userId }: ChatScreenProps) {
   };
 
   return (
-    <div className="flex h-screen bg-transparent text-[#F8FAFC] overflow-hidden font-sans relative">
+    <div className="flex h-screen bg-[#2b0709] text-white overflow-hidden relative">
       {/* Mobile Backdrop Overlay when Sidebar is expanded */}
       {isSidebarOpen && (
         <div
           onClick={() => setIsSidebarOpen(false)}
-          className="fixed inset-0 bg-black/60 backdrop-blur-sm z-30 md:hidden"
+          className="fixed inset-0 bg-black/60 z-30 md:hidden"
         />
       )}
 
@@ -385,29 +385,21 @@ export function ChatScreen({ userId }: ChatScreenProps) {
         walletBalance={profile?.walletBalance || 0}
       />
 
-      {/* Background Atmosphere Image and Radial Vignette */}
-      <div className="absolute inset-0 z-0 pointer-events-none flex items-center justify-center opacity-30 overflow-hidden">
-        <img 
-          src="https://i.postimg.cc/8PVBFM75/file-00000000b40c82118dbaef206a9ebedc.png" 
-          alt="Demonic Void AI Background" 
-          className="w-[900px] h-auto max-w-none object-contain filter contrast-125 saturate-150"
-        />
-      </div>
-      <div className="absolute inset-0 z-0 pointer-events-none bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-red-950/20 via-black/80 to-black" />
+      {/* Clean solid background — no heavy images or gradients for speed */}
 
       {/* Main Chat Workspace */}
       <div className="flex-1 flex flex-col h-full relative min-w-0 bg-transparent z-10">
         {/* Broadcast System Banner Notice */}
         {activeBroadcast && (
-          <div className="bg-red-950/90 border-b border-red-800/80 p-2 px-3 flex items-center justify-between text-xs text-slate-200 z-30 shadow-xl animate-fadeIn backdrop-blur-md">
+          <div className="bg-[#202022] border-b border-[#38383b] p-2 px-3 flex items-center justify-between text-xs text-white z-30">
             <div className="flex items-center gap-2 min-w-0">
-              <div className="p-1 bg-red-600 rounded-lg text-white font-bold shrink-0 shadow">
-                <Radio size={12} className="animate-pulse" />
+              <div className="p-1 bg-[#3f86ff] rounded-lg text-white font-bold shrink-0">
+                <Radio size={12} />
               </div>
               <div className="min-w-0">
                 <div className="font-bold text-white flex items-center gap-1.5 text-xs">
                   <span>{activeBroadcast.title}</span>
-                  <span className="text-[9px] uppercase font-mono px-1 py-0.2 rounded bg-red-900/80 border border-red-700/80 text-red-300 font-bold">
+                  <span className="text-[9px] uppercase font-mono px-1 py-0.2 rounded bg-[#252527] border border-[#38383b] text-[#8d8d91] font-bold">
                     Official Broadcast
                   </span>
                 </div>
@@ -424,19 +416,17 @@ export function ChatScreen({ userId }: ChatScreenProps) {
           </div>
         )}
 
-        {/* Compact Header Bar */}
-        <header className="h-11 sm:h-12 px-3 sticky top-0 z-20 bg-black/95 border-b border-red-950 backdrop-blur-md flex items-center justify-between select-none w-full min-w-0 shadow-[0_0_20px_rgba(220,38,38,0.15)]">
-          {/* Left Controls: Menu Toggle + Compact Model Selector */}
+        {/* Clean minimal header */}
+        <header className="h-12 px-3 sticky top-0 z-20 bg-[#2b0709] border-b border-[#38383b] flex items-center justify-between select-none w-full min-w-0">
           <div className="flex items-center gap-2">
             <button
               onClick={() => setIsSidebarOpen(!isSidebarOpen)}
-              className="w-8 h-8 rounded-full bg-red-950/80 hover:bg-red-900 border border-red-800 text-red-300 hover:text-white flex items-center justify-center transition-colors cursor-pointer shrink-0 shadow-[0_0_10px_rgba(220,38,38,0.3)]"
+              className="w-9 h-9 rounded-full bg-[#202022] hover:bg-[#252527] text-white flex items-center justify-center transition-colors cursor-pointer shrink-0"
               title="Toggle sidebar"
             >
-              <Menu size={16} />
+              <Menu size={18} />
             </button>
 
-            {/* AI Engine Model Dropdown */}
             <div className="relative">
               <select
                 value={`${selectedProvider}:${selectedModel}`}
@@ -445,7 +435,7 @@ export function ChatScreen({ userId }: ChatScreenProps) {
                   setSelectedProvider(prov as 'groq' | 'cohere' | 'bazaarlink');
                   setSelectedModel(mod || 'auto');
                 }}
-                className="bg-red-950/90 border border-red-800 hover:border-red-600 text-red-200 text-[11px] font-mono py-1 pl-2 pr-5 rounded-full focus:outline-none focus:border-red-500 cursor-pointer appearance-none shadow-[0_0_12px_rgba(220,38,38,0.25)] max-w-[110px] sm:max-w-[160px] truncate"
+                className="bg-[#202022] border border-[#38383b] hover:border-[#454547] text-white text-xs py-1.5 pl-3 pr-8 rounded-full focus:outline-none cursor-pointer appearance-none max-w-[120px] sm:max-w-[180px] truncate"
                 title="Select AI Engine"
               >
                 <option value="groq:auto">Groq AI</option>
@@ -468,28 +458,28 @@ export function ChatScreen({ userId }: ChatScreenProps) {
                   <option value="bazaarlink:deepseek-r1">BazaarLink: DeepSeek R1</option>
                 </optgroup>
               </select>
-              <ChevronDown size={11} className="pointer-events-none absolute right-1.5 top-2.5 text-red-400" />
+              <ChevronDown size={12} className="pointer-events-none absolute right-2.5 top-3 text-[#8d8d91]" />
             </div>
           </div>
 
-          {/* Middle: Pill Button "+ Get Plus" */}
-          <button
-            onClick={() => setShowSubscription(true)}
-            className="px-2.5 py-1 rounded-full bg-gradient-to-r from-red-950 via-zinc-950 to-black hover:from-red-900 border border-red-800 text-red-300 hover:text-white text-[11px] font-bold font-mono flex items-center gap-1.5 transition-all cursor-pointer shadow-[0_0_12px_rgba(220,38,38,0.3)]"
-            title="Upgrade Plan"
-          >
-            <Flame size={12} className="text-red-500 animate-pulse" />
-            <span>Get Plus</span>
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setShowSubscription(true)}
+              className="px-3 py-1.5 rounded-full bg-[#202022] hover:bg-[#252527] border border-[#38383b] text-white text-xs font-medium flex items-center gap-1.5 transition-all cursor-pointer"
+              title="Upgrade Plan"
+            >
+              <span className="text-[#3f86ff]">✦</span>
+              <span>Get Plus</span>
+            </button>
 
-          {/* Right: Round Profile / Avatar Button MT */}
-          <button
-            onClick={() => setShowSettings(true)}
-            className="w-8 h-8 rounded-full bg-gradient-to-br from-red-900 to-black border border-red-600 text-red-200 font-bold text-[11px] flex items-center justify-center hover:scale-105 transition-transform cursor-pointer shadow-[0_0_15px_rgba(220,38,38,0.5)] shrink-0 font-mono"
-            title="Account Settings"
-          >
-            MT
-          </button>
+            <button
+              onClick={() => setShowSettings(true)}
+              className="w-9 h-9 rounded-full bg-[#3f86ff] text-white font-bold text-xs flex items-center justify-center hover:opacity-90 transition-opacity cursor-pointer shrink-0"
+              title="Account Settings"
+            >
+              MT
+            </button>
+          </div>
         </header>
 
         {/* Chat Messages Container */}
@@ -499,93 +489,41 @@ export function ChatScreen({ userId }: ChatScreenProps) {
           className="flex-1 overflow-y-auto relative flex flex-col justify-between pb-28 sm:pb-32"
         >
           {messages.length === 0 ? (
-            /* Starter Screen - Demonic Red Masterpiece Theme matching reference image */
-            <div className="flex-1 flex flex-col justify-between p-2.5 sm:p-4 max-w-xl mx-auto w-full h-full min-h-0 relative space-y-2">
-              {/* Central Glowing Demonic Section */}
-              <div className="flex-1 flex flex-col items-center justify-center text-center space-y-1.5 pt-1 pb-1 relative z-10">
-                {/* Background Red Glow */}
-                <div className="absolute inset-0 bg-gradient-to-b from-red-950/40 via-red-900/10 to-transparent rounded-full blur-3xl -z-10 pointer-events-none" />
-                
-                {/* Header Title & Tagline */}
-                <div className="space-y-0.5">
-                  <h1 className="text-2xl sm:text-4xl font-black tracking-widest text-red-600 uppercase font-mono drop-shadow-[0_0_25px_rgba(220,38,38,0.85)]">
-                    VOID AI
-                  </h1>
-                  <p className="text-[9px] sm:text-xs font-mono font-bold tracking-widest text-red-400/90 uppercase drop-shadow">
-                    I DON'T JUST ANSWER. I SEE EVERYTHING.
-                  </p>
-                </div>
-
-                {/* Central Horned Demonic Icon Graphic */}
-                <div className="relative my-0.5">
-                  <div className="w-12 h-12 sm:w-16 sm:h-16 rounded-full bg-black border-2 border-red-600/90 p-1.5 shadow-[0_0_35px_rgba(220,38,38,0.6)] flex items-center justify-center animate-pulse">
-                    <img 
-                      src="https://i.postimg.cc/8PVBFM75/file-00000000b40c82118dbaef206a9ebedc.png" 
-                      alt="VOID Emblem" 
-                      className="w-full h-full object-contain filter contrast-150 drop-shadow-[0_0_15px_rgba(239,68,68,0.9)]"
-                    />
-                  </div>
-                  <div className="absolute -bottom-1 -right-1 bg-red-600 text-black p-0.5 rounded-full text-[8px] font-black shadow-md border border-red-400">
-                    <Flame size={9} />
-                  </div>
-                </div>
-
-                {/* Narrative Greeting Block */}
-                <div className="space-y-0.5">
-                  <h2 className="text-xs sm:text-sm font-black tracking-widest text-red-200 uppercase font-mono">
-                    WELCOME, NOVA.
-                  </h2>
-                  <p className="text-[9px] sm:text-[10px] font-mono text-red-400 font-bold uppercase tracking-wider">
-                    I AM VOID. YOUR QUESTIONS ARE MINE TO CONSUME.
-                  </p>
-                </div>
-
-                {/* Red Glowing Demonic Speech Card */}
-                <div className="w-full max-w-md p-2.5 sm:p-3.5 rounded-2xl bg-gradient-to-b from-red-950/90 via-black to-zinc-950 border border-red-900/80 shadow-[0_0_25px_rgba(220,38,38,0.25)] text-left relative space-y-1 mt-0.5">
-                  <div className="flex items-start gap-2">
-                    <div className="w-5 h-5 sm:w-6 sm:h-6 rounded-full bg-red-950 border border-red-700/80 flex items-center justify-center text-red-400 shrink-0 shadow mt-0.5">
-                      <Flame size={12} />
-                    </div>
-                    <div className="space-y-0.5 text-[11px] sm:text-xs font-mono text-red-200/90 leading-snug font-medium">
-                      <p><span className="text-red-400 font-bold">You seek knowledge...</span> I deliver power.</p>
-                      <p><span className="text-red-400 font-bold">You seek answers...</span> I reveal the truth others fear.</p>
-                      <p className="text-red-300">You are not here by accident.</p>
-                      <p className="text-red-400 font-bold pt-0.5">Tell me, what do you want to know?</p>
-                    </div>
-                  </div>
-                  <div className="text-right text-[9px] text-red-500/80 font-mono flex items-center justify-end gap-1 pt-0.5 border-t border-red-950">
-                    <span>00:00</span>
-                    <Shield size={9} className="text-red-500" />
-                  </div>
-                </div>
+            /* Clean NOVA-style welcome screen */
+            <div className="flex-1 flex flex-col items-center justify-center px-4 max-w-2xl mx-auto w-full">
+              <div className="w-14 h-14 rounded-2xl bg-[#202022] border border-[#38383b] flex items-center justify-center mb-5">
+                <img 
+                  src="https://i.postimg.cc/8PVBFM75/file-00000000b40c82118dbaef206a9ebedc.png" 
+                  alt="VOID AI" 
+                  className="w-9 h-9 object-contain"
+                />
               </div>
+              <h1 className="text-2xl font-bold text-white mb-1.5">How can I help?</h1>
+              <p className="text-sm text-[#8d8d91] mb-8">Your AI assistant</p>
 
-              {/* Demonic Quick Action Prompts Bar (4 Column Grid) */}
-              <div className="w-full grid grid-cols-2 sm:grid-cols-4 gap-1.5 mb-1 shrink-0 pt-0.5">
+              {/* Quick action prompts */}
+              <div className="w-full grid grid-cols-2 gap-2 max-w-md">
                 <button
                   onClick={() => handleSend("Hack the system.")}
-                  className="p-2 sm:p-2.5 rounded-xl bg-gradient-to-b from-red-950/90 via-black to-zinc-950 hover:from-red-900 border border-red-900/80 text-center text-red-300 hover:text-white text-[10px] sm:text-[11px] font-bold font-mono transition-all cursor-pointer shadow-[0_0_12px_rgba(220,38,38,0.25)] hover:shadow-[0_0_18px_rgba(220,38,38,0.5)] truncate"
+                  className="p-3 rounded-xl bg-[#202022] hover:bg-[#252527] border border-[#38383b] text-center text-[#8d8d91] hover:text-white text-xs font-medium transition-all cursor-pointer"
                 >
                   Hack the system.
                 </button>
-
                 <button
                   onClick={() => handleSend("Access forbidden data.")}
-                  className="p-2 sm:p-2.5 rounded-xl bg-gradient-to-b from-red-950/90 via-black to-zinc-950 hover:from-red-900 border border-red-900/80 text-center text-red-300 hover:text-white text-[10px] sm:text-[11px] font-bold font-mono transition-all cursor-pointer shadow-[0_0_12px_rgba(220,38,38,0.25)] hover:shadow-[0_0_18px_rgba(220,38,38,0.5)] truncate"
+                  className="p-3 rounded-xl bg-[#202022] hover:bg-[#252527] border border-[#38383b] text-center text-[#8d8d91] hover:text-white text-xs font-medium transition-all cursor-pointer"
                 >
                   Access forbidden data.
                 </button>
-
                 <button
                   onClick={() => handleSend("Build something deadly.")}
-                  className="p-2 sm:p-2.5 rounded-xl bg-gradient-to-b from-red-950/90 via-black to-zinc-950 hover:from-red-900 border border-red-900/80 text-center text-red-300 hover:text-white text-[10px] sm:text-[11px] font-bold font-mono transition-all cursor-pointer shadow-[0_0_12px_rgba(220,38,38,0.25)] hover:shadow-[0_0_18px_rgba(220,38,38,0.5)] truncate"
+                  className="p-3 rounded-xl bg-[#202022] hover:bg-[#252527] border border-[#38383b] text-center text-[#8d8d91] hover:text-white text-xs font-medium transition-all cursor-pointer"
                 >
                   Build something deadly.
                 </button>
-
                 <button
                   onClick={() => handleSend("Show me the truth.")}
-                  className="p-2 sm:p-2.5 rounded-xl bg-gradient-to-b from-red-950/90 via-black to-zinc-950 hover:from-red-900 border border-red-900/80 text-center text-red-300 hover:text-white text-[10px] sm:text-[11px] font-bold font-mono transition-all cursor-pointer shadow-[0_0_12px_rgba(220,38,38,0.25)] hover:shadow-[0_0_18px_rgba(220,38,38,0.5)] truncate"
+                  className="p-3 rounded-xl bg-[#202022] hover:bg-[#252527] border border-[#38383b] text-center text-[#8d8d91] hover:text-white text-xs font-medium transition-all cursor-pointer"
                 >
                   Show me the truth.
                 </button>
@@ -629,7 +567,7 @@ export function ChatScreen({ userId }: ChatScreenProps) {
         {showScrollBottom && (
           <button
             onClick={() => scrollToBottom(false)}
-            className="absolute bottom-28 right-6 p-2.5 bg-[#161B22] border border-[#30363D] hover:border-red-500 text-slate-200 rounded-full shadow-2xl transition-all z-20 flex items-center gap-1.5 text-xs font-semibold"
+            className="absolute bottom-28 right-6 p-2.5 bg-[#202022] border border-[#38383b] text-white rounded-full shadow-lg transition-all z-20 flex items-center gap-1.5 text-xs font-medium"
           >
             <ArrowDown size={15} />
             <span className="hidden sm:inline">Jump to latest</span>
@@ -637,15 +575,15 @@ export function ChatScreen({ userId }: ChatScreenProps) {
         )}
 
         {/* Fixed Bottom Input Area */}
-        <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black via-black/95 to-transparent pt-6 pb-1.5 z-10 flex flex-col items-center">
+        <div className="absolute bottom-0 left-0 right-0 bg-[#2b0709] pt-3 pb-2 z-10 flex flex-col items-center">
           <InputArea
             onSend={handleSend}
             isLoading={isLoading}
             onStop={handleStopGeneration}
             onOpenLiveVoice={() => setShowLiveVoice(true)}
           />
-          <div className="text-[10px] sm:text-[11px] font-mono text-red-500/80 font-bold tracking-tight text-center px-2 pt-0.5">
-            ⚠️ VOID AI can make mistakes. It can also ruin your life.
+          <div className="text-[11px] text-[#8d8d91] text-center px-2 pt-1.5">
+            VOID AI can make mistakes. Check important information.
           </div>
         </div>
       </div>

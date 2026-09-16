@@ -1,14 +1,15 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   getAuth, 
-  signInWithPopup, 
+  signInWithRedirect,
+  getRedirectResult,
   GoogleAuthProvider, 
   signInWithEmailAndPassword, 
   createUserWithEmailAndPassword,
   sendEmailVerification,
   sendPasswordResetEmail
 } from 'firebase/auth';
-import { Skull, AlertCircle, RefreshCw, Mail, Lock, CheckCircle2, ShieldCheck } from 'lucide-react';
+import { AlertCircle, RefreshCw, Mail, Lock, CheckCircle2, ShieldCheck } from 'lucide-react';
 import { validateEmail, validatePassword } from '../../utils/security';
 
 export function AuthScreen() {
@@ -21,6 +22,20 @@ export function AuthScreen() {
   const [isRegistering, setIsRegistering] = useState(false);
   const [resetSent, setResetSent] = useState(false);
 
+  // Handle redirect result when returning from Google OAuth
+  useEffect(() => {
+    getRedirectResult(getAuth())
+      .catch((err) => {
+        console.error("Google redirect error:", err);
+        if (err?.code === 'auth/unauthorized-domain') {
+          setError('This domain needs to be added in Firebase Console → Authentication → Settings → Authorized domains. Or use Email Sign In below.');
+        } else if (err?.message) {
+          setError(err.message);
+        }
+        setShowEmailAuth(true);
+      });
+  }, []);
+
   const handleGoogleLogin = async () => {
     setError('');
     setInfoMsg('');
@@ -30,18 +45,15 @@ export function AuthScreen() {
       const auth = getAuth();
       const provider = new GoogleAuthProvider();
       provider.setCustomParameters({ prompt: 'select_account' });
-      await signInWithPopup(auth, provider);
+      await signInWithRedirect(auth, provider);
     } catch (err: any) {
       console.error("Google Auth error:", err);
-      if (err?.code === 'auth/popup-closed-by-user' || err?.code === 'auth/cancelled-popup-request') {
-        setError('Sign-in process was closed before completion. Click below or use Email Sign In.');
-      } else if (err?.code === 'auth/popup-blocked') {
-        setError('Pop-up was blocked by your browser. Please allow pop-ups or use Email Sign In.');
+      if (err?.code === 'auth/unauthorized-domain') {
+        setError('This domain needs to be added in Firebase Console → Authentication → Settings → Authorized domains. Or use Email Sign In below.');
       } else {
-        setError('Google Auth popup unreachable in preview container. Use Email Sign In below.');
+        setError('Google sign-in could not start. Please use Email Sign In below.');
       }
       setShowEmailAuth(true);
-    } finally {
       setIsLoading(false);
     }
   };
@@ -75,14 +87,12 @@ export function AuthScreen() {
     setError('');
     setInfoMsg('');
 
-    // 1. Strict Email Validation (Blocks fake/disposable email domains like mailinator, 10minutemail, etc.)
     const emailValidation = validateEmail(email);
     if (!emailValidation.valid) {
       setError(emailValidation.reason || 'Invalid email address format.');
       return;
     }
 
-    // 2. Strict Password Validation on Registration
     if (isRegistering) {
       const passwordValidation = validatePassword(password);
       if (!passwordValidation.valid) {
@@ -97,8 +107,6 @@ export function AuthScreen() {
       const auth = getAuth();
       if (isRegistering) {
         const userCred = await createUserWithEmailAndPassword(auth, email.trim(), password);
-        
-        // Trigger Firebase Email Verification
         try {
           await sendEmailVerification(userCred.user);
           setInfoMsg('Account created! A verification link has been sent to your email.');
@@ -125,15 +133,15 @@ export function AuthScreen() {
   };
 
   return (
-    <div className="min-h-screen bg-black flex flex-col items-center justify-center p-4 relative overflow-hidden font-sans">
-      {/* Subtle Background Glow */}
-      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-red-900/15 rounded-full blur-3xl pointer-events-none" />
+    <div className="min-h-screen bg-black flex flex-col items-center justify-center p-4 relative overflow-hidden">
+      {/* Background glow */}
+      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-[#202022] rounded-full blur-3xl pointer-events-none" />
 
       <div className="w-full max-w-md flex flex-col items-center z-10">
         {/* Logo Header */}
-        <div className="relative mb-6 group">
-          <div className="absolute -inset-1 rounded-2xl bg-gradient-to-r from-red-600 via-amber-500 to-red-600 opacity-60 blur-md group-hover:opacity-90 transition duration-500 animate-pulse" />
-          <div className="relative w-20 h-20 rounded-2xl bg-[#0D1019]/90 border border-[#2A3145] p-2.5 flex items-center justify-center shadow-2xl backdrop-blur-md">
+        <div className="relative mb-6">
+          <div className="absolute -inset-1 rounded-2xl bg-gradient-to-r from-[#3f86ff] via-amber-500 to-[#3f86ff] opacity-60 blur-md" />
+          <div className="relative w-20 h-20 rounded-2xl bg-[#0D1019]/90 border border-[#2A3145] p-2.5 flex items-center justify-center shadow-2xl">
             <img 
               src="https://i.postimg.cc/8PVBFM75/file-00000000b40c82118dbaef206a9ebedc.png" 
               alt="VOID AI Logo" 
@@ -145,20 +153,20 @@ export function AuthScreen() {
         <h1 className="text-3xl font-black text-white tracking-widest uppercase mb-1">
           VOID AI
         </h1>
-        <p className="text-xs font-mono font-bold text-red-500/80 tracking-widest uppercase mb-6">
+        <p className="text-xs font-bold text-[#8d8d91] tracking-widest uppercase mb-6">
           SECURE SYSTEM ACCESS
         </p>
 
         {/* Security Shield Notice */}
-        <div className="w-full mb-4 px-4 py-2 bg-zinc-950/80 border border-zinc-800 rounded-xl flex items-center justify-center gap-2 text-[11px] text-zinc-400 font-mono">
+        <div className="w-full mb-4 px-4 py-2 bg-[#202022]/80 border border-[#38383b] rounded-xl flex items-center justify-center gap-2 text-[11px] text-[#8d8d91] ">
           <ShieldCheck size={14} className="text-emerald-400 shrink-0" />
           <span>Real Email Verification & Anti-Abuse Protection Active</span>
         </div>
 
-        <div className="w-full bg-zinc-950 border border-red-900/30 rounded-2xl p-6 shadow-2xl shadow-red-950/20 backdrop-blur-md">
+        <div className="w-full bg-[#202022] border border-red-900/30 rounded-2xl p-6 shadow-2xl shadow-red-950/20">
           {error && (
-            <div className="mb-5 p-3.5 bg-red-950/40 border border-red-800/50 rounded-xl flex items-start gap-3 text-red-400 text-xs">
-              <AlertCircle size={16} className="shrink-0 mt-0.5 text-red-500" />
+            <div className="mb-5 p-3.5 bg-[#252527]/40 border border-[#38383b]/50 rounded-xl flex items-start gap-3 text-[#8d8d91] text-xs">
+              <AlertCircle size={16} className="shrink-0 mt-0.5 text-[#3f86ff]" />
               <p className="leading-relaxed font-medium">{error}</p>
             </div>
           )}
@@ -173,31 +181,19 @@ export function AuthScreen() {
           <button
             onClick={handleGoogleLogin}
             disabled={isLoading}
-            className="w-full py-3.5 px-4 bg-zinc-900 hover:bg-zinc-850 active:bg-zinc-800 border border-red-900/40 hover:border-red-600 rounded-xl font-bold text-sm text-zinc-100 transition-all flex items-center justify-center gap-3 shadow-lg shadow-black group disabled:opacity-50"
+            className="w-full py-3.5 px-4 bg-[#252527] hover:bg-[#38383b] border border-red-900/40 hover:border-[#3f86ff] rounded-xl font-bold text-sm text-white transition-all flex items-center justify-center gap-3 disabled:opacity-50 cursor-pointer"
           >
             {isLoading ? (
-              <RefreshCw size={18} className="animate-spin text-red-500" />
+              <RefreshCw size={18} className="animate-spin text-[#3f86ff]" />
             ) : (
               <>
                 <svg className="w-5 h-5 shrink-0" viewBox="0 0 24 24">
-                  <path
-                    fill="#4285F4"
-                    d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
-                  />
-                  <path
-                    fill="#34A853"
-                    d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"
-                  />
-                  <path
-                    fill="#FBBC05"
-                    d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z"
-                  />
-                  <path
-                    fill="#EA4335"
-                    d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"
-                  />
+                  <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />
+                  <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" />
+                  <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z" />
+                  <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z" />
                 </svg>
-                <span className="tracking-wider text-xs font-mono uppercase group-hover:text-red-400 transition-colors">
+                <span className="tracking-wider text-xs uppercase">
                   VERIFIED GOOGLE SIGN IN
                 </span>
               </>
@@ -208,15 +204,15 @@ export function AuthScreen() {
             <div className="mt-4 text-center">
               <button
                 onClick={() => setShowEmailAuth(true)}
-                className="text-[11px] font-mono text-zinc-500 hover:text-red-400 underline transition-colors"
+                className="text-[11px] text-[#8d8d91] hover:text-[#8d8d91] underline transition-colors cursor-pointer"
               >
                 Or sign in with Email / Password
               </button>
             </div>
           ) : (
-            <form onSubmit={handleEmailAuth} className="mt-5 pt-4 border-t border-zinc-800/80 space-y-3">
+            <form onSubmit={handleEmailAuth} className="mt-5 pt-4 border-t border-[#38383b]/80 space-y-3">
               <div className="flex items-center justify-between mb-1">
-                <span className="text-xs font-mono font-bold text-zinc-400 uppercase">
+                <span className="text-xs font-bold text-[#8d8d91] uppercase">
                   {isRegistering ? 'Create Verified Account' : 'Verified Email Login'}
                 </span>
                 <button
@@ -226,7 +222,7 @@ export function AuthScreen() {
                     setError('');
                     setInfoMsg('');
                   }}
-                  className="text-[11px] text-red-400 hover:underline font-mono"
+                  className="text-[11px] text-[#8d8d91] hover:underline cursor-pointer"
                 >
                   {isRegistering ? 'Switch to Login' : 'Create New Account'}
                 </button>
@@ -234,28 +230,28 @@ export function AuthScreen() {
 
               <div>
                 <div className="relative">
-                  <Mail size={16} className="absolute left-3 top-3 text-zinc-500" />
+                  <Mail size={16} className="absolute left-3 top-3 text-[#8d8d91]" />
                   <input
                     type="email"
                     required
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     placeholder="your.email@gmail.com"
-                    className="w-full bg-zinc-900 border border-zinc-800 focus:border-red-600 text-zinc-100 rounded-xl pl-9 pr-3 py-2 text-xs outline-none transition-colors font-mono"
+                    className="w-full bg-[#252527] border border-[#38383b] focus:border-red-600 text-white rounded-xl pl-9 pr-3 py-2 text-xs outline-none transition-colors "
                   />
                 </div>
               </div>
 
               <div>
                 <div className="relative">
-                  <Lock size={16} className="absolute left-3 top-3 text-zinc-500" />
+                  <Lock size={16} className="absolute left-3 top-3 text-[#8d8d91]" />
                   <input
                     type="password"
                     required
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     placeholder={isRegistering ? "Password (8+ chars, letters & numbers)" : "Password"}
-                    className="w-full bg-zinc-900 border border-zinc-800 focus:border-red-600 text-zinc-100 rounded-xl pl-9 pr-3 py-2 text-xs outline-none transition-colors font-mono"
+                    className="w-full bg-[#252527] border border-[#38383b] focus:border-red-600 text-white rounded-xl pl-9 pr-3 py-2 text-xs outline-none transition-colors "
                   />
                 </div>
               </div>
@@ -265,7 +261,7 @@ export function AuthScreen() {
                   <button
                     type="button"
                     onClick={handleForgotPassword}
-                    className="text-[10px] text-zinc-500 hover:text-red-400 font-mono underline"
+                    className="text-[10px] text-[#8d8d91] hover:text-[#8d8d91] underline cursor-pointer"
                   >
                     Forgot Password?
                   </button>
@@ -275,7 +271,7 @@ export function AuthScreen() {
               <button
                 type="submit"
                 disabled={isLoading}
-                className="w-full py-2.5 bg-red-600 hover:bg-red-500 text-white font-bold text-xs font-mono rounded-xl transition-colors shadow-md disabled:opacity-50"
+                className="w-full py-2.5 bg-red-600 hover:bg-[#3f86ff] text-white font-bold text-xs rounded-xl transition-colors shadow-md disabled:opacity-50 cursor-pointer"
               >
                 {isLoading ? 'VERIFYING...' : (isRegistering ? 'REGISTER WITH VERIFIED EMAIL' : 'AUTHENTICATE USER')}
               </button>
@@ -286,5 +282,3 @@ export function AuthScreen() {
     </div>
   );
 }
-
-

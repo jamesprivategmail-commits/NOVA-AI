@@ -65,9 +65,9 @@ export function EmailVerificationNotice({ user, onVerified }: EmailVerificationN
   };
 
   return (
-    <div className="min-h-screen bg-black flex flex-col items-center justify-center p-4 relative overflow-hidden font-sans">
-      <div className="w-full max-w-md bg-zinc-950 border border-red-900/40 rounded-3xl p-6 sm:p-8 shadow-2xl shadow-red-950/30 text-center relative z-10">
-        <div className="w-16 h-16 bg-red-950/80 border border-red-800/60 rounded-2xl flex items-center justify-center mx-auto mb-5 text-red-500 shadow-lg">
+    <div className="min-h-screen bg-[#2b0709] flex flex-col items-center justify-center p-4 relative overflow-hidden font-sans">
+      <div className="w-full max-w-md bg-[#202022] border border-[#38383b] rounded-3xl p-6 sm:p-8 shadow-2xl  text-center relative z-10">
+        <div className="w-16 h-16 bg-[#252527] border border-[#38383b] rounded-2xl flex items-center justify-center mx-auto mb-5 text-[#3f86ff] shadow-lg">
           <ShieldAlert size={32} />
         </div>
 
@@ -75,17 +75,17 @@ export function EmailVerificationNotice({ user, onVerified }: EmailVerificationN
           Email Verification Required
         </h2>
 
-        <p className="text-xs text-zinc-400 mb-6 leading-relaxed">
+        <p className="text-xs text-[#8d8d91] mb-6 leading-relaxed">
           To prevent fake accounts and secure system resources, VOID AI requires email verification. We sent a link to:
         </p>
 
-        <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-3 mb-6 font-mono text-xs text-red-400 font-bold break-all">
+        <div className="bg-[#252527] border border-[#38383b] rounded-xl p-3 mb-6 text-xs text-[#8d8d91] font-bold break-all">
           {user.email}
         </div>
 
         {error && (
-          <div className="mb-5 p-3 bg-red-950/50 border border-red-800/60 rounded-xl text-red-400 text-xs flex items-center gap-2 text-left">
-            <AlertCircle size={16} className="shrink-0 text-red-500" />
+          <div className="mb-5 p-3 bg-[#252527]/50 border border-[#38383b] rounded-xl text-[#8d8d91] text-xs flex items-center gap-2 text-left">
+            <AlertCircle size={16} className="shrink-0 text-[#3f86ff]" />
             <span>{error}</span>
           </div>
         )}
@@ -101,7 +101,7 @@ export function EmailVerificationNotice({ user, onVerified }: EmailVerificationN
           <button
             onClick={handleCheckVerification}
             disabled={checking}
-            className="w-full py-3 bg-red-600 hover:bg-red-500 text-white font-bold text-xs rounded-xl transition-all shadow-lg shadow-red-950/50 flex items-center justify-center gap-2"
+            className="w-full py-3 bg-[#3f86ff] hover:opacity-90 text-white font-bold text-xs rounded-xl transition-all shadow-lg  flex items-center justify-center gap-2"
           >
             {checking ? <RefreshCw size={16} className="animate-spin" /> : <CheckCircle size={16} />}
             <span>I'VE VERIFIED MY EMAIL — ACCESS SYSTEM</span>
@@ -110,15 +110,15 @@ export function EmailVerificationNotice({ user, onVerified }: EmailVerificationN
           <button
             onClick={handleResend}
             disabled={resending}
-            className="w-full py-2.5 bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 text-zinc-300 font-bold text-xs rounded-xl transition-all flex items-center justify-center gap-2"
+            className="w-full py-2.5 bg-[#252527] hover:bg-[#38383b] border border-[#38383b] text-white font-bold text-xs rounded-xl transition-all flex items-center justify-center gap-2"
           >
-            {resending ? <RefreshCw size={14} className="animate-spin text-red-400" /> : <Mail size={14} />}
+            {resending ? <RefreshCw size={14} className="animate-spin text-[#8d8d91]" /> : <Mail size={14} />}
             <span>Resend Verification Email</span>
           </button>
 
           <button
             onClick={handleSignOut}
-            className="w-full py-2.5 text-zinc-500 hover:text-zinc-300 font-mono text-xs flex items-center justify-center gap-2 transition-colors pt-2"
+            className="w-full py-2.5 text-[#8d8d91] hover:text-white text-xs flex items-center justify-center gap-2 transition-colors pt-2"
           >
             <LogOut size={14} />
             <span>Sign Out / Switch Account</span>

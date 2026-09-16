@@ -3,7 +3,6 @@ import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import remarkMath from 'remark-math';
 import rehypeKatex from 'rehype-katex';
-import { motion } from 'motion/react';
 import { Bot, User, Copy, Check, Trash2, Edit2, ExternalLink, ThumbsUp, ThumbsDown, Sparkles, Image as ImageIcon } from 'lucide-react';
 import { Message } from '../../models/types';
 import { CodeBlock } from './CodeBlock';
@@ -40,22 +39,22 @@ export const MessageBubble = React.memo(function MessageBubble({ message, isStre
   return (
     <div
       className={clsx(
-        "group w-full py-2 px-2 sm:px-3 md:px-4 transition-colors",
-        isUser ? "bg-transparent" : "bg-black/80 border-y border-red-950/80 shadow-[inset_0_0_15px_rgba(150,0,0,0.1)]"
+        "group w-full py-2.5 px-3 sm:px-4 transition-colors",
+        isUser ? "bg-transparent" : "bg-[#1a1a1c]"
       )}
     >
       <div className={clsx(
-        "max-w-4xl mx-auto flex w-full gap-2 relative items-start",
+        "max-w-3xl mx-auto flex w-full gap-2.5 relative items-start",
         isUser ? "flex-row-reverse" : "flex-row"
       )}>
         {/* Avatar */}
         <div className="shrink-0 mt-0.5">
           {isUser ? (
-            <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-black border border-red-800/80 flex items-center justify-center text-red-400 font-mono text-xs font-bold shadow-[0_0_8px_rgba(220,38,38,0.2)]">
+            <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-[#252527] flex items-center justify-center text-white text-xs font-bold">
               <User size={14} />
             </div>
           ) : (
-            <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-black border border-red-600/80 p-0.5 flex items-center justify-center shadow-[0_0_10px_rgba(220,38,38,0.3)]">
+            <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-[#202022] border border-[#38383b] p-1 flex items-center justify-center">
               <img 
                 src="https://i.postimg.cc/8PVBFM75/file-00000000b40c82118dbaef206a9ebedc.png" 
                 alt="VOID AI" 
@@ -75,15 +74,10 @@ export const MessageBubble = React.memo(function MessageBubble({ message, isStre
             "flex items-center gap-1.5 sm:gap-2 mb-0.5",
             isUser ? "flex-row-reverse" : "flex-row"
           )}>
-            <span className={clsx("text-[10px] sm:text-[11px] font-mono font-bold tracking-wider uppercase", isUser ? "text-red-400" : "text-red-500")}>
+            <span className={clsx("text-xs font-semibold", isUser ? "text-white" : "text-white")}>
               {isUser ? 'You' : 'VOID AI'}
             </span>
-            {!isUser && (
-              <span className="px-1.5 py-0.2 rounded bg-red-950/80 border border-red-800/80 text-[9px] sm:text-[10px] text-red-300 font-mono uppercase tracking-widest font-bold">
-                GOD MODE
-              </span>
-            )}
-            <span className="text-[9px] sm:text-[10px] text-red-900 font-mono">
+            <span className="text-[10px] text-[#8d8d91]">
               {new Date(message.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
             </span>
           </div>
@@ -94,18 +88,18 @@ export const MessageBubble = React.memo(function MessageBubble({ message, isStre
               <textarea
                 value={editText}
                 onChange={(e) => setEditText(e.target.value)}
-                className="w-full bg-black/90 border border-red-600/80 focus:border-red-500 rounded-xl p-3 text-slate-100 min-h-[110px] outline-none text-xs sm:text-sm font-mono"
+                className="w-full bg-[#252527] border border-[#38383b] focus:border-[#454547] rounded-xl p-3 text-white min-h-[110px] outline-none text-sm"
               />
               <div className="flex items-center gap-2 justify-end">
                 <button
                   onClick={() => setIsEditing(false)}
-                  className="px-3 py-1.5 text-xs font-mono font-semibold text-red-400 hover:text-white bg-red-950/40 hover:bg-red-900/60 rounded-lg transition-colors border border-red-900/60"
+                  className="px-3 py-1.5 text-xs font-medium text-[#8d8d91] hover:text-white bg-[#202022] hover:bg-[#38383b] rounded-lg transition-colors cursor-pointer"
                 >
                   Cancel
                 </button>
                 <button
                   onClick={handleSaveEdit}
-                  className="px-4 py-1.5 text-xs font-mono font-bold bg-red-600 hover:bg-red-500 text-white rounded-lg transition-colors shadow-[0_0_12px_rgba(220,38,38,0.5)]"
+                  className="px-4 py-1.5 text-xs font-medium bg-[#3f86ff] hover:opacity-90 text-white rounded-lg transition-all cursor-pointer"
                 >
                   Save
                 </button>
@@ -113,22 +107,22 @@ export const MessageBubble = React.memo(function MessageBubble({ message, isStre
             </div>
           ) : (
             <div className={clsx(
-              "text-xs sm:text-sm md:text-[15px] leading-relaxed w-full font-sans",
+              "text-sm leading-relaxed w-full",
               isUser
-                ? "bg-red-950/30 border border-red-800/60 text-slate-100 rounded-2xl rounded-tr-xs p-3.5 sm:p-4 max-w-[95%] sm:max-w-[85%] text-left shadow-[0_0_15px_rgba(220,38,38,0.15)]"
-                : "bg-transparent text-slate-100 rounded-tl-xs p-0 sm:p-1 w-full max-w-none text-left"
+                ? "bg-[#252527] text-white rounded-2xl rounded-tr-sm p-3.5 sm:p-4 max-w-[95%] sm:max-w-[85%] text-left"
+                : "bg-transparent text-white w-full max-w-none text-left"
             )}>
               <div className={clsx(
-                "prose prose-invert max-w-none text-xs sm:text-sm md:text-[15px] leading-relaxed w-full",
-                "prose-headings:text-slate-100 prose-headings:font-bold prose-headings:tracking-tight",
-                "prose-h1:text-base sm:prose-h1:text-lg prose-h1:mt-2.5 prose-h1:mb-1.5 prose-h1:border-b prose-h1:border-[#272B38] prose-h1:pb-1.5",
-                "prose-h2:text-xs sm:prose-h2:text-base prose-h2:mt-2.5 prose-h2:mb-1",
-                "prose-h3:text-xs sm:prose-h3:text-sm prose-h3:mt-2 prose-h3:mb-1",
+                "prose prose-invert max-w-none text-sm leading-relaxed w-full",
+                "prose-headings:text-white prose-headings:font-bold prose-headings:tracking-tight",
+                "prose-h1:text-base sm:prose-h1:text-lg prose-h1:mt-2.5 prose-h1:mb-1.5 prose-h1:border-b prose-h1:border-[#38383b] prose-h1:pb-1.5",
+                "prose-h2:text-sm sm:prose-h2:text-base prose-h2:mt-2.5 prose-h2:mb-1",
+                "prose-h3:text-sm prose-h3:mt-2 prose-h3:mb-1",
                 "prose-p:my-1.5 prose-p:leading-relaxed",
                 "prose-ul:my-1.5 prose-ul:pl-4 sm:prose-ul:pl-5 prose-ul:list-disc prose-li:my-0.5",
                 "prose-ol:my-1.5 prose-ol:pl-4 sm:prose-ol:pl-5 prose-ol:list-decimal prose-li:my-0.5",
-                "prose-blockquote:border-l-2 prose-blockquote:border-red-500 prose-blockquote:bg-[#161922] prose-blockquote:py-1.5 prose-blockquote:px-3 prose-blockquote:rounded-r-lg prose-blockquote:text-slate-300 prose-blockquote:not-italic prose-blockquote:my-2",
-                "prose-hr:border-[#272B38] prose-hr:my-3",
+                "prose-blockquote:border-l-2 prose-blockquote:border-[#3f86ff] prose-blockquote:bg-[#252527] prose-blockquote:py-1.5 prose-blockquote:px-3 prose-blockquote:rounded-r-lg prose-blockquote:text-[#8d8d91] prose-blockquote:not-italic prose-blockquote:my-2",
+                "prose-hr:border-[#38383b] prose-hr:my-3",
                 isStreaming && "streaming-cursor"
               )}>
                 <ReactMarkdown
@@ -222,7 +216,7 @@ export const MessageBubble = React.memo(function MessageBubble({ message, isStre
             )}>
               <button
                 onClick={handleCopy}
-                className="p-1.5 text-slate-400 hover:text-white hover:bg-[#21262D] rounded-md transition-colors flex items-center gap-1 text-xs"
+                className="p-1.5 text-[#8d8d91] hover:text-white hover:bg-[#252527] rounded-md transition-colors flex items-center gap-1 text-xs"
                 title="Copy text"
               >
                 {copied ? (
@@ -244,7 +238,7 @@ export const MessageBubble = React.memo(function MessageBubble({ message, isStre
                     onClick={() => setLiked(liked === true ? null : true)}
                     className={clsx(
                       "p-1.5 rounded-md transition-colors text-xs flex items-center gap-1",
-                      liked === true ? "text-emerald-400 bg-emerald-950/40" : "text-slate-400 hover:text-white hover:bg-[#21262D]"
+                      liked === true ? "text-emerald-400 bg-emerald-950/40" : "text-[#8d8d91] hover:text-white hover:bg-[#252527]"
                     )}
                     title="Good response"
                   >
@@ -254,7 +248,7 @@ export const MessageBubble = React.memo(function MessageBubble({ message, isStre
                     onClick={() => setLiked(liked === false ? null : false)}
                     className={clsx(
                       "p-1.5 rounded-md transition-colors text-xs flex items-center gap-1",
-                      liked === false ? "text-rose-400 bg-rose-950/40" : "text-slate-400 hover:text-white hover:bg-[#21262D]"
+                      liked === false ? "text-rose-400 bg-rose-950/40" : "text-[#8d8d91] hover:text-white hover:bg-[#252527]"
                     )}
                     title="Poor response"
                   >
@@ -266,7 +260,7 @@ export const MessageBubble = React.memo(function MessageBubble({ message, isStre
               {isUser && onEdit && (
                 <button
                   onClick={() => setIsEditing(true)}
-                  className="p-1.5 text-slate-400 hover:text-white hover:bg-[#21262D] rounded-md transition-colors flex items-center gap-1 text-xs"
+                  className="p-1.5 text-[#8d8d91] hover:text-white hover:bg-[#252527] rounded-md transition-colors flex items-center gap-1 text-xs"
                   title="Edit message"
                 >
                   <Edit2 size={14} />
@@ -277,7 +271,7 @@ export const MessageBubble = React.memo(function MessageBubble({ message, isStre
               {onDelete && (
                 <button
                   onClick={() => onDelete(message.id)}
-                  className="p-1.5 text-slate-400 hover:text-rose-400 hover:bg-[#21262D] rounded-md transition-colors"
+                  className="p-1.5 text-[#8d8d91] hover:text-rose-400 hover:bg-[#252527] rounded-md transition-colors"
                   title="Delete message"
                 >
                   <Trash2 size={14} />
@@ -291,7 +285,7 @@ export const MessageBubble = React.memo(function MessageBubble({ message, isStre
       {/* Fullscreen Image Preview Modal */}
       {previewImage && (
         <div
-          className="fixed inset-0 z-50 bg-black/90 backdrop-blur-md flex items-center justify-center p-4 cursor-pointer"
+          className="fixed inset-0 z-50 bg-black/90 flex items-center justify-center p-4 cursor-pointer"
           onClick={() => setPreviewImage(null)}
         >
           <img

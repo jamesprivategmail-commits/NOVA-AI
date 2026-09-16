@@ -29,18 +29,18 @@ class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundaryState> {
   public render() {
     if (this.state.hasError) {
       return (
-        <div className="min-h-screen bg-[#05070B] text-slate-100 flex items-center justify-center p-4">
-          <div className="max-w-md w-full bg-[#0D1019] border border-[#272F42] rounded-2xl p-6 shadow-2xl text-center space-y-4">
-            <div className="w-14 h-14 bg-red-950/80 border border-red-800/50 rounded-2xl flex items-center justify-center mx-auto text-red-500 font-bold text-xl">
+        <div className="min-h-screen bg-[#2b0709] text-white flex items-center justify-center p-4">
+          <div className="max-w-md w-full bg-[#202022] border border-[#38383b] rounded-2xl p-6 shadow-xl text-center space-y-4">
+            <div className="w-14 h-14 bg-red-950/60 border border-red-800/50 rounded-2xl flex items-center justify-center mx-auto text-red-400 font-bold text-xl">
               !
             </div>
-            <h2 className="text-xl font-bold text-white tracking-tight">Something went wrong</h2>
-            <p className="text-xs text-slate-400 leading-relaxed font-mono bg-[#07090F] p-3 rounded-xl border border-[#1E2536] text-left overflow-x-auto">
+            <h2 className="text-xl font-bold text-white">Something went wrong</h2>
+            <p className="text-xs text-[#8d8d91] leading-relaxed bg-[#252527] p-3 rounded-xl border border-[#38383b] text-left overflow-x-auto">
               {this.state.error?.message || 'An unexpected runtime error occurred.'}
             </p>
             <button
               onClick={() => window.location.reload()}
-              className="w-full bg-red-600 hover:bg-red-500 text-white font-bold py-2.5 px-4 rounded-xl transition-all shadow-md text-sm cursor-pointer"
+              className="w-full bg-[#3f86ff] hover:opacity-90 text-white font-medium py-2.5 px-4 rounded-xl transition-all text-sm cursor-pointer"
             >
               Reload Application
             </button>

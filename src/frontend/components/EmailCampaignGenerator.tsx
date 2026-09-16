@@ -113,34 +113,34 @@ Best regards,
   };
 
   return (
-    <div className="fixed inset-0 bg-black/80 backdrop-blur-md z-50 flex items-center justify-center p-4">
-      <div className="bg-zinc-950 border border-red-900/40 rounded-2xl w-full max-w-5xl h-[90vh] flex flex-col overflow-hidden shadow-2xl shadow-red-950/30">
+    <div className="fixed inset-0 bg-black/80  z-50 flex items-center justify-center p-4">
+      <div className="bg-[#202022] border border-[#38383b] rounded-2xl w-full max-w-5xl h-[90vh] flex flex-col overflow-hidden shadow-2xl ">
         {/* Header */}
-        <div className="flex items-center justify-between p-4 md:p-6 border-b border-zinc-800 bg-zinc-900/60">
+        <div className="flex items-center justify-between p-4 md:p-6 border-b border-[#38383b] bg-[#252527]/60">
           <div className="flex items-center gap-3">
             <button
               onClick={onClose}
-              className="p-2 text-zinc-400 hover:text-white hover:bg-zinc-800 rounded-lg transition-colors mr-1"
+              className="p-2 text-[#8d8d91] hover:text-white hover:bg-[#38383b] rounded-lg transition-colors mr-1"
             >
               <ArrowLeft size={20} />
             </button>
-            <div className="p-2 bg-red-600/20 border border-red-500/30 rounded-xl text-red-500">
+            <div className="p-2 bg-[#3f86ff]/20 border border-[#3f86ff]/30 rounded-xl text-[#3f86ff]">
               <Mail size={22} />
             </div>
             <div>
               <h2 className="text-xl font-bold text-white tracking-wide flex items-center gap-2">
                 Email Campaign Generator
-                <span className="text-[10px] bg-red-600/30 border border-red-500/40 text-red-400 px-2 py-0.5 rounded-full font-mono font-bold">
+                <span className="text-[10px] bg-[#3f86ff]/30 border border-[#3f86ff]/40 text-[#8d8d91] px-2 py-0.5 rounded-full font-bold">
                   VOID ENGINE
                 </span>
               </h2>
-              <p className="text-xs text-zinc-400">Instant subject lines, email copy, visual ideas & follow-up sequences</p>
+              <p className="text-xs text-[#8d8d91]">Instant subject lines, email copy, visual ideas & follow-up sequences</p>
             </div>
           </div>
           {generatedCampaign && (
             <button
               onClick={() => handleCopy(generatedCampaign, 'all')}
-              className="px-4 py-2 bg-zinc-800 hover:bg-zinc-700 text-zinc-200 text-xs font-semibold rounded-lg border border-zinc-700 flex items-center gap-1.5 transition-colors"
+              className="px-4 py-2 bg-[#38383b] hover:bg-[#454547] text-white text-xs font-semibold rounded-lg border border-[#38383b] flex items-center gap-1.5 transition-colors"
             >
               {copiedSection === 'all' ? <Check size={14} className="text-emerald-400" /> : <Copy size={14} />}
               {copiedSection === 'all' ? 'Copied Campaign!' : 'Copy Full Campaign'}
@@ -151,10 +151,10 @@ Best regards,
         {/* Content Body */}
         <div className="flex-1 grid grid-cols-1 lg:grid-cols-12 overflow-hidden">
           {/* Controls Panel */}
-          <div className="lg:col-span-4 border-r border-zinc-800 p-5 overflow-y-auto bg-zinc-900/30 space-y-5">
+          <div className="lg:col-span-4 border-r border-[#38383b] p-5 overflow-y-auto bg-[#252527]/30 space-y-5">
             <form onSubmit={handleGenerate} className="space-y-4">
               <div>
-                <label className="block text-xs font-bold text-zinc-300 uppercase tracking-wider mb-1">
+                <label className="block text-xs font-bold text-white uppercase tracking-wider mb-1">
                   Product / Offer Prompt *
                 </label>
                 <textarea
@@ -163,12 +163,12 @@ Best regards,
                   value={productPrompt}
                   onChange={(e) => setProductPrompt(e.target.value)}
                   placeholder="e.g. Launching VOID AI Pro Subscription with 30% off for early adopters. Mention speed, email automation, and 24/7 AI brain customization."
-                  className="w-full bg-zinc-900 border border-zinc-700 rounded-xl p-3 text-sm text-zinc-100 placeholder-zinc-500 focus:border-red-500 outline-none transition-colors"
+                  className="w-full bg-[#252527] border border-[#38383b] rounded-xl p-3 text-sm text-white placeholder-zinc-500 focus:border-[#3f86ff] outline-none transition-colors"
                 />
               </div>
 
               <div>
-                <label className="block text-xs font-bold text-zinc-300 uppercase tracking-wider mb-1">
+                <label className="block text-xs font-bold text-white uppercase tracking-wider mb-1">
                   Target Audience
                 </label>
                 <input
@@ -176,18 +176,18 @@ Best regards,
                   value={audience}
                   onChange={(e) => setAudience(e.target.value)}
                   placeholder="e.g. Digital marketers, agency founders, creators"
-                  className="w-full bg-zinc-900 border border-zinc-700 rounded-xl p-2.5 text-sm text-zinc-100 placeholder-zinc-500 focus:border-red-500 outline-none transition-colors"
+                  className="w-full bg-[#252527] border border-[#38383b] rounded-xl p-2.5 text-sm text-white placeholder-zinc-500 focus:border-[#3f86ff] outline-none transition-colors"
                 />
               </div>
 
               <div>
-                <label className="block text-xs font-bold text-zinc-300 uppercase tracking-wider mb-1">
+                <label className="block text-xs font-bold text-white uppercase tracking-wider mb-1">
                   Campaign Type
                 </label>
                 <select
                   value={campaignType}
                   onChange={(e) => setCampaignType(e.target.value)}
-                  className="w-full bg-zinc-900 border border-zinc-700 rounded-xl p-2.5 text-sm text-zinc-100 focus:border-red-500 outline-none"
+                  className="w-full bg-[#252527] border border-[#38383b] rounded-xl p-2.5 text-sm text-white focus:border-[#3f86ff] outline-none"
                 >
                   <option value="Product Launch">🚀 Product Launch</option>
                   <option value="Flash Sale / Discount">⚡ Flash Sale / Discount</option>
@@ -198,13 +198,13 @@ Best regards,
               </div>
 
               <div>
-                <label className="block text-xs font-bold text-zinc-300 uppercase tracking-wider mb-1">
+                <label className="block text-xs font-bold text-white uppercase tracking-wider mb-1">
                   Tone of Voice
                 </label>
                 <select
                   value={tone}
                   onChange={(e) => setTone(e.target.value)}
-                  className="w-full bg-zinc-900 border border-zinc-700 rounded-xl p-2.5 text-sm text-zinc-100 focus:border-red-500 outline-none"
+                  className="w-full bg-[#252527] border border-[#38383b] rounded-xl p-2.5 text-sm text-white focus:border-[#3f86ff] outline-none"
                 >
                   <option value="High Energy & High Converting">⚡ High Energy & High Converting</option>
                   <option value="Bold & Dangerous (VOID Style)">🔴 Bold & Dangerous (VOID Style)</option>
@@ -217,7 +217,7 @@ Best regards,
               <button
                 type="submit"
                 disabled={isGenerating || !productPrompt.trim()}
-                className="w-full py-3 bg-red-600 hover:bg-red-500 text-white font-bold rounded-xl transition-all flex items-center justify-center gap-2 shadow-lg shadow-red-950/50 disabled:opacity-50 mt-2"
+                className="w-full py-3 bg-[#3f86ff] hover:opacity-90 text-white font-bold rounded-xl transition-all flex items-center justify-center gap-2 shadow-lg  disabled:opacity-50 mt-2"
               >
                 {isGenerating ? (
                   <>
@@ -235,19 +235,19 @@ Best regards,
           </div>
 
           {/* Generated Result Preview Panel */}
-          <div className="lg:col-span-8 p-6 overflow-y-auto bg-zinc-950 space-y-4">
+          <div className="lg:col-span-8 p-6 overflow-y-auto bg-[#202022] space-y-4">
             {!generatedCampaign && !isGenerating ? (
-              <div className="h-full flex flex-col items-center justify-center text-center p-8 text-zinc-500 border border-dashed border-zinc-800 rounded-2xl">
-                <div className="w-16 h-16 bg-red-500/10 border border-red-500/20 rounded-2xl flex items-center justify-center mb-4 text-red-500">
+              <div className="h-full flex flex-col items-center justify-center text-center p-8 text-[#8d8d91] border border-dashed border-[#38383b] rounded-2xl">
+                <div className="w-16 h-16 bg-[#3f86ff]/10 border border-[#3f86ff]/20 rounded-2xl flex items-center justify-center mb-4 text-[#3f86ff]">
                   <Mail size={32} />
                 </div>
-                <h3 className="text-lg font-bold text-zinc-200 mb-1">No Campaign Generated Yet</h3>
-                <p className="text-sm text-zinc-400 max-w-md mb-4">
+                <h3 className="text-lg font-bold text-white mb-1">No Campaign Generated Yet</h3>
+                <p className="text-sm text-[#8d8d91] max-w-md mb-4">
                   Enter your offer details on the left and click "Generate Campaign" to produce high-converting email sequences.
                 </p>
               </div>
             ) : (
-              <div className="prose prose-invert max-w-none prose-p:leading-relaxed prose-pre:bg-zinc-900 prose-pre:border prose-pre:border-zinc-800 prose-a:text-red-400">
+              <div className="prose prose-invert max-w-none prose-p:leading-relaxed prose-pre:bg-[#252527] prose-pre:border prose-pre:border-[#38383b] prose-a:text-[#8d8d91]">
                 <ReactMarkdown remarkPlugins={[remarkGfm]}>
                   {generatedCampaign || ''}
                 </ReactMarkdown>

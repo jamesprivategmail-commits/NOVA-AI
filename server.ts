@@ -586,6 +586,76 @@ async function incrementUserMessageCountServer(userId: string) {
   }
 }
 
+// =====================================================
+// REAL-TIME WEB SEARCH — gives the AI live internet access
+// Injects results into the user's message, NOT the brain prompt
+// =====================================================
+async function performWebSearch(query: string): Promise<string> {
+  try {
+    // 1) Try DuckDuckGo Instant Answer API (free, no key needed)
+    const ddgUrl = `https://api.duckduckgo.com/?q=${encodeURIComponent(query)}&format=json&no_html=1&skip_disambig=1`;
+    const ddgRes = await fetch(ddgUrl, {
+      headers: { 'User-Agent': 'VOIDAI/1.0' },
+      signal: AbortSignal.timeout(5000),
+    });
+    if (ddgRes.ok) {
+      const data = await ddgRes.json() as any;
+      const results: string[] = [];
+      if (data.AbstractText) {
+        results.push(`${data.AbstractText}${data.AbstractURL ? ` (Source: ${data.AbstractURL})` : ''}`);
+      }
+      if (Array.isArray(data.RelatedTopics)) {
+        for (const topic of data.RelatedTopics.slice(0, 5)) {
+          if (topic.Text) results.push(topic.Text);
+          if (results.length >= 5) break;
+        }
+      }
+      if (results.length > 0) return results.join('\n\n');
+    }
+
+    // 2) Fallback: DuckDuckGo HTML search — scrape top results
+    const htmlUrl = `https://html.duckduckgo.com/html/?q=${encodeURIComponent(query)}`;
+    const htmlRes = await fetch(htmlUrl, {
+      headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36' },
+      signal: AbortSignal.timeout(5000),
+    });
+    if (htmlRes.ok) {
+      const html = await htmlRes.text();
+      const results: string[] = [];
+      const regex = /class="result__a"[^>]*>([^<]+)<\/a>[\s\S]*?class="result__snippet"[^>]*>([\s\S]*?)<\/a>/g;
+      let match: RegExpExecArray | null;
+      let count = 0;
+      while ((match = regex.exec(html)) && count < 5) {
+        const title = match[1].trim().replace(/&amp;/g, '&').replace(/&quot;/g, '"');
+        const snippet = match[2].trim().replace(/<[^>]+>/g, '').replace(/&amp;/g, '&').replace(/&quot;/g, '"');
+        if (title && snippet) results.push(`${title}: ${snippet}`);
+        count++;
+      }
+      if (results.length > 0) return results.join('\n\n');
+    }
+  } catch (err) {
+    console.warn('[Web Search] Error (non-fatal):', (err as any)?.message || err);
+  }
+  return '';
+}
+
+// Heuristic: only search when the question seems to need real-time / factual info
+function shouldSearchWeb(text: string): boolean {
+  const lower = text.toLowerCase();
+  if (text.length > 500) return false; // Skip long messages
+  const realtimeKeywords = [
+    'today', 'now', 'current', 'latest', 'recent', 'news', 'happening',
+    'weather', 'price', 'stock', 'score', 'who won', 'who is', 'what is',
+    'where is', 'when is', 'how much', 'how many', '2024', '2025', '2026',
+    'yesterday', 'tomorrow', 'this week', 'this month', 'this year',
+    'update', 'status', 'live', 'breaking', 'election', 'president',
+    'prime minister', 'ceo of', 'owner of', 'release date', 'announce',
+    'happened', 'happening', 'trending', 'viral', 'go fund', 'gofundme',
+    'war', 'conflict', 'crisis', 'outbreak', 'case', 'incident',
+  ];
+  return realtimeKeywords.some(kw => lower.includes(kw));
+}
+
 async function startServer() {
   const app = express();
   app.set("trust proxy", 1);
@@ -666,6 +736,26 @@ async function startServer() {
         BRAIN_CONFIDENTIALITY_SECURITY_GUARD
       ].filter(Boolean).map(s => s.trim()).join("\n\n");
 
+      // ── Real-time Web Search ──────────────────────────────────────
+      // Injects live internet data into the USER'S message — does NOT
+      // touch the brain / system prompt in any way.
+      let messagesForAI = messages;
+      const lastUserMsg = [...messages].reverse().find((m: any) => m.role === 'user');
+      if (lastUserMsg) {
+        const userQuery = (lastUserMsg.text || lastUserMsg.content || '').slice(0, 300);
+        if (userQuery && shouldSearchWeb(userQuery)) {
+          const webResults = await performWebSearch(userQuery);
+          if (webResults) {
+            messagesForAI = messages.map((m: any) =>
+              m === lastUserMsg
+                ? { ...m, text: `[🌐 Live Web Search Results for "${userQuery}"]:\n${webResults}\n\n---\n\n[User Question]: ${userQuery}` }
+                : m
+            );
+            console.log('[Web Search] Injected real-time data for query:', userQuery.slice(0, 80));
+          }
+        }
+      }
+
       let providersToTry = ["groq", "cohere", "bazaarlink"];
       if (provider === "cohere") {
         providersToTry = ["cohere", "groq", "bazaarlink"];
@@ -680,17 +770,17 @@ async function startServer() {
         try {
           if (p === "groq") {
             if (groqKeys.length === 0) continue;
-            await executeGroqWithRotation(messages, combinedSystemPrompt, maxTokens, provider === "groq" ? model : undefined, groqKeys, res);
+            await executeGroqWithRotation(messagesForAI, combinedSystemPrompt, maxTokens, provider === "groq" ? model : undefined, groqKeys, res);
             executedSuccessfully = true;
             break;
           } else if (p === "cohere") {
             if (cohereKeys.length === 0) continue;
-            await executeCohereWithRotation(messages, combinedSystemPrompt, maxTokens, provider === "cohere" ? model : undefined, cohereKeys, res);
+            await executeCohereWithRotation(messagesForAI, combinedSystemPrompt, maxTokens, provider === "cohere" ? model : undefined, cohereKeys, res);
             executedSuccessfully = true;
             break;
           } else if (p === "bazaarlink") {
             if (bazaarLinkKeys.length === 0) continue;
-            await executeBazaarLinkWithRotation(messages, combinedSystemPrompt, maxTokens, provider === "bazaarlink" ? model : undefined, bazaarLinkKeys, res);
+            await executeBazaarLinkWithRotation(messagesForAI, combinedSystemPrompt, maxTokens, provider === "bazaarlink" ? model : undefined, bazaarLinkKeys, res);
             executedSuccessfully = true;
             break;
           }

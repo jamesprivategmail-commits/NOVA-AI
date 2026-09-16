@@ -60,17 +60,17 @@ export function CodeBlock({ language, value }: CodeBlockProps) {
   return (
     <div className="my-3 sm:my-5 rounded-lg sm:rounded-xl border border-[#30363D] bg-[#161B22] overflow-hidden shadow-md w-full">
       {/* Header bar */}
-      <div className="flex items-center justify-between px-2.5 py-1.5 sm:px-4 sm:py-2 bg-[#0D1117] border-b border-[#30363D] text-[11px] sm:text-xs font-mono text-slate-400">
+      <div className="flex items-center justify-between px-2.5 py-1.5 sm:px-4 sm:py-2 bg-[#0D1117] border-b border-[#30363D] text-[11px] sm:text-xs text-[#8d8d91]">
         <div className="flex items-center gap-1.5 sm:gap-2 min-w-0">
-          <Terminal size={13} className="text-red-400 shrink-0" />
-          <span className="uppercase tracking-wider font-semibold text-slate-300 truncate">
+          <Terminal size={13} className="text-[#8d8d91] shrink-0" />
+          <span className="uppercase tracking-wider font-semibold text-white truncate">
             {language || 'text'}
           </span>
         </div>
         <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
           <button
             onClick={handleDownload}
-            className="flex items-center gap-1 px-2 py-0.5 sm:px-2.5 sm:py-1 rounded-md bg-[#21262D] hover:bg-[#30363D] text-slate-300 hover:text-white transition-colors text-[10px] sm:text-xs font-medium border border-[#30363D]"
+            className="flex items-center gap-1 px-2 py-0.5 sm:px-2.5 sm:py-1 rounded-md bg-[#21262D] hover:bg-[#30363D] text-white hover:text-white transition-colors text-[10px] sm:text-xs font-medium border border-[#30363D]"
             title="Download file"
           >
             {downloaded ? (
@@ -80,7 +80,7 @@ export function CodeBlock({ language, value }: CodeBlockProps) {
               </>
             ) : (
               <>
-                <Download size={12} className="text-red-400" />
+                <Download size={12} className="text-[#8d8d91]" />
                 <span className="hidden sm:inline">Download File</span>
                 <span className="sm:hidden">Save</span>
               </>
@@ -89,7 +89,7 @@ export function CodeBlock({ language, value }: CodeBlockProps) {
 
           <button
             onClick={handleCopy}
-            className="flex items-center gap-1 px-2 py-0.5 sm:px-2.5 sm:py-1 rounded-md bg-[#21262D] hover:bg-[#30363D] text-slate-300 hover:text-white transition-colors text-[10px] sm:text-xs font-medium border border-[#30363D]"
+            className="flex items-center gap-1 px-2 py-0.5 sm:px-2.5 sm:py-1 rounded-md bg-[#21262D] hover:bg-[#30363D] text-white hover:text-white transition-colors text-[10px] sm:text-xs font-medium border border-[#30363D]"
             title="Copy code"
           >
             {copied ? (
