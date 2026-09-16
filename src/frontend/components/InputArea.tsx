@@ -7,6 +7,7 @@ interface InputAreaProps {
   isLoading: boolean;
   onStop?: () => void;
   onOpenLiveVoice?: () => void;
+  onImageGenerate?: (text: string) => void;
 }
 
 interface Attachment {
@@ -15,11 +16,12 @@ interface Attachment {
   dataUrl?: string;
 }
 
-export function InputArea({ onSend, isLoading, onStop, onOpenLiveVoice }: InputAreaProps) {
+export function InputArea({ onSend, isLoading, onStop, onOpenLiveVoice, onImageGenerate }: InputAreaProps) {
   const [text, setText] = useState('');
   const [isListening, setIsListening] = useState(false);
   const [attachment, setAttachment] = useState<Attachment | null>(null);
   const [speechError, setSpeechError] = useState<string | null>(null);
+  const [imageMode, setImageMode] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const recognitionRef = useRef<any>(null);
@@ -112,6 +114,15 @@ export function InputArea({ onSend, isLoading, onStop, onOpenLiveVoice }: InputA
   const handleSend = () => {
     const trimmed = text.trim();
     if ((trimmed || attachment) && !isLoading) {
+      if (imageMode && onImageGenerate && trimmed) {
+        onImageGenerate(trimmed);
+        setText('');
+        setImageMode(false);
+        if (textareaRef.current) {
+          textareaRef.current.style.height = '36px';
+        }
+        return;
+      }
       let fullMessage = trimmed;
       if (attachment) {
         if (attachment.type.startsWith('image/') && attachment.dataUrl) {
@@ -192,18 +203,36 @@ export function InputArea({ onSend, isLoading, onStop, onOpenLiveVoice }: InputA
           <Plus size={18} />
         </button>
 
+        {/* Image Generation Mode Toggle */}
+        <button
+          type="button"
+          onClick={() => setImageMode(!imageMode)}
+          className={clsx(
+            "w-8 h-8 rounded-full flex items-center justify-center shrink-0 transition-all cursor-pointer",
+            imageMode
+              ? "bg-[#3f86ff] text-white"
+              : "bg-[#252527] hover:bg-[#38383b] text-white"
+          )}
+          title={imageMode ? "Image mode ON — type a prompt to generate an image" : "Toggle image generation mode"}
+        >
+          <ImageIcon size={16} />
+        </button>
+
         {/* Text Input Field */}
         <textarea
           ref={textareaRef}
           value={text}
           onChange={(e) => setText(e.target.value)}
           onKeyDown={handleKeyDown}
-          placeholder="Message VOID AI"
+          placeholder={imageMode ? "Describe an image to generate…" : "Message VOID AI"}
           rows={1}
           autoCapitalize="sentences"
           autoCorrect="on"
           spellCheck={true}
-          className="flex-1 min-h-[32px] max-h-[140px] bg-transparent text-white placeholder:text-[#8d8d91] border-0 focus:ring-0 resize-none py-1.5 px-1 outline-none text-sm leading-snug"
+          className={clsx(
+            "flex-1 min-h-[32px] max-h-[140px] bg-transparent text-white placeholder:text-[#8d8d91] border-0 focus:ring-0 resize-none py-1.5 px-1 outline-none text-sm leading-snug",
+            imageMode && "placeholder:text-[#3f86ff]"
+          )}
         />
 
         {/* Mic Button */}

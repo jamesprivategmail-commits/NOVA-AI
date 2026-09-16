@@ -1227,6 +1227,35 @@ async function startServer() {
     }
   });
 
+  // =====================================================
+  // IMAGE GENERATION — uses Pollinations.ai (free, no key)
+  // =====================================================
+  app.post("/api/generate-image", async (req, res) => {
+    try {
+      const { prompt = "", userId = "" } = req.body;
+
+      if (!prompt || typeof prompt !== 'string' || !prompt.trim()) {
+        return res.status(400).json({ error: "Image prompt is required" });
+      }
+
+      // Enforce tier limits (reuse same logic as chat)
+      const { userTier, isBanned } = await fetchUserAndTierSettings(userId);
+      if (isBanned) {
+        return res.status(403).json({ error: "Your account has been restricted." });
+      }
+
+      const cleanPrompt = prompt.trim().slice(0, 500);
+      const seed = Math.floor(Math.random() * 1000000);
+      const encoded = encodeURIComponent(cleanPrompt);
+      const imageUrl = `https://image.pollinations.ai/prompt/${encoded}?width=512&height=512&nologo=true&model=flux&seed=${seed}`;
+
+      return res.json({ imageUrl, prompt: cleanPrompt });
+    } catch (error: any) {
+      console.error("Image generation error:", error);
+      return res.status(500).json({ error: "Failed to generate image. Please try again." });
+    }
+  });
+
   // Pre-flight key validation endpoint
   app.post("/api/admin/validate-key", async (req, res) => {
     try {

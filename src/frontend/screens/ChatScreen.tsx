@@ -249,6 +249,68 @@ export function ChatScreen({ userId }: ChatScreenProps) {
     setIsLoading(false);
   };
 
+  const handleImageGenerate = async (prompt: string) => {
+    if (!checkLimitations()) return;
+
+    let activeChatId = currentChatId;
+
+    // Create new chat if none selected
+    if (!activeChatId) {
+      const chat = await createChat(userId, `🎨 ${prompt.slice(0, 28)}...`);
+      setChats([chat, ...chats]);
+      activeChatId = chat.id;
+      setCurrentChatId(activeChatId);
+    } else if (messages.length === 0) {
+      await handleRenameChat(activeChatId, `🎨 ${prompt.slice(0, 28)}...`);
+    }
+
+    // Add user message showing the prompt
+    const tempUserMsgId = 'user-' + Date.now();
+    const optimisticUserMsg: Message = {
+      id: tempUserMsgId,
+      chatId: activeChatId,
+      role: 'user',
+      text: `🎨 **Image Generation:** ${prompt}`,
+      createdAt: Date.now()
+    };
+    const currentMessages = [...messages, optimisticUserMsg];
+    setMessages(currentMessages);
+    saveMessage(activeChatId, 'user', `🎨 **Image Generation:** ${prompt}`).catch(() => {});
+
+    setIsLoading(true);
+    setStreamingMessage('');
+
+    try {
+      const updatedProfile = await incrementMessageCount(userId);
+      setProfile(updatedProfile);
+
+      const response = await fetch('/api/generate-image', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ prompt, userId }),
+      });
+
+      if (!response.ok) {
+        const err = await response.json().catch(() => ({}));
+        throw new Error(err.error || 'Image generation failed');
+      }
+
+      const data = await response.json();
+      const imageMarkdown = `![Generated Image](${data.imageUrl})\n\n*Prompt:* ${prompt}`;
+
+      const modelMsg = await saveMessage(activeChatId, 'model', imageMarkdown);
+      setMessages([...currentMessages, modelMsg]);
+    } catch (error: any) {
+      console.error('Image generation error:', error);
+      const errNotice = `⚡ **Image generation failed:** ${error.message || 'Please try again.'}`;
+      const modelMsg = await saveMessage(activeChatId, 'model', errNotice);
+      setMessages([...currentMessages, modelMsg]);
+    } finally {
+      setIsLoading(false);
+      setStreamingMessage('');
+    }
+  };
+
   const handleSend = async (text: string) => {
     if (!checkLimitations()) return;
 
@@ -581,6 +643,7 @@ export function ChatScreen({ userId }: ChatScreenProps) {
             isLoading={isLoading}
             onStop={handleStopGeneration}
             onOpenLiveVoice={() => setShowLiveVoice(true)}
+            onImageGenerate={handleImageGenerate}
           />
           <div className="text-[11px] text-[#8d8d91] text-center px-2 pt-1.5">
             VOID AI can make mistakes. Check important information.
