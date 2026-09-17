@@ -186,17 +186,13 @@ export const MessageBubble = React.memo(function MessageBubble({ message, isStre
                     img(props) {
                       if (!props.src) return null;
                       return (
-                        <span className="my-3 relative group inline-block max-w-full">
+                        <span className="my-2 relative group inline-block max-w-full">
                           <img
                             src={props.src}
                             alt={props.alt || 'Generated asset'}
-                            className="rounded-xl border border-[#30363D] max-h-96 object-cover shadow-lg hover:brightness-105 transition-all cursor-pointer"
+                            className="rounded-lg border border-[#30363D] max-h-56 object-cover shadow-lg hover:brightness-110 transition-all cursor-pointer"
                             onClick={() => props.src && setPreviewImage(props.src)}
                           />
-                          <span className="absolute bottom-2 right-2 px-2 py-1 bg-black/70 backdrop-blur-md rounded-md text-[10px] text-white flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                            <ImageIcon size={12} />
-                            <span>Click to view</span>
-                          </span>
                         </span>
                       );
                     }

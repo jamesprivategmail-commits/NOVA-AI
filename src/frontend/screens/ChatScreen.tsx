@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Sidebar } from '../components/Sidebar';
 import { MessageBubble } from '../components/MessageBubble';
-import { InputArea } from '../components/InputArea';
+import { InputArea, ChatAttachment } from '../components/InputArea';
 import { ThinkingIndicator } from '../components/ThinkingIndicator';
 import { AdminDashboard } from './AdminDashboard';
 import { SubscriptionModal } from './SubscriptionModal';
@@ -311,21 +311,33 @@ export function ChatScreen({ userId }: ChatScreenProps) {
     }
   };
 
-  const handleSend = async (text: string) => {
+  const handleSend = async (text: string, attachment?: ChatAttachment) => {
     if (!checkLimitations()) return;
 
     let activeChatId = currentChatId;
 
+    // Build display text (with embedded image/file indicator for chat history)
+    let displayText = text;
+    if (attachment) {
+      if (attachment.kind === 'image') {
+        displayText = `![${attachment.name}](${attachment.data})\n\n${text}`.trim();
+      } else {
+        displayText = `📎 **${attachment.name}**\n\n${text}`.trim();
+      }
+    }
+
     // Create new chat if none selected
     if (!activeChatId) {
-      const chat = await createChat(userId, text.slice(0, 32) + (text.length > 32 ? '...' : ''));
+      const titleText = text || (attachment ? attachment.name : 'New Chat');
+      const chat = await createChat(userId, titleText.slice(0, 32) + (titleText.length > 32 ? '...' : ''));
       setChats([chat, ...chats]);
       activeChatId = chat.id;
       setCurrentChatId(activeChatId);
     } else if (messages.length === 0) {
       const chat = chats.find((c) => c.id === activeChatId);
       if (chat && chat.title === 'New Chat') {
-        const newTitle = text.slice(0, 32) + (text.length > 32 ? '...' : '');
+        const titleText = text || (attachment ? attachment.name : 'New Chat');
+        const newTitle = titleText.slice(0, 32) + (titleText.length > 32 ? '...' : '');
         await handleRenameChat(activeChatId, newTitle);
       }
     }
@@ -336,7 +348,7 @@ export function ChatScreen({ userId }: ChatScreenProps) {
       id: tempUserMsgId,
       chatId: activeChatId,
       role: 'user',
-      text,
+      text: displayText,
       createdAt: Date.now()
     };
 
@@ -344,7 +356,7 @@ export function ChatScreen({ userId }: ChatScreenProps) {
     setMessages(currentMessages);
 
     // Persist user message to db asynchronously
-    saveMessage(activeChatId, 'user', text).catch((err) => console.error('Failed async message save:', err));
+    saveMessage(activeChatId, 'user', displayText).catch((err) => console.error('Failed async message save:', err));
 
     setIsLoading(true);
     setStreamingMessage('');
@@ -368,7 +380,7 @@ export function ChatScreen({ userId }: ChatScreenProps) {
         (chunk) => {
           fullResponse += chunk;
           const now = Date.now();
-          if (now - lastStreamUpdate > 35) { // Throttle stream updates to ~28 FPS max for smooth mobile frame rates
+          if (now - lastStreamUpdate > 35) {
             lastStreamUpdate = now;
             setStreamingMessage(fullResponse);
           }
@@ -377,7 +389,8 @@ export function ChatScreen({ userId }: ChatScreenProps) {
         userId,
         userTier,
         selectedProvider,
-        selectedModel
+        selectedModel,
+        attachment
       );
 
       // Save complete model message
@@ -408,6 +421,15 @@ export function ChatScreen({ userId }: ChatScreenProps) {
 
   return (
     <div className="flex h-screen bg-[#2b0709] text-white overflow-hidden relative">
+      {/* Demonic background glow — subtle red ambient lighting */}
+      <div className="fixed inset-0 pointer-events-none z-0" style={{
+        backgroundImage: `
+          radial-gradient(ellipse at 50% 0%, rgba(140, 15, 15, 0.25) 0%, transparent 55%),
+          radial-gradient(ellipse at 100% 100%, rgba(90, 8, 8, 0.18) 0%, transparent 50%),
+          radial-gradient(ellipse at 0% 70%, rgba(70, 5, 5, 0.15) 0%, transparent 45%)
+        `,
+        backgroundAttachment: 'fixed',
+      }} />
       {/* Mobile Backdrop Overlay when Sidebar is expanded */}
       {isSidebarOpen && (
         <div
@@ -548,7 +570,7 @@ export function ChatScreen({ userId }: ChatScreenProps) {
         <div
           ref={chatContainerRef}
           onScroll={handleScroll}
-          className="flex-1 overflow-y-auto relative flex flex-col justify-between pb-28 sm:pb-32"
+          className="flex-1 overflow-y-auto relative flex flex-col justify-between pb-20 sm:pb-24"
         >
           {messages.length === 0 ? (
             /* Clean NOVA-style welcome screen */
@@ -593,7 +615,7 @@ export function ChatScreen({ userId }: ChatScreenProps) {
             </div>
           ) : (
             /* Render Message History */
-            <div className="pb-44">
+            <div className="pb-32">
               {messages.map((msg) => (
                 <MessageBubble
                   key={msg.id}
@@ -637,7 +659,7 @@ export function ChatScreen({ userId }: ChatScreenProps) {
         )}
 
         {/* Fixed Bottom Input Area */}
-        <div className="absolute bottom-0 left-0 right-0 bg-[#2b0709] pt-3 pb-2 z-10 flex flex-col items-center">
+        <div className="absolute bottom-0 left-0 right-0 bg-[#2b0709] pt-2 pb-1 z-10 flex flex-col items-center">
           <InputArea
             onSend={handleSend}
             isLoading={isLoading}
@@ -645,8 +667,8 @@ export function ChatScreen({ userId }: ChatScreenProps) {
             onOpenLiveVoice={() => setShowLiveVoice(true)}
             onImageGenerate={handleImageGenerate}
           />
-          <div className="text-[11px] text-[#8d8d91] text-center px-2 pt-1.5">
-            VOID AI can make mistakes. Check important information.
+          <div className="text-[10px] text-[#8d8d91] text-center px-2 pt-0.5">
+            VOID AI can make mistakes. Check important info.
           </div>
         </div>
       </div>

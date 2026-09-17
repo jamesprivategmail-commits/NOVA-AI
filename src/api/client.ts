@@ -1,3 +1,5 @@
+import type { ChatAttachment } from '../frontend/components/InputArea';
+
 export async function sendMessageToGroq(
   messages: { role: string; text: string }[], 
   systemPrompt: string = '',
@@ -6,7 +8,8 @@ export async function sendMessageToGroq(
   userId?: string,
   userTier?: string,
   provider: 'groq' | 'cohere' | 'bazaarlink' = 'groq',
-  model?: string
+  model?: string,
+  attachment?: ChatAttachment
 ) {
   try {
     const response = await fetch("/api/chat", {
@@ -14,7 +17,7 @@ export async function sendMessageToGroq(
       headers: {
         "Content-Type": "application/json",
       },
-      body: JSON.stringify({ messages, systemPrompt, userId, userTier, provider, model }),
+      body: JSON.stringify({ messages, systemPrompt, userId, userTier, provider, model, attachment }),
       signal
     });
 
@@ -48,7 +51,6 @@ export async function sendMessageToGroq(
       
       buffer += decoder.decode(value, { stream: true });
       
-      // Process SSE format: "data: {...}\n\n"
       const parts = buffer.split("\n\n");
       buffer = parts.pop() || "";
       
@@ -86,4 +88,3 @@ export async function sendMessageToGemini(
 ) {
   return sendMessageToGroq(messages, systemPrompt, onChunk, signal);
 }
-

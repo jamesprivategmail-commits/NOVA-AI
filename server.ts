@@ -250,7 +250,15 @@ class KeyHealthManager {
 
 const keyHealthManager = new KeyHealthManager();
 
-async function executeGroqWithRotation(messages: any[], systemPrompt: string, maxTokens: number = 1024, requestedModel: string | undefined, groqKeys: string[], res: any) {
+async function executeGroqWithRotation(
+  messages: any[],
+  systemPrompt: string,
+  maxTokens: number = 1024,
+  requestedModel: string | undefined,
+  groqKeys: string[],
+  res: any,
+  imageDataUrl?: string
+) {
   const { healthyKeys, skippedReasons } = keyHealthManager.filterHealthyKeys(groqKeys, 'groq');
   
   if (healthyKeys.length === 0) {
@@ -260,10 +268,14 @@ async function executeGroqWithRotation(messages: any[], systemPrompt: string, ma
     throw new Error("No healthy or valid Groq API keys available");
   }
 
+  // When an image is attached, use the vision model
+  const VISION_MODEL = "llama-3.2-90b-vision-preview";
   const defaultModels = AI_CONFIG.providers.groq.models;
-  const models = requestedModel && defaultModels.includes(requestedModel) 
-    ? [requestedModel, ...defaultModels.filter(m => m !== requestedModel)] 
-    : defaultModels;
+  const models = imageDataUrl
+    ? [VISION_MODEL, ...defaultModels]
+    : requestedModel && defaultModels.includes(requestedModel)
+      ? [requestedModel, ...defaultModels.filter(m => m !== requestedModel)]
+      : defaultModels;
 
   let lastError: any = null;
 
@@ -276,16 +288,31 @@ async function executeGroqWithRotation(messages: any[], systemPrompt: string, ma
       try {
         console.log(`[Groq Multi-Key] Key #${keyIdx + 1}/${healthyKeys.length} -> Model: ${model}`);
         
-        const formattedMessages: { role: "system" | "user" | "assistant"; content: string }[] = [];
+        const formattedMessages: any[] = [];
         if (systemPrompt && systemPrompt.trim()) {
           formattedMessages.push({ role: "system", content: systemPrompt.trim() });
         }
 
         for (const m of messages) {
           formattedMessages.push({
-            role: (m.role === "user" ? "user" : "assistant") as "user" | "assistant",
+            role: (m.role === "user" ? "user" : "assistant"),
             content: m.text || m.content || ""
           });
+        }
+
+        // If we have an image, replace the last user message with vision content
+        if (imageDataUrl && formattedMessages.length > 0) {
+          const lastIdx = formattedMessages.length - 1;
+          const lastMsg = formattedMessages[lastIdx];
+          if (lastMsg.role === "user") {
+            formattedMessages[lastIdx] = {
+              role: "user",
+              content: [
+                { type: "text", text: lastMsg.content || "What's in this image?" },
+                { type: "image_url", image_url: { url: imageDataUrl } }
+              ]
+            };
+          }
         }
 
         const stream = await groq.chat.completions.create({
@@ -312,10 +339,9 @@ async function executeGroqWithRotation(messages: any[], systemPrompt: string, ma
         if (status === 401 || msg.includes("invalid api key") || msg.includes("unauthorized")) {
           keyHealthManager.markKeyAsBad(apiKey, "401 Invalid Groq API Key", 60 * 60 * 1000);
           console.warn(`[Groq] Key #${keyIdx + 1} invalid. Rotating to next key...`);
-          break; // Key itself is invalid, skip to next key
+          break;
         }
         
-        // If daily token limit or organization rate limit reached on Groq
         if (msg.includes("rate_limit_exceeded") || msg.includes("tokens per day") || msg.includes("tpd")) {
           console.warn(`[Groq] Model ${model} daily token limit reached on Key #${keyIdx + 1}. Trying next model/key...`);
         } else {
@@ -327,6 +353,49 @@ async function executeGroqWithRotation(messages: any[], systemPrompt: string, ma
   }
 
   throw lastError || new Error(`All Groq keys and models failed`);
+}
+
+// =====================================================
+// URL FETCHING — lets the AI read website content
+// Detects URLs in user messages, fetches page text
+// =====================================================
+async function fetchUrlContent(url: string): Promise<string> {
+  try {
+    const res = await fetch(url, {
+      headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36' },
+      signal: AbortSignal.timeout(8000),
+      redirect: 'follow',
+    });
+    if (!res.ok) return '';
+    const html = await res.text();
+    // Strip scripts, styles, and HTML tags to extract readable text
+    const cleaned = html
+      .replace(/<script[\s\S]*?<\/script>/gi, '')
+      .replace(/<style[\s\S]*?<\/style>/gi, '')
+      .replace(/<nav[\s\S]*?<\/nav>/gi, '')
+      .replace(/<footer[\s\S]*?<\/footer>/gi, '')
+      .replace(/<header[\s\S]*?<\/header>/gi, '')
+      .replace(/<[^>]+>/g, ' ')
+      .replace(/&nbsp;/g, ' ')
+      .replace(/&amp;/g, '&')
+      .replace(/&lt;/g, '<')
+      .replace(/&gt;/g, '>')
+      .replace(/&quot;/g, '"')
+      .replace(/&#39;/g, "'")
+      .replace(/\s+/g, ' ')
+      .trim();
+    return cleaned.slice(0, 4000); // Cap at 4k chars
+  } catch (err) {
+    console.warn(`[URL Fetch] Error fetching ${url}:`, (err as any)?.message || err);
+    return '';
+  }
+}
+
+function extractUrls(text: string): string[] {
+  const urlRegex = /https?:\/\/(www\.)?[-a-zA-Z0-9@:%._\+~#=]{1,256}\.[a-zA-Z0-9()]{1,6}\b([-a-zA-Z0-9()@:%_\+.~#?&//=]*)/g;
+  const matches = text.match(urlRegex) || [];
+  // Limit to 2 URLs to avoid excessive fetching
+  return [...new Set(matches)].slice(0, 2);
 }
 
 async function executeCohereWithRotation(messages: any[], systemPrompt: string, maxTokens: number = 1024, requestedModel: string | undefined, cohereKeys: string[], res: any) {
@@ -665,7 +734,7 @@ async function startServer() {
     contentSecurityPolicy: false,
     crossOriginEmbedderPolicy: false
   }));
-  app.use(express.json());
+  app.use(express.json({ limit: '20mb' }));
 
   const apiLimiter = rateLimit({
     windowMs: 15 * 60 * 1000,
@@ -678,7 +747,7 @@ async function startServer() {
   // Handle AI API streaming proxy
   app.post("/api/chat", async (req, res) => {
     try {
-      const { messages = [], systemPrompt = "", userId = "", provider = "groq", model } = req.body;
+      const { messages = [], systemPrompt = "", userId = "", provider = "groq", model, attachment } = req.body;
       
       res.setHeader("Content-Type", "text/event-stream");
       res.setHeader("Cache-Control", "no-cache");
@@ -736,18 +805,64 @@ async function startServer() {
         BRAIN_CONFIDENTIALITY_SECURITY_GUARD
       ].filter(Boolean).map(s => s.trim()).join("\n\n");
 
+      // ── Attachment Processing (Image / File) ──────────────────────
+      let imageDataUrl: string | undefined;
+      let messagesForAI = messages;
+
+      if (attachment) {
+        if (attachment.kind === 'image' && attachment.data) {
+          // Image: pass to Groq vision API
+          imageDataUrl = attachment.data;
+        } else if (attachment.kind === 'file' && attachment.data) {
+          // Text file: inject file content into the last user message
+          const lastUserMsg = [...messages].reverse().find((m: any) => m.role === 'user');
+          if (lastUserMsg) {
+            const fileContent = `\n\n[📄 File: ${attachment.name}]\n\`\`\`\n${attachment.data}\n\`\`\`\n`;
+            messagesForAI = messages.map((m: any) =>
+              m === lastUserMsg
+                ? { ...m, text: `${m.text || m.content || ''}${fileContent}` }
+                : m
+            );
+          }
+        }
+      }
+
+      // ── URL Fetching ──────────────────────────────────────────────
+      // Detect URLs in the user's message and fetch page content
+      const lastUserMsgForUrl = [...messagesForAI].reverse().find((m: any) => m.role === 'user');
+      if (lastUserMsgForUrl) {
+        const userText = (lastUserMsgForUrl.text || lastUserMsgForUrl.content || '');
+        const urls = extractUrls(userText);
+        if (urls.length > 0) {
+          const urlContents: string[] = [];
+          for (const url of urls) {
+            const content = await fetchUrlContent(url);
+            if (content) {
+              urlContents.push(`[🌐 Content from ${url}]:\n${content}`);
+            }
+          }
+          if (urlContents.length > 0) {
+            messagesForAI = messagesForAI.map((m: any) =>
+              m === lastUserMsgForUrl
+                ? { ...m, text: `${urlContents.join('\n\n---\n\n')}\n\n---\n\n[User Question]: ${userText}` }
+                : m
+            );
+            console.log('[URL Fetch] Injected content from', urls.length, 'URL(s)');
+          }
+        }
+      }
+
       // ── Real-time Web Search ──────────────────────────────────────
       // Injects live internet data into the USER'S message — does NOT
       // touch the brain / system prompt in any way.
-      let messagesForAI = messages;
-      const lastUserMsg = [...messages].reverse().find((m: any) => m.role === 'user');
-      if (lastUserMsg) {
-        const userQuery = (lastUserMsg.text || lastUserMsg.content || '').slice(0, 300);
+      const lastUserMsgForSearch = [...messagesForAI].reverse().find((m: any) => m.role === 'user');
+      if (lastUserMsgForSearch && !imageDataUrl) {
+        const userQuery = (lastUserMsgForSearch.text || lastUserMsgForSearch.content || '').slice(0, 300);
         if (userQuery && shouldSearchWeb(userQuery)) {
           const webResults = await performWebSearch(userQuery);
           if (webResults) {
-            messagesForAI = messages.map((m: any) =>
-              m === lastUserMsg
+            messagesForAI = messagesForAI.map((m: any) =>
+              m === lastUserMsgForSearch
                 ? { ...m, text: `[🌐 Live Web Search Results for "${userQuery}"]:\n${webResults}\n\n---\n\n[User Question]: ${userQuery}` }
                 : m
             );
@@ -770,7 +885,7 @@ async function startServer() {
         try {
           if (p === "groq") {
             if (groqKeys.length === 0) continue;
-            await executeGroqWithRotation(messagesForAI, combinedSystemPrompt, maxTokens, provider === "groq" ? model : undefined, groqKeys, res);
+            await executeGroqWithRotation(messagesForAI, combinedSystemPrompt, maxTokens, provider === "groq" ? model : undefined, groqKeys, res, imageDataUrl);
             executedSuccessfully = true;
             break;
           } else if (p === "cohere") {
