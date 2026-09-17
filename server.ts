@@ -315,10 +315,20 @@ async function executeGroqWithRotation(
           }
         }
 
+        // Cap max_tokens to model-specific limits to avoid 400 errors
+        const GROQ_MODEL_MAX_TOKENS: Record<string, number> = {
+          "openai/gpt-oss-120b": 65536,
+          "openai/gpt-oss-20b": 65536,
+          "groq/compound": 8192,
+          "groq/compound-mini": 8192,
+          "qwen/qwen3.8-27b": 16384,
+        };
+        const cappedMaxTokens = Math.min(maxTokens, GROQ_MODEL_MAX_TOKENS[model] || 8192);
+
         const stream = await groq.chat.completions.create({
           model: model,
           messages: formattedMessages,
-          max_tokens: maxTokens,
+          max_tokens: cappedMaxTokens,
           stream: true,
         });
 
