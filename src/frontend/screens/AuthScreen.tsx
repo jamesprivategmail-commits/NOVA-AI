@@ -1,15 +1,16 @@
 import React, { useState, useEffect } from 'react';
-import { 
-  getAuth, 
+import {
+  getAuth,
   signInWithRedirect,
   getRedirectResult,
-  GoogleAuthProvider, 
-  signInWithEmailAndPassword, 
+  GoogleAuthProvider,
+  OAuthProvider,
+  signInWithEmailAndPassword,
   createUserWithEmailAndPassword,
   sendEmailVerification,
   sendPasswordResetEmail
 } from 'firebase/auth';
-import { AlertCircle, RefreshCw, Mail, Lock, CheckCircle2, ShieldCheck } from 'lucide-react';
+import { AlertCircle, RefreshCw, Mail, Lock, CheckCircle2 } from 'lucide-react';
 import { validateEmail, validatePassword } from '../../utils/security';
 
 export function AuthScreen() {
@@ -22,13 +23,15 @@ export function AuthScreen() {
   const [isRegistering, setIsRegistering] = useState(false);
   const [resetSent, setResetSent] = useState(false);
 
-  // Handle redirect result when returning from Google OAuth
+  // Handle redirect result when returning from Google / Apple OAuth
   useEffect(() => {
     getRedirectResult(getAuth())
       .catch((err) => {
-        console.error("Google redirect error:", err);
+        console.error("OAuth redirect error:", err);
         if (err?.code === 'auth/unauthorized-domain') {
           setError('This domain needs to be added in Firebase Console → Authentication → Settings → Authorized domains. Or use Email Sign In below.');
+        } else if (err?.code === 'auth/configuration-not-found') {
+          setError('This sign-in provider is not enabled in Firebase Console. Or use Email Sign In below.');
         } else if (err?.message) {
           setError(err.message);
         }
@@ -52,6 +55,27 @@ export function AuthScreen() {
         setError('This domain needs to be added in Firebase Console → Authentication → Settings → Authorized domains. Or use Email Sign In below.');
       } else {
         setError('Google sign-in could not start. Please use Email Sign In below.');
+      }
+      setShowEmailAuth(true);
+      setIsLoading(false);
+    }
+  };
+
+  const handleAppleLogin = async () => {
+    setError('');
+    setInfoMsg('');
+    setIsLoading(true);
+
+    try {
+      const auth = getAuth();
+      const provider = new OAuthProvider('apple.com');
+      await signInWithRedirect(auth, provider);
+    } catch (err: any) {
+      console.error("Apple Auth error:", err);
+      if (err?.code === 'auth/configuration-not-found' || err?.code === 'auth/unauthorized-domain') {
+        setError('Apple/iCloud sign-in is not configured yet. Please use Email Sign In below.');
+      } else {
+        setError('iCloud sign-in could not start. Please use Email Sign In below.');
       }
       setShowEmailAuth(true);
       setIsLoading(false);
@@ -133,151 +157,152 @@ export function AuthScreen() {
   };
 
   return (
-    <div className="min-h-screen bg-black flex flex-col items-center justify-center p-4 relative overflow-hidden">
-      {/* Background glow */}
-      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-red-900/25 rounded-full blur-3xl pointer-events-none" />
+    <div className="min-h-screen bg-black flex flex-col items-center justify-center p-7 relative overflow-hidden">
+      <div className="w-full max-w-[390px] flex flex-col items-center">
+        {/* Logo */}
+        <div className="w-14 h-14 rounded-[14px] bg-[#111] overflow-hidden mb-9">
+          <img
+            src="https://i.postimg.cc/1XPrhZ00/images-(1).jpg"
+            alt="Void AI"
+            className="w-full h-full object-cover"
+          />
+        </div>
 
-      <div className="w-full max-w-md flex flex-col items-center z-10">
-        {/* Logo Header */}
-        <div className="relative mb-6">
-          <div className="absolute -inset-1 rounded-2xl bg-gradient-to-r from-[#3f86ff] via-amber-500 to-[#3f86ff] opacity-60 blur-md" />
-          <div className="relative w-20 h-20 rounded-2xl bg-[#0D1019]/90 border border-[#2A3145] p-2.5 flex items-center justify-center shadow-2xl">
-            <img 
-              src="https://i.postimg.cc/8PVBFM75/file-00000000b40c82118dbaef206a9ebedc.png" 
-              alt="VOID AI Logo" 
-              className="w-full h-full object-contain"
-            />
+        <h1 className="text-white text-xl font-bold mb-6 text-center">Sign in to Void AI</h1>
+
+        {/* Error / Info messages */}
+        {error && (
+          <div className="w-full mb-4 p-3.5 bg-white/5 border border-white/10 rounded-xl flex items-start gap-3 text-white/70 text-xs">
+            <AlertCircle size={16} className="shrink-0 mt-0.5 text-red-400" />
+            <p className="leading-relaxed font-medium">{error}</p>
           </div>
+        )}
+
+        {infoMsg && (
+          <div className="w-full mb-4 p-3.5 bg-emerald-500/10 border border-emerald-500/20 rounded-xl flex items-start gap-3 text-emerald-400 text-xs">
+            <CheckCircle2 size={16} className="shrink-0 mt-0.5 text-emerald-400" />
+            <p className="leading-relaxed font-medium">{infoMsg}</p>
+          </div>
+        )}
+
+        {/* Google */}
+        <button
+          onClick={handleGoogleLogin}
+          disabled={isLoading}
+          className="w-full flex items-center justify-center gap-3 bg-white hover:bg-white/90 text-black rounded-xl py-3.5 px-4 font-medium text-sm transition-all disabled:opacity-50 cursor-pointer"
+        >
+          {isLoading ? (
+            <RefreshCw size={18} className="animate-spin" />
+          ) : (
+            <svg className="w-5 h-5 shrink-0" viewBox="0 0 24 24">
+              <path fill="#4285F4" d="M21.35 12.27c0-.72-.06-1.42-.18-2.09H12v3.96h5.23a4.47 4.47 0 0 1-1.94 2.93v2.44h3.14c1.84-1.69 2.92-4.18 2.92-7.24z" />
+              <path fill="#34A853" d="M12 21.96c2.63 0 4.84-.87 6.45-2.35l-3.14-2.44c-.87.58-1.98.92-3.31.92-2.54 0-4.69-1.72-5.46-4.03H3.3v2.52A9.74 9.74 0 0 0 12 21.96z" />
+              <path fill="#FBBC05" d="M6.54 14.06A5.86 5.86 0 0 1 6.23 12c0-.72.12-1.42.31-2.06V7.42H3.3A9.95 9.95 0 0 0 2.25 12c0 1.61.39 3.14 1.05 4.58l3.24-2.52z" />
+              <path fill="#EA4335" d="M12 5.91c1.43 0 2.71.49 3.72 1.46l2.79-2.79C16.84 2.99 14.63 2.04 12 2.04a9.74 9.74 0 0 0-8.7 5.38l3.24 2.52c.77-2.31 2.92-4.03 5.46-4.03z" />
+            </svg>
+          )}
+          <span>Continue with Google</span>
+        </button>
+
+        {/* iCloud / Apple */}
+        <button
+          onClick={handleAppleLogin}
+          disabled={isLoading}
+          className="w-full flex items-center justify-center gap-3 bg-white hover:bg-white/90 text-black rounded-xl py-3.5 px-4 font-medium text-sm transition-all disabled:opacity-50 cursor-pointer mt-3"
+        >
+          <svg className="w-5 h-5 shrink-0" viewBox="0 0 24 24" fill="currentColor">
+            <path d="M17.05 20.28c-.98.95-2.05.8-3.08.35-1.09-.46-2.09-.48-3.24 0-1.44.62-2.2.44-3.06-.35C2.79 15.25 3.51 7.59 9.05 7.31c1.35.07 2.3.74 3.1.81 1.2-.24 2.35-.93 3.63-.84 1.53.12 2.68.73 3.44 1.82-3.17 1.9-2.42 6.1.49 7.26-.58 1.53-1.33 3.05-2.66 3.92zM12.03 7.25c-.15-2.27 1.69-4.15 3.81-4.25.29 2.63-2.39 4.56-3.81 4.25z" />
+          </svg>
+          <span>Continue with iCloud</span>
+        </button>
+
+        {/* Divider */}
+        <div className="flex items-center gap-3 my-5 w-full">
+          <div className="flex-1 h-px bg-white/10" />
+          <span className="text-xs text-white/40">or</span>
+          <div className="flex-1 h-px bg-white/10" />
         </div>
 
-        <h1 className="text-3xl font-black text-white tracking-widest uppercase mb-1">
-          VOID AI
-        </h1>
-        <p className="text-xs font-bold text-[#8d8d91] tracking-widest uppercase mb-6">
-          SECURE SYSTEM ACCESS
-        </p>
-
-        {/* Security Shield Notice */}
-        <div className="w-full mb-4 px-4 py-2 bg-[#202022]/80 border border-[#38383b] rounded-xl flex items-center justify-center gap-2 text-[11px] text-[#8d8d91] ">
-          <ShieldCheck size={14} className="text-emerald-400 shrink-0" />
-          <span>Real Email Verification & Anti-Abuse Protection Active</span>
-        </div>
-
-        <div className="w-full bg-[#202022] border border-red-900/30 rounded-2xl p-6 shadow-2xl shadow-red-950/20">
-          {error && (
-            <div className="mb-5 p-3.5 bg-[#252527]/40 border border-[#38383b]/50 rounded-xl flex items-start gap-3 text-[#8d8d91] text-xs">
-              <AlertCircle size={16} className="shrink-0 mt-0.5 text-[#3f86ff]" />
-              <p className="leading-relaxed font-medium">{error}</p>
-            </div>
-          )}
-
-          {infoMsg && (
-            <div className="mb-5 p-3.5 bg-emerald-950/40 border border-emerald-800/50 rounded-xl flex items-start gap-3 text-emerald-400 text-xs">
-              <CheckCircle2 size={16} className="shrink-0 mt-0.5 text-emerald-400" />
-              <p className="leading-relaxed font-medium">{infoMsg}</p>
-            </div>
-          )}
-
+        {/* Email / Password auth */}
+        {!showEmailAuth ? (
           <button
-            onClick={handleGoogleLogin}
-            disabled={isLoading}
-            className="w-full py-3.5 px-4 bg-[#252527] hover:bg-[#38383b] border border-red-900/40 hover:border-[#3f86ff] rounded-xl font-bold text-sm text-white transition-all flex items-center justify-center gap-3 disabled:opacity-50 cursor-pointer"
+            onClick={() => setShowEmailAuth(true)}
+            className="w-full text-center text-sm text-white/50 hover:text-white/80 underline transition-colors cursor-pointer"
           >
-            {isLoading ? (
-              <RefreshCw size={18} className="animate-spin text-[#3f86ff]" />
-            ) : (
-              <>
-                <svg className="w-5 h-5 shrink-0" viewBox="0 0 24 24">
-                  <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />
-                  <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" />
-                  <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z" />
-                  <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z" />
-                </svg>
-                <span className="tracking-wider text-xs uppercase">
-                  VERIFIED GOOGLE SIGN IN
-                </span>
-              </>
-            )}
+            Or sign in with Email / Password
           </button>
-
-          {!showEmailAuth ? (
-            <div className="mt-4 text-center">
+        ) : (
+          <form onSubmit={handleEmailAuth} className="w-full space-y-3">
+            <div className="flex items-center justify-between mb-1">
+              <span className="text-xs font-bold text-white/50 uppercase tracking-wider">
+                {isRegistering ? 'Create Verified Account' : 'Verified Email Login'}
+              </span>
               <button
-                onClick={() => setShowEmailAuth(true)}
-                className="text-[11px] text-[#8d8d91] hover:text-[#8d8d91] underline transition-colors cursor-pointer"
+                type="button"
+                onClick={() => {
+                  setIsRegistering(!isRegistering);
+                  setError('');
+                  setInfoMsg('');
+                }}
+                className="text-[11px] text-white/50 hover:text-white/80 underline cursor-pointer"
               >
-                Or sign in with Email / Password
+                {isRegistering ? 'Switch to Login' : 'Create New Account'}
               </button>
             </div>
-          ) : (
-            <form onSubmit={handleEmailAuth} className="mt-5 pt-4 border-t border-[#38383b]/80 space-y-3">
-              <div className="flex items-center justify-between mb-1">
-                <span className="text-xs font-bold text-[#8d8d91] uppercase">
-                  {isRegistering ? 'Create Verified Account' : 'Verified Email Login'}
-                </span>
+
+            <div className="relative">
+              <Mail size={16} className="absolute left-3 top-3 text-white/40" />
+              <input
+                type="email"
+                required
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="your.email@gmail.com"
+                className="w-full bg-white/5 border border-white/10 focus:border-white/30 text-white rounded-xl pl-9 pr-3 py-2.5 text-sm outline-none transition-colors placeholder:text-white/30"
+              />
+            </div>
+
+            <div className="relative">
+              <Lock size={16} className="absolute left-3 top-3 text-white/40" />
+              <input
+                type="password"
+                required
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                placeholder={isRegistering ? "Password (8+ chars, letters & numbers)" : "Password"}
+                className="w-full bg-white/5 border border-white/10 focus:border-white/30 text-white rounded-xl pl-9 pr-3 py-2.5 text-sm outline-none transition-colors placeholder:text-white/30"
+              />
+            </div>
+
+            {!isRegistering && (
+              <div className="flex justify-end">
                 <button
                   type="button"
-                  onClick={() => {
-                    setIsRegistering(!isRegistering);
-                    setError('');
-                    setInfoMsg('');
-                  }}
-                  className="text-[11px] text-[#8d8d91] hover:underline cursor-pointer"
+                  onClick={handleForgotPassword}
+                  className="text-[11px] text-white/50 hover:text-white/80 underline cursor-pointer"
                 >
-                  {isRegistering ? 'Switch to Login' : 'Create New Account'}
+                  Forgot Password?
                 </button>
               </div>
+            )}
 
-              <div>
-                <div className="relative">
-                  <Mail size={16} className="absolute left-3 top-3 text-[#8d8d91]" />
-                  <input
-                    type="email"
-                    required
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    placeholder="your.email@gmail.com"
-                    className="w-full bg-[#252527] border border-[#38383b] focus:border-red-600 text-white rounded-xl pl-9 pr-3 py-2 text-xs outline-none transition-colors "
-                  />
-                </div>
-              </div>
+            <button
+              type="submit"
+              disabled={isLoading}
+              className="w-full py-3 bg-white hover:bg-white/90 text-black font-bold text-sm rounded-xl transition-colors disabled:opacity-50 cursor-pointer"
+            >
+              {isLoading ? 'VERIFYING...' : (isRegistering ? 'REGISTER WITH VERIFIED EMAIL' : 'AUTHENTICATE USER')}
+            </button>
+          </form>
+        )}
 
-              <div>
-                <div className="relative">
-                  <Lock size={16} className="absolute left-3 top-3 text-[#8d8d91]" />
-                  <input
-                    type="password"
-                    required
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    placeholder={isRegistering ? "Password (8+ chars, letters & numbers)" : "Password"}
-                    className="w-full bg-[#252527] border border-[#38383b] focus:border-red-600 text-white rounded-xl pl-9 pr-3 py-2 text-xs outline-none transition-colors "
-                  />
-                </div>
-              </div>
-
-              {!isRegistering && (
-                <div className="flex justify-end">
-                  <button
-                    type="button"
-                    onClick={handleForgotPassword}
-                    className="text-[10px] text-[#8d8d91] hover:text-[#8d8d91] underline cursor-pointer"
-                  >
-                    Forgot Password?
-                  </button>
-                </div>
-              )}
-
-              <button
-                type="submit"
-                disabled={isLoading}
-                className="w-full py-2.5 bg-red-600 hover:bg-[#3f86ff] text-white font-bold text-xs rounded-xl transition-colors shadow-md disabled:opacity-50 cursor-pointer"
-              >
-                {isLoading ? 'VERIFYING...' : (isRegistering ? 'REGISTER WITH VERIFIED EMAIL' : 'AUTHENTICATE USER')}
-              </button>
-            </form>
-          )}
-        </div>
+        {/* Terms note */}
+        <p className="text-xs text-white/40 text-center mt-6 leading-relaxed">
+          By continuing, you agree to Void AI's{' '}
+          <a href="#" className="text-white/60 hover:text-white/90 underline">Terms</a>
+          {' '}and{' '}
+          <a href="#" className="text-white/60 hover:text-white/90 underline">Privacy Policy</a>.
+        </p>
       </div>
     </div>
   );

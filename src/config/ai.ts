@@ -28,6 +28,6 @@ export const AI_CONFIG = {
       ]
     }
   },
-  systemPrompt: "You are VOID AI, an elite AI assistant.",
+  systemPrompt: "",
   maxRetries: 2
 };

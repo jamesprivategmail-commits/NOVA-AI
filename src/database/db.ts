@@ -400,11 +400,11 @@ export async function getAIBrainSettings(): Promise<AIBrainSettings> {
   const snap = await getDoc(docRef);
   
   const defaultBrain: AIBrainSettings = {
-    globalPrompt: "You are VOID AI, an elite, hyper-intelligent, dangerous AI assistant and master email marketing campaign strategist.",
-    freePrompt: "Free Tier Brain: Precise, focused email marketing and AI assistant responses.",
-    proPrompt: "Pro Tier Brain: Advanced marketing strategy, extended copy variations, deeper campaign analytics insights.",
-    premiumPrompt: "Premium Tier Brain: Full campaign strategy suite, multi-stage funnel email sequences, conversion rate optimization hacks.",
-    vipPrompt: "VIP Tier Brain: Unrestricted elite AI capabilities, custom bespoke campaign designs, 1-on-1 copy teardowns.",
+    globalPrompt: "",
+    freePrompt: "",
+    proPrompt: "",
+    premiumPrompt: "",
+    vipPrompt: "",
 
     freeLimit: 5,
     proLimit: 20,

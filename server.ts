@@ -102,11 +102,11 @@ async function fetchUserAndTierSettings(userId?: string) {
   }
 
   let brainSettings = {
-    globalPrompt: "You are VOID AI, an elite, hyper-intelligent, dangerous AI assistant and master email marketing campaign strategist.",
-    freePrompt: "Free Tier Brain: Precise, focused email marketing and AI assistant responses.",
-    proPrompt: "Pro Tier Brain: Advanced marketing strategy, extended copy variations, deeper campaign analytics insights.",
-    premiumPrompt: "Premium Tier Brain: Full campaign strategy suite, multi-stage funnel email sequences, conversion rate optimization hacks.",
-    vipPrompt: "VIP Tier Brain: Unrestricted elite AI capabilities, custom bespoke campaign designs, 1-on-1 copy teardowns.",
+    globalPrompt: "",
+    freePrompt: "",
+    proPrompt: "",
+    premiumPrompt: "",
+    vipPrompt: "",
     freeLimit: 5,
     proLimit: 20,
     premiumLimit: 50,
@@ -821,7 +821,7 @@ async function startServer() {
         : tier === 'pro' ? brainSettings.proMaxTokens
         : brainSettings.freeMaxTokens) || 2048;
 
-      const masterPrompt = brainSettings.globalPrompt || "You are VOID AI, an elite AI assistant.";
+      const masterPrompt = brainSettings.globalPrompt || "";
       const combinedSystemPrompt = [
         masterPrompt,
         systemPrompt,
@@ -1030,7 +1030,7 @@ async function startServer() {
         : brainSettings.freeMaxTokens) || 2048;
 
       const masterPrompt = [
-        brainSettings.globalPrompt || "You are VOID AI, an elite AI assistant.",
+        brainSettings.globalPrompt || "",
         BRAIN_CONFIDENTIALITY_SECURITY_GUARD
       ].filter(Boolean).map(s => s.trim()).join("\n\n");
       const requestId = `chatcmpl-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
@@ -1258,7 +1258,7 @@ async function startServer() {
       : brainSettings.freeMaxTokens) || 2048;
 
     const masterPrompt = [
-      brainSettings.globalPrompt || "You are VOID AI, an elite AI assistant.",
+      brainSettings.globalPrompt || "",
       BRAIN_CONFIDENTIALITY_SECURITY_GUARD
     ].filter(Boolean).map(s => s.trim()).join("\n\n");
     const messages = [...history, { role: "user", text: userPrompt }];
