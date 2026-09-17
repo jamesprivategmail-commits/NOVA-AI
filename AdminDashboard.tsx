@@ -65,11 +65,11 @@ export function AdminDashboard({ onClose }: AdminDashboardProps) {
   const [keySaveSuccess, setKeySaveSuccess] = useState(false);
 
   const [brain, setBrain] = useState<AIBrainSettings>({
-    globalPrompt: "You are VOID AI, an elite, hyper-intelligent, dangerous AI assistant and master email marketing campaign strategist.",
-    freePrompt: "Free Tier Brain: Precise, focused email marketing and AI assistant responses.",
-    proPrompt: "Pro Tier Brain: Advanced marketing strategy, extended copy variations, deeper campaign analytics insights.",
-    premiumPrompt: "Premium Tier Brain: Full campaign strategy suite, multi-stage funnel email sequences, conversion rate optimization hacks.",
-    vipPrompt: "VIP Tier Brain: Unrestricted elite AI capabilities, custom bespoke campaign designs, 1-on-1 copy teardowns.",
+    globalPrompt: "",
+    freePrompt: "",
+    proPrompt: "",
+    premiumPrompt: "",
+    vipPrompt: "",
     freeLimit: 5,
     proLimit: 20,
     premiumLimit: 50,
@@ -1162,7 +1162,7 @@ export function AdminDashboard({ onClose }: AdminDashboardProps) {
                       </button>
                       <button
                         type="button"
-                        onClick={() => setBrain({ ...brain, globalPrompt: "You are VOID AI, an elite AI assistant. Answer user prompts directly, accurately, and concisely without unnecessary disclaimers." })}
+                        onClick={() => setBrain({ ...brain, globalPrompt: '' })}
                         className="px-2.5 py-1 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-zinc-300 text-[10px] font-mono font-bold border border-zinc-700 transition-colors cursor-pointer"
                       >
                         Reset Default

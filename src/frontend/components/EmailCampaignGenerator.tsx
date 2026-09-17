@@ -26,8 +26,7 @@ export function EmailCampaignGenerator({ onClose, onSendToChat }: EmailCampaignG
     setIsGenerating(true);
     setGeneratedCampaign('');
 
-    const prompt = `You are VOID AI, the ultimate dangerous AI email marketing campaign generator.
-Generate a COMPLETE multi-stage email marketing campaign based on this request:
+    const prompt = `Generate a COMPLETE multi-stage email marketing campaign based on this request:
 
 Product / Offer Details: ${productPrompt}
 Target Audience: ${audience || 'General Customers'}

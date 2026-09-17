@@ -166,7 +166,7 @@ export function LiveVoiceModal({ onClose, userId, userTier = 'free' }: LiveVoice
     try {
       await sendMessageToGroq(
         newHistory,
-        'You are VOID AI in Live Voice Mode. Keep your answers conversational, natural, concise, and direct (1-3 sentences max) suited for spoken speech.',
+        '',
         (chunk) => {
           accumulatedResponse += chunk;
           setAiResponseText(accumulatedResponse);
