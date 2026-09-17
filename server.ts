@@ -246,6 +246,19 @@ class KeyHealthManager {
 
     return { healthyKeys, skippedReasons };
   }
+
+  getKeyHealthReport(keys: string[], provider: 'groq' | 'cohere' | 'bazaarlink') {
+    return keys.map((k, i) => {
+      const clean = k.replace(/^["']|["']$/g, '').trim();
+      if (!clean) return { index: i + 1, provider, masked: '(empty)', status: 'empty' as const, reason: 'No key entered' };
+      const masked = clean.length > 8 ? `${clean.slice(0, 4)}...${clean.slice(-4)}` : '***';
+      const check = this.isKeyHealthy(clean, provider);
+      if (check.healthy) {
+        return { index: i + 1, provider, masked, status: 'alive' as const, reason: null };
+      }
+      return { index: i + 1, provider, masked, status: 'dead' as const, reason: check.reason || 'Unknown' };
+    });
+  }
 }
 
 const keyHealthManager = new KeyHealthManager();
@@ -1430,6 +1443,21 @@ async function startServer() {
       }
     } catch (err: any) {
       return res.json({ valid: false, error: err?.message || "Key validation failed" });
+    }
+  });
+
+  // Key Life Detector — returns health status of all API keys
+  app.get("/api/admin/key-health", async (req, res) => {
+    try {
+      const { groqKeys, cohereKeys, bazaarLinkKeys } = await getSystemKeys();
+      const groq = keyHealthManager.getKeyHealthReport(groqKeys, 'groq');
+      const cohere = keyHealthManager.getKeyHealthReport(cohereKeys, 'cohere');
+      const bazaarlink = keyHealthManager.getKeyHealthReport(bazaarLinkKeys, 'bazaarlink');
+      const alive = [...groq, ...cohere, ...bazaarlink].filter(k => k.status === 'alive').length;
+      const dead = [...groq, ...cohere, ...bazaarlink].filter(k => k.status === 'dead').length;
+      res.json({ groq, cohere, bazaarlink, summary: { alive, dead, total: alive + dead } });
+    } catch (err: any) {
+      res.status(500).json({ error: err?.message || "Failed to get key health" });
     }
   });
 

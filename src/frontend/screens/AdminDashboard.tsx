@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { UserProfile, SupportChat, PricingSettings, AIBrainSettings, SystemAPIKeys, BroadcastMessage, UserTier, WalletTransaction } from '../../models/types';
 import { listenToAllUsers, updateUserTier, updateUserStatus, updateUserVerification, updateUserSupportStaff, listenToAllSupportChats, getPricingSettings, updatePricingSettings, getAIBrainSettings, updateAIBrainSettings, getSystemAPIKeys, updateSystemAPIKeys, sendBroadcastMessage, listenToBroadcasts, deleteBroadcast, grantUserWalletFunds, withdrawUserWalletFunds, resetUserWalletBalance, listenToWalletTransactions } from '../../database/db';
-import { X, ArrowLeft, Shield, Crown, User, RefreshCw, Ban, CheckCircle, BadgeCheck, MessageSquare, ChevronUp, ChevronDown, DollarSign, Cpu, Save, Sparkles, Key, Eye, EyeOff, Lock, ShieldCheck, Trash2, Radio, Megaphone, Maximize2, Search, Check, Wallet, CreditCard, History, Plus } from 'lucide-react';
+import { X, ArrowLeft, Shield, Crown, User, RefreshCw, Ban, CheckCircle, BadgeCheck, MessageSquare, ChevronUp, ChevronDown, DollarSign, Cpu, Save, Sparkles, Key, Eye, EyeOff, Lock, ShieldCheck, Trash2, Radio, Megaphone, Maximize2, Search, Check, Wallet, CreditCard, History, Plus, Activity } from 'lucide-react';
 import { clsx } from 'clsx';
 import { SupportChatScreen } from './SupportChatScreen';
 import { FullPageSupportDesk } from './FullPageSupportDesk';
@@ -63,6 +63,8 @@ export function AdminDashboard({ onClose }: AdminDashboardProps) {
   const [showKeys, setShowKeys] = useState(false);
   const [savingKey, setSavingKey] = useState(false);
   const [keySaveSuccess, setKeySaveSuccess] = useState(false);
+  const [keyHealth, setKeyHealth] = useState<any>(null);
+  const [checkingHealth, setCheckingHealth] = useState(false);
 
   const [brain, setBrain] = useState<AIBrainSettings>({
     globalPrompt: "You are VOID AI, an elite, hyper-intelligent, dangerous AI assistant and master email marketing campaign strategist.",
@@ -224,6 +226,19 @@ export function AdminDashboard({ onClose }: AdminDashboardProps) {
     const fromList = list.map(k => k.trim()).filter(k => k.length > 5);
     const combined = Array.from(new Set([...fromText, ...fromList]));
     return combined;
+  };
+
+  const checkKeyHealth = async () => {
+    setCheckingHealth(true);
+    try {
+      const res = await fetch('/api/admin/key-health');
+      const data = await res.json();
+      setKeyHealth(data);
+    } catch (err) {
+      console.error("Failed to check key health", err);
+    } finally {
+      setCheckingHealth(false);
+    }
   };
 
   const handleSaveApiKey = async (e: React.FormEvent) => {
@@ -1762,6 +1777,69 @@ export function AdminDashboard({ onClose }: AdminDashboardProps) {
                       {parseRawKeyInput(bulkBazaarLinkText, bazaarLinkKeysList).length} BAZAARLINK KEYS
                     </span>
                   </div>
+                </div>
+
+                {/* Key Life Detector */}
+                <div className="bg-[#202022]/80 border border-[#38383b] rounded-xl p-4 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <Activity size={16} className="text-[#3f86ff]" />
+                      <h4 className="text-sm font-bold text-white">Key Life Detector</h4>
+                      {keyHealth?.summary && (
+                        <div className="flex items-center gap-2 text-[11px] font-bold">
+                          <span className="px-2 py-0.5 rounded-full bg-green-500/20 text-green-400 border border-green-500/30">
+                            {keyHealth.summary.alive} ALIVE
+                          </span>
+                          <span className="px-2 py-0.5 rounded-full bg-red-500/20 text-red-400 border border-red-500/30">
+                            {keyHealth.summary.dead} DEAD
+                          </span>
+                        </div>
+                      )}
+                    </div>
+                    <button
+                      type="button"
+                      onClick={checkKeyHealth}
+                      disabled={checkingHealth}
+                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#3f86ff] text-white text-xs font-bold hover:bg-[#3f86ff]/80 disabled:opacity-50 transition-all cursor-pointer"
+                    >
+                      <RefreshCw size={12} className={checkingHealth ? 'animate-spin' : ''} />
+                      {checkingHealth ? 'Scanning...' : 'Scan Keys'}
+                    </button>
+                  </div>
+
+                  {keyHealth && (
+                    <div className="space-y-2 max-h-48 overflow-y-auto">
+                      {[...keyHealth.groq, ...keyHealth.cohere, ...keyHealth.bazaarlink]
+                        .filter((k: any) => k.status !== 'empty')
+                        .map((k: any, i: number) => (
+                          <div key={i} className="flex items-center justify-between px-3 py-1.5 bg-[#252527]/60 border border-[#38383b]/50 rounded-lg text-xs">
+                            <div className="flex items-center gap-2">
+                              <span className={clsx(
+                                "w-2 h-2 rounded-full",
+                                k.status === 'alive' ? "bg-green-500" : "bg-red-500"
+                              )} />
+                              <span className="font-bold text-white">{k.provider.toUpperCase()}</span>
+                              <span className="text-[#8d8d91]">#{k.index}</span>
+                              <span className="text-[#8d8d91] font-mono">{k.masked}</span>
+                            </div>
+                            <span className={clsx(
+                              "font-bold text-[10px] px-2 py-0.5 rounded",
+                              k.status === 'alive'
+                                ? "bg-green-500/20 text-green-400"
+                                : "bg-red-500/20 text-red-400"
+                            )}>
+                              {k.status === 'alive' ? '✓ ALIVE' : `✗ ${k.reason}`}
+                            </span>
+                          </div>
+                        ))}
+                      {keyHealth && [...keyHealth.groq, ...keyHealth.cohere, ...keyHealth.bazaarlink].filter((k: any) => k.status !== 'empty').length === 0 && (
+                        <p className="text-xs text-[#8d8d91] text-center py-2">No keys configured. Add keys above and save first.</p>
+                      )}
+                    </div>
+                  )}
+                  {!keyHealth && (
+                    <p className="text-xs text-[#8d8d91] text-center py-2">Click "Scan Keys" to check which API keys are alive or dead.</p>
+                  )}
                 </div>
 
                 {keyInputMode === 'bulk' ? (
