@@ -525,22 +525,6 @@ export function ChatScreen({ userId }: ChatScreenProps) {
                 <option value="groq:auto">Groq AI</option>
                 <option value="cohere:auto">Cohere AI</option>
                 <option value="bazaarlink:auto">BazaarLink AI</option>
-                <optgroup label="Groq Models">
-                  <option value="groq:llama-3.3-70b-versatile">Groq: Llama 3.3 70B</option>
-                  <option value="groq:llama-3.1-8b-instant">Groq: Llama 3.1 8B</option>
-                  <option value="groq:mixtral-8x7b-32768">Groq: Mixtral 8x7B</option>
-                  <option value="groq:deepseek-r1-distill-llama-70b">Groq: DeepSeek R1 70B</option>
-                </optgroup>
-                <optgroup label="Cohere Models">
-                  <option value="cohere:command-r-plus-08-2024">Cohere: Command R+</option>
-                  <option value="cohere:command-r-08-2024">Cohere: Command R</option>
-                </optgroup>
-                <optgroup label="BazaarLink Models">
-                  <option value="bazaarlink:bazaarlink-fast">BazaarLink: Fast AI</option>
-                  <option value="bazaarlink:bazaarlink-pro">BazaarLink: Pro AI</option>
-                  <option value="bazaarlink:llama-3.3-70b">BazaarLink: Llama 3.3 70B</option>
-                  <option value="bazaarlink:deepseek-r1">BazaarLink: DeepSeek R1</option>
-                </optgroup>
               </select>
               <ChevronDown size={12} className="pointer-events-none absolute right-2.5 top-3 text-[#8d8d91]" />
             </div>

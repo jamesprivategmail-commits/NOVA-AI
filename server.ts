@@ -269,7 +269,7 @@ async function executeGroqWithRotation(
   }
 
   // When an image is attached, use the vision model
-  const VISION_MODEL = "llama-3.2-90b-vision-preview";
+  const VISION_MODEL = "meta-llama/llama-4-scout-17b-16e-instruct";
   const defaultModels = AI_CONFIG.providers.groq.models;
   const models = imageDataUrl
     ? [VISION_MODEL, ...defaultModels]
@@ -1194,9 +1194,11 @@ async function startServer() {
       object: "list",
       data: [
         { id: "void-ai-fast", object: "model", created: 1700000000, owned_by: "void-ai" },
-        { id: "llama-3.3-70b-versatile", object: "model", created: 1700000000, owned_by: "groq" },
-        { id: "command-r-plus", object: "model", created: 1700000000, owned_by: "cohere" },
-        { id: "deepseek-r1-distill-llama-70b", object: "model", created: 1700000000, owned_by: "groq" }
+        { id: "openai/gpt-oss-120b", object: "model", created: 1700000000, owned_by: "groq" },
+        { id: "openai/gpt-oss-20b", object: "model", created: 1700000000, owned_by: "groq" },
+        { id: "groq/compound", object: "model", created: 1700000000, owned_by: "groq" },
+        { id: "groq/compound-mini", object: "model", created: 1700000000, owned_by: "groq" },
+        { id: "command-r-plus", object: "model", created: 1700000000, owned_by: "cohere" }
       ]
     });
   };
