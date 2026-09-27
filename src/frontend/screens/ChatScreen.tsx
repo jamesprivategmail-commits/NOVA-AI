@@ -500,18 +500,18 @@ export function ChatScreen({ userId }: ChatScreenProps) {
           </div>
         )}
 
-        {/* Clean minimal header with 20% enlarged buttons */}
-        <header className="h-14 px-3 sticky top-0 z-20 bg-[#2b0709] border-b border-[#38383b] flex items-center justify-between select-none w-full min-w-0">
-          <div className="flex items-center gap-2.5">
+        {/* Compact responsive header: keep every control inside the mobile viewport */}
+        <header className="min-h-14 px-2 sm:px-3 py-2 sm:py-1 sticky top-0 z-20 bg-[#2b0709] border-b border-[#38383b] flex items-center justify-between gap-1.5 select-none w-full min-w-0">
+          <div className="flex items-center gap-1.5 min-w-0 flex-1">
             <button
               onClick={() => setIsSidebarOpen(!isSidebarOpen)}
-              className="w-[44px] h-[44px] rounded-full bg-[#202022] hover:bg-[#252527] text-white flex items-center justify-center transition-colors cursor-pointer shrink-0"
+              className="w-10 h-10 sm:w-11 sm:h-11 rounded-full bg-[#202022] hover:bg-[#252527] text-white flex items-center justify-center transition-colors cursor-pointer shrink-0"
               title="Toggle sidebar"
             >
-              <Menu size={22} />
+              <Menu size={21} />
             </button>
 
-            <div className="relative">
+            <div className="relative min-w-0 flex-1 max-w-[190px] sm:max-w-[200px]">
               <select
                 value={`${selectedProvider}:${selectedModel}`}
                 onChange={(e) => {
@@ -519,7 +519,7 @@ export function ChatScreen({ userId }: ChatScreenProps) {
                   setSelectedProvider(prov as 'groq' | 'cohere' | 'bazaarlink');
                   setSelectedModel(mod || 'auto');
                 }}
-                className="bg-[#202022] border border-[#38383b] hover:border-[#454547] text-white text-[13px] sm:text-sm py-2 pl-3.5 pr-8.5 rounded-full focus:outline-none cursor-pointer appearance-none max-w-[140px] sm:max-w-[200px] truncate"
+                className="w-full h-10 bg-[#202022] border border-[#38383b] hover:border-[#454547] text-white text-xs sm:text-sm py-0 pl-3 pr-8 rounded-full focus:outline-none cursor-pointer appearance-none truncate"
                 title="Select AI Engine"
               >
                 <option value="groq:auto">Groq AI</option>
@@ -542,14 +542,14 @@ export function ChatScreen({ userId }: ChatScreenProps) {
                   <option value="bazaarlink:deepseek-r1">BazaarLink: DeepSeek R1</option>
                 </optgroup>
               </select>
-              <ChevronDown size={14} className="pointer-events-none absolute right-3 top-3.5 text-[#8d8d91]" />
+              <ChevronDown size={14} className="pointer-events-none absolute right-2.5 top-3 text-[#8d8d91]" />
             </div>
           </div>
 
-          <div className="flex items-center gap-2.5">
+          <div className="flex items-center gap-1.5 shrink-0">
             <button
               onClick={() => setShowSubscription(true)}
-              className="px-3.5 py-2 rounded-full bg-[#202022] hover:bg-[#252527] border border-[#38383b] text-white text-[13px] sm:text-sm font-medium flex items-center gap-1.5 transition-all cursor-pointer"
+              className="h-10 px-2.5 sm:px-3.5 rounded-full bg-[#202022] hover:bg-[#252527] border border-[#38383b] text-white text-xs sm:text-sm font-medium flex items-center gap-1 whitespace-nowrap transition-all cursor-pointer"
               title="Upgrade Plan"
             >
               <span className="text-[#3f86ff] text-sm">✦</span>
@@ -558,7 +558,7 @@ export function ChatScreen({ userId }: ChatScreenProps) {
 
             <button
               onClick={() => setShowSettings(true)}
-              className="w-[44px] h-[44px] rounded-full bg-[#3f86ff] text-white font-bold text-sm flex items-center justify-center hover:opacity-90 transition-opacity cursor-pointer shrink-0"
+              className="w-10 h-10 sm:w-11 sm:h-11 rounded-full bg-[#3f86ff] text-white font-bold text-sm flex items-center justify-center hover:opacity-90 transition-opacity cursor-pointer shrink-0"
               title="Account Settings"
             >
               MT
