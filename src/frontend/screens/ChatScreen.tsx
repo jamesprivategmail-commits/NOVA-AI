@@ -420,7 +420,7 @@ export function ChatScreen({ userId }: ChatScreenProps) {
   };
 
   return (
-    <div className="flex h-screen bg-[#2b0709] text-white overflow-hidden relative">
+    <div className="flex h-screen bg-transparent text-white overflow-hidden relative">
       {/* Demonic background glow — subtle red ambient lighting */}
       <div className="fixed inset-0 pointer-events-none z-0" style={{
         backgroundImage: `
@@ -501,7 +501,7 @@ export function ChatScreen({ userId }: ChatScreenProps) {
         )}
 
         {/* Compact responsive header: keep every control inside the mobile viewport */}
-        <header className="min-h-14 px-2 sm:px-3 py-2 sm:py-1 sticky top-0 z-20 bg-[#2b0709] border-b border-[#38383b] flex items-center justify-between gap-1.5 select-none w-full min-w-0">
+        <header className="min-h-14 px-2 sm:px-3 py-2 sm:py-1 sticky top-0 z-20 bg-black/35 backdrop-blur-md border-b border-[#38383b] flex items-center justify-between gap-1.5 select-none w-full min-w-0">
           <div className="flex items-center gap-1.5 min-w-0 flex-1">
             <button
               onClick={() => setIsSidebarOpen(!isSidebarOpen)}
@@ -659,7 +659,7 @@ export function ChatScreen({ userId }: ChatScreenProps) {
         )}
 
         {/* Fixed Bottom Input Area */}
-        <div className="absolute bottom-0 left-0 right-0 bg-[#2b0709] pt-2 pb-1 z-10 flex flex-col items-center">
+        <div className="absolute bottom-0 left-0 right-0 bg-black/35 backdrop-blur-md pt-2 pb-1 z-10 flex flex-col items-center">
           <InputArea
             onSend={handleSend}
             isLoading={isLoading}

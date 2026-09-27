@@ -29,7 +29,7 @@ class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundaryState> {
   public render() {
     if (this.state.hasError) {
       return (
-        <div className="min-h-screen bg-[#2b0709] text-white flex items-center justify-center p-4">
+        <div className="min-h-screen bg-transparent text-white flex items-center justify-center p-4">
           <div className="max-w-md w-full bg-[#202022] border border-[#38383b] rounded-2xl p-6 shadow-xl text-center space-y-4">
             <div className="w-14 h-14 bg-red-950/60 border border-red-800/50 rounded-2xl flex items-center justify-center mx-auto text-red-400 font-bold text-xl">
               !
@@ -60,4 +60,3 @@ createRoot(document.getElementById('root')!).render(
     </ErrorBoundary>
   </StrictMode>,
 );
-

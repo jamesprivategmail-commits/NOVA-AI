@@ -65,7 +65,7 @@ export function EmailVerificationNotice({ user, onVerified }: EmailVerificationN
   };
 
   return (
-    <div className="min-h-screen bg-[#2b0709] flex flex-col items-center justify-center p-4 relative overflow-hidden font-sans">
+    <div className="min-h-screen bg-transparent flex flex-col items-center justify-center p-4 relative overflow-hidden font-sans">
       <div className="w-full max-w-md bg-[#202022] border border-[#38383b] rounded-3xl p-6 sm:p-8 shadow-2xl  text-center relative z-10">
         <div className="w-16 h-16 bg-[#252527] border border-[#38383b] rounded-2xl flex items-center justify-center mx-auto mb-5 text-[#3f86ff] shadow-lg">
           <ShieldAlert size={32} />

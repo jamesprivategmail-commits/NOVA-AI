@@ -4,16 +4,18 @@
 
 @layer base {
   body {
-    background-color: #2b0709;
+    background-color: #090307;
     color: #fff;
     font-family: Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, sans-serif;
-    /* Demonic vibe — subtle radial red glow layered over dark red base */
+    /* Dark anime wallpaper with a readable dark veil for text and controls. */
     background-image:
-      radial-gradient(ellipse at 50% 0%, rgba(120, 10, 10, 0.35) 0%, transparent 50%),
-      radial-gradient(ellipse at 100% 100%, rgba(80, 5, 5, 0.25) 0%, transparent 45%),
-      radial-gradient(ellipse at 0% 80%, rgba(60, 5, 5, 0.2) 0%, transparent 40%);
+      linear-gradient(rgba(8, 2, 7, 0.58), rgba(8, 2, 7, 0.68)),
+      url('/void-wallpaper.jpg');
+    background-size: cover;
+    background-position: center;
     background-attachment: fixed;
     background-repeat: no-repeat;
+    min-height: 100vh;
   }
 }
 
