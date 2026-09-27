@@ -31,7 +31,7 @@ export function InputArea({ onSend, isLoading, onStop, onOpenLiveVoice, onImageG
     const textarea = textareaRef.current;
     if (!textarea) return;
     textarea.style.height = 'auto';
-    const newHeight = Math.min(Math.max(textarea.scrollHeight, 28), 100);
+    const newHeight = Math.min(Math.max(textarea.scrollHeight, 34), 110);
     textarea.style.height = `${newHeight}px`;
   }, [text]);
 
@@ -123,13 +123,13 @@ export function InputArea({ onSend, isLoading, onStop, onOpenLiveVoice, onImageG
         onImageGenerate(trimmed);
         setText('');
         setImageMode(false);
-        if (textareaRef.current) textareaRef.current.style.height = '28px';
+        if (textareaRef.current) textareaRef.current.style.height = '34px';
         return;
       }
       onSend(trimmed, attachment || undefined);
       setText('');
       setAttachment(null);
-      if (textareaRef.current) textareaRef.current.style.height = '28px';
+      if (textareaRef.current) textareaRef.current.style.height = '34px';
     }
   };
 
@@ -177,8 +177,8 @@ export function InputArea({ onSend, isLoading, onStop, onOpenLiveVoice, onImageG
         </div>
       )}
 
-      {/* Compact pill composer */}
-      <div className="relative flex items-center w-full bg-[#202022] border border-[#38383b] focus-within:border-[#454547] rounded-full transition-all px-1.5 py-1 gap-1">
+      {/* Compact pill composer with 20% larger buttons */}
+      <div className="relative flex items-center w-full bg-[#202022] border border-[#38383b] focus-within:border-[#454547] rounded-full transition-all px-2 py-1.5 gap-1.5">
         <input
           type="file"
           ref={fileInputRef}
@@ -187,27 +187,27 @@ export function InputArea({ onSend, isLoading, onStop, onOpenLiveVoice, onImageG
           className="hidden"
         />
 
-        {/* Plus (+) Button */}
+        {/* Plus (+) Button — increased by 20% to 34px */}
         <button
           type="button"
           onClick={() => fileInputRef.current?.click()}
-          className="w-7 h-7 rounded-full bg-[#252527] hover:bg-[#38383b] text-white flex items-center justify-center shrink-0 transition-colors cursor-pointer"
+          className="w-[34px] h-[34px] rounded-full bg-[#252527] hover:bg-[#38383b] text-white flex items-center justify-center shrink-0 transition-colors cursor-pointer"
           title="Attach image or file"
         >
-          <Plus size={16} />
+          <Plus size={19} />
         </button>
 
-        {/* Image Generation Mode Toggle */}
+        {/* Image Generation Mode Toggle — increased by 20% to 34px */}
         <button
           type="button"
           onClick={() => setImageMode(!imageMode)}
           className={clsx(
-            "w-7 h-7 rounded-full flex items-center justify-center shrink-0 transition-all cursor-pointer",
+            "w-[34px] h-[34px] rounded-full flex items-center justify-center shrink-0 transition-all cursor-pointer",
             imageMode ? "bg-[#3f86ff] text-white" : "bg-[#252527] hover:bg-[#38383b] text-white"
           )}
           title={imageMode ? "Image mode ON" : "Toggle image generation"}
         >
-          <ImageIcon size={14} />
+          <ImageIcon size={17} />
         </button>
 
         {/* Text Input Field */}
@@ -222,51 +222,51 @@ export function InputArea({ onSend, isLoading, onStop, onOpenLiveVoice, onImageG
           autoCorrect="on"
           spellCheck={true}
           className={clsx(
-            "flex-1 min-h-[28px] max-h-[100px] bg-transparent text-white placeholder:text-[#8d8d91] border-0 focus:ring-0 resize-none py-1 px-1 outline-none text-sm leading-snug",
+            "flex-1 min-h-[34px] max-h-[110px] bg-transparent text-white placeholder:text-[#8d8d91] border-0 focus:ring-0 resize-none py-1.5 px-1 outline-none text-sm leading-snug",
             imageMode && "placeholder:text-[#3f86ff]"
           )}
         />
 
-        {/* Mic Button */}
+        {/* Mic Button — increased by 20% to 34px */}
         <button
           type="button"
           onClick={toggleSpeechRecognition}
           className={clsx(
-            "w-7 h-7 rounded-full bg-[#252527] hover:bg-[#38383b] text-white flex items-center justify-center shrink-0 transition-colors cursor-pointer",
+            "w-[34px] h-[34px] rounded-full bg-[#252527] hover:bg-[#38383b] text-white flex items-center justify-center shrink-0 transition-colors cursor-pointer",
             isListening && "text-[#3f86ff]"
           )}
           title={isListening ? "Stop listening" : "Voice input"}
         >
-          {isListening ? <MicOff size={14} className="text-[#3f86ff]" /> : <Mic size={15} />}
+          {isListening ? <MicOff size={17} className="text-[#3f86ff]" /> : <Mic size={18} />}
         </button>
 
-        {/* Send / Stop / Live Voice */}
+        {/* Send / Stop / Live Voice — increased by 20% to 34px */}
         {isLoading ? (
           <button
             type="button"
             onClick={onStop}
-            className="w-7 h-7 bg-[#3f86ff] hover:opacity-90 text-white rounded-full transition-all flex items-center justify-center shrink-0 cursor-pointer"
+            className="w-[34px] h-[34px] bg-[#3f86ff] hover:opacity-90 text-white rounded-full transition-all flex items-center justify-center shrink-0 cursor-pointer"
             title="Stop generating"
           >
-            <Square size={11} fill="currentColor" />
+            <Square size={13} fill="currentColor" />
           </button>
         ) : text.trim() || attachment ? (
           <button
             type="button"
             onClick={handleSend}
-            className="w-7 h-7 bg-[#3f86ff] hover:opacity-90 text-white rounded-full transition-all flex items-center justify-center shrink-0 cursor-pointer active:scale-95"
+            className="w-[34px] h-[34px] bg-[#3f86ff] hover:opacity-90 text-white rounded-full transition-all flex items-center justify-center shrink-0 cursor-pointer active:scale-95"
             title="Send message"
           >
-            <Send size={13} fill="currentColor" />
+            <Send size={16} fill="currentColor" />
           </button>
         ) : (
           <button
             type="button"
             onClick={onOpenLiveVoice}
-            className="w-7 h-7 bg-[#252527] hover:bg-[#38383b] text-white rounded-full transition-all flex items-center justify-center shrink-0 cursor-pointer"
+            className="w-[34px] h-[34px] bg-[#252527] hover:bg-[#38383b] text-white rounded-full transition-all flex items-center justify-center shrink-0 cursor-pointer"
             title="Live voice mode"
           >
-            <AudioLines size={14} />
+            <AudioLines size={17} />
           </button>
         )}
       </div>

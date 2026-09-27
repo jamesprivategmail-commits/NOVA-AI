@@ -61,7 +61,7 @@ export function Sidebar({
       {/* Top Drawer Header */}
       <div className="p-3 border-b border-[#38383b] flex items-center justify-between">
         <div className="flex items-center gap-2.5">
-          <div className="w-7 h-7 rounded-lg bg-[#202022] border border-[#38383b] p-0.5 flex items-center justify-center">
+          <div className="w-8 h-8 rounded-lg bg-[#202022] border border-[#38383b] p-0.5 flex items-center justify-center">
             <img 
               src="https://i.postimg.cc/8PVBFM75/file-00000000b40c82118dbaef206a9ebedc.png" 
               alt="VOID Logo" 
@@ -73,17 +73,18 @@ export function Sidebar({
           </span>
         </div>
 
+        {/* Search button — increased by 20% to 34px */}
         <button 
           onClick={() => setIsSearching(!isSearching)}
           className={clsx(
-            "w-7 h-7 rounded-lg border flex items-center justify-center transition-all cursor-pointer",
+            "w-[34px] h-[34px] rounded-lg border flex items-center justify-center transition-all cursor-pointer shrink-0",
             isSearching 
               ? "bg-[#252527] border-[#454547] text-white" 
               : "bg-[#202022] hover:bg-[#252527] border-[#38383b] text-[#8d8d91] hover:text-white"
           )}
           title="Search Conversations"
         >
-          <Search size={14} />
+          <Search size={17} />
         </button>
       </div>
 
@@ -96,27 +97,27 @@ export function Sidebar({
             onChange={(e) => setSearchQuery(e.target.value)}
             placeholder="Search recent chats..."
             autoFocus
-            className="w-full bg-[#202022] border border-[#38383b] text-white text-[11px] rounded-lg pl-7 pr-7 py-1.5 outline-none focus:border-[#454547]"
+            className="w-full bg-[#202022] border border-[#38383b] text-white text-[11px] rounded-lg pl-8 pr-8 py-2 outline-none focus:border-[#454547]"
           />
-          <Search size={12} className="absolute left-4 top-3.5 text-[#8d8d91]" />
+          <Search size={14} className="absolute left-4.5 top-4 text-[#8d8d91]" />
           {searchQuery && (
             <button 
               onClick={() => setSearchQuery('')}
-              className="absolute right-4 top-3.5 text-[#8d8d91] hover:text-white cursor-pointer"
+              className="absolute right-4.5 top-4 text-[#8d8d91] hover:text-white cursor-pointer"
             >
-              <X size={12} />
+              <X size={14} />
             </button>
           )}
         </div>
       )}
 
-      {/* Primary Action: New Chat */}
+      {/* Primary Action: New Chat — increased by 20% */}
       <div className="p-2.5 border-b border-[#38383b]">
         <button
           onClick={onNewChat}
-          className="w-full flex items-center justify-center gap-2 bg-[#3f86ff] hover:opacity-90 text-white font-medium py-2 px-3 rounded-lg transition-all cursor-pointer text-xs"
+          className="w-full flex items-center justify-center gap-2 bg-[#3f86ff] hover:opacity-90 text-white font-medium py-2.5 px-3.5 rounded-lg transition-all cursor-pointer text-[13px] sm:text-sm"
         >
-          <Plus size={15} />
+          <Plus size={18} />
           <span>New Chat</span>
         </button>
       </div>
@@ -133,7 +134,7 @@ export function Sidebar({
                 onClearAllHistory();
               }
             }}
-            className="text-[10px] text-[#8d8d91] hover:text-white transition-colors cursor-pointer"
+            className="text-[11px] text-[#8d8d91] hover:text-white transition-colors cursor-pointer py-0.5 px-1.5 rounded hover:bg-[#252527]"
             title="Clear History"
           >
             Clear all
@@ -153,13 +154,13 @@ export function Sidebar({
               key={chat.id}
               onClick={() => onSelectChat(chat.id)}
               className={clsx(
-                "group relative flex items-center justify-between px-2.5 py-2 rounded-lg cursor-pointer transition-all text-xs font-medium",
+                "group relative flex items-center justify-between px-2.5 py-2.5 rounded-lg cursor-pointer transition-all text-xs font-medium",
                 currentChatId === chat.id
                   ? "bg-[#252527] text-white"
                   : "hover:bg-[#202022] text-[#8d8d91] hover:text-white"
               )}
             >
-              <span className="truncate pr-4 flex-1 text-[11px] leading-tight">{chat.title || 'Untitled Chat'}</span>
+              <span className="truncate pr-4 flex-1 text-xs leading-tight">{chat.title || 'Untitled Chat'}</span>
 
               <div className="absolute right-1.5 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity bg-[#252527] px-1 py-0.5 rounded">
                 <button
@@ -173,7 +174,7 @@ export function Sidebar({
                   className="p-1 text-[#8d8d91] hover:text-white cursor-pointer"
                   title="Rename"
                 >
-                  <Edit2 size={11} />
+                  <Edit2 size={13} />
                 </button>
                 <button
                   onClick={(e) => {
@@ -185,7 +186,7 @@ export function Sidebar({
                   className="p-1 text-[#8d8d91] hover:text-rose-400 cursor-pointer"
                   title="Delete"
                 >
-                  <Trash2 size={11} />
+                  <Trash2 size={13} />
                 </button>
               </div>
             </div>
@@ -198,24 +199,25 @@ export function Sidebar({
         <div className="flex items-center justify-between gap-2">
           <button
             onClick={onOpenSettings}
-            className="flex-1 flex items-center gap-2 p-1.5 rounded-lg hover:bg-[#202022] transition-all text-left cursor-pointer min-w-0"
+            className="flex-1 flex items-center gap-2.5 p-1.5 rounded-lg hover:bg-[#202022] transition-all text-left cursor-pointer min-w-0"
             title="Open Settings & Profile"
           >
-            <div className="w-7 h-7 rounded-full bg-[#3f86ff] text-white font-bold text-[11px] flex items-center justify-center shrink-0">
+            <div className="w-[34px] h-[34px] rounded-full bg-[#3f86ff] text-white font-bold text-xs flex items-center justify-center shrink-0">
               {userName ? userName.slice(0, 2).toUpperCase() : 'MT'}
             </div>
             <div className="min-w-0 flex-1">
-              <div className="text-[11px] font-medium text-white truncate leading-tight">{userName}</div>
-              <div className="text-[9px] text-[#8d8d91] truncate leading-none mt-0.5">{userEmail}</div>
+              <div className="text-xs font-medium text-white truncate leading-tight">{userName}</div>
+              <div className="text-[10px] text-[#8d8d91] truncate leading-none mt-0.5">{userEmail}</div>
             </div>
           </button>
 
+          {/* Settings button — increased by 20% to 38px */}
           <button
             onClick={onOpenSettings}
-            className="w-8 h-8 rounded-lg bg-[#202022] hover:bg-[#252527] text-[#8d8d91] hover:text-white flex items-center justify-center transition-colors cursor-pointer shrink-0"
+            className="w-[38px] h-[38px] rounded-lg bg-[#202022] hover:bg-[#252527] text-[#8d8d91] hover:text-white flex items-center justify-center transition-colors cursor-pointer shrink-0"
             title="Settings & Control Center"
           >
-            <Settings size={15} />
+            <Settings size={18} />
           </button>
         </div>
       </div>
