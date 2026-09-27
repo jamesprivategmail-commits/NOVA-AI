@@ -12,32 +12,70 @@ export async function sendMessageToGroq(
   attachment?: ChatAttachment
 ) {
   try {
-    const response = await fetch("/api/chat", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({ messages, systemPrompt, userId, userTier, provider, model, attachment }),
-      signal
-    });
+    const payload = JSON.stringify({ messages, systemPrompt, userId, userTier, provider, model, attachment });
+
+    let response: Response;
+    try {
+      response = await fetch("/api/chat", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: payload,
+        signal
+      });
+      // If Vercel rewrote /api to root or if 404 encountered, retry /chat
+      if (response.status === 404) {
+        response = await fetch("/chat", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: payload,
+          signal
+        });
+      }
+    } catch (fetchErr: any) {
+      if (fetchErr.name === 'AbortError') throw fetchErr;
+      // Retry once on /chat if network fetch failed
+      try {
+        response = await fetch("/chat", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: payload,
+          signal
+        });
+      } catch (_) {
+        throw fetchErr;
+      }
+    }
 
     if (!response.ok) {
       let errText = `API status ${response.status}`;
       try {
         const errJson = await response.json();
-        if (errJson.error) errText = errJson.error;
-        else if (errJson.message) errText = errJson.message;
+        if (errJson.error) {
+          errText = typeof errJson.error === 'string' ? errJson.error : errJson.error.message || JSON.stringify(errJson.error);
+        } else if (errJson.message) {
+          errText = errJson.message;
+        }
       } catch (e) {
         try {
           const raw = await response.text();
           if (raw) errText = raw;
         } catch (_) {}
       }
+
+      if (errText.includes("<!DOCTYPE") || errText.includes("<html") || response.status === 404) {
+        errText = "⚡ **VOID AI Server Notice:** Backend API route unreachable. If running on Vercel, ensure you set `GROQ_API_KEY` in Vercel Project Settings → Environment Variables and redeploy.";
+      }
       throw new Error(errText);
     }
 
     if (!response.body) {
-      throw new Error("No response body");
+      throw new Error("No response body received from server");
     }
 
     const reader = response.body.getReader();
@@ -66,12 +104,12 @@ export async function sendMessageToGroq(
               onChunk(data.text);
             }
           } catch (e) {
-            console.error("Error parsing JSON from stream", e);
+            // Ignore partial SSE chunk
           }
         }
       }
     }
-  } catch (error) {
+  } catch (error: any) {
     console.error("Error in sendMessageToGroq:", error);
     throw error;
   }
