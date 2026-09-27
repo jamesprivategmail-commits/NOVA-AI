@@ -141,11 +141,11 @@ export function AuthScreen() {
         {/* Logo Header */}
         <div className="relative mb-6">
           <div className="absolute -inset-1 rounded-2xl bg-gradient-to-r from-[#3f86ff] via-amber-500 to-[#3f86ff] opacity-60 blur-md" />
-          <div className="relative w-20 h-20 rounded-2xl bg-[#0D1019]/90 border border-[#2A3145] p-2.5 flex items-center justify-center shadow-2xl">
+          <div className="relative w-24 h-24 rounded-2xl bg-[#0D1019]/90 border border-[#2A3145] p-1.5 flex items-center justify-center shadow-2xl overflow-hidden">
             <img 
               src="/void-logo.jpg"
               alt="VOID AI Logo" 
-              className="w-full h-full object-contain"
+              className="w-full h-full object-cover"
             />
           </div>
         </div>

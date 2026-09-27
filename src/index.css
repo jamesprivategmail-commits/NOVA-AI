@@ -9,7 +9,7 @@
     font-family: Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, sans-serif;
     /* Dark anime wallpaper with a readable dark veil for text and controls. */
     background-image:
-      linear-gradient(rgba(8, 2, 7, 0.58), rgba(8, 2, 7, 0.68)),
+      linear-gradient(rgba(0, 0, 0, 0.80), rgba(0, 0, 0, 0.90)),
       url('/void-wallpaper.jpg');
     background-size: cover;
     background-position: center;

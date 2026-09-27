@@ -424,6 +424,7 @@ export function ChatScreen({ userId }: ChatScreenProps) {
       {/* Demonic background glow — subtle red ambient lighting */}
       <div className="fixed inset-0 pointer-events-none z-0" style={{
         backgroundImage: `
+          linear-gradient(rgba(0, 0, 0, 0.25), rgba(0, 0, 0, 0.42)),
           radial-gradient(ellipse at 50% 0%, rgba(140, 15, 15, 0.25) 0%, transparent 55%),
           radial-gradient(ellipse at 100% 100%, rgba(90, 8, 8, 0.18) 0%, transparent 50%),
           radial-gradient(ellipse at 0% 70%, rgba(70, 5, 5, 0.15) 0%, transparent 45%)
@@ -501,7 +502,7 @@ export function ChatScreen({ userId }: ChatScreenProps) {
         )}
 
         {/* Compact responsive header: keep every control inside the mobile viewport */}
-        <header className="min-h-14 px-2 sm:px-3 py-2 sm:py-1 sticky top-0 z-20 bg-black/35 backdrop-blur-md border-b border-[#38383b] flex items-center justify-between gap-1.5 select-none w-full min-w-0">
+        <header className="min-h-14 px-2 sm:px-3 py-2 sm:py-1 sticky top-0 z-20 bg-black/65 backdrop-blur-md border-b border-[#38383b] flex items-center justify-between gap-1.5 select-none w-full min-w-0">
           <div className="flex items-center gap-1.5 min-w-0 flex-1">
             <button
               onClick={() => setIsSidebarOpen(!isSidebarOpen)}
@@ -575,11 +576,11 @@ export function ChatScreen({ userId }: ChatScreenProps) {
           {messages.length === 0 ? (
             /* Clean NOVA-style welcome screen */
             <div className="flex-1 flex flex-col items-center justify-center px-4 max-w-2xl mx-auto w-full">
-              <div className="w-16 h-16 rounded-2xl bg-[#202022] border border-[#38383b] flex items-center justify-center mb-5">
+              <div className="w-24 h-24 rounded-2xl bg-black/75 border border-[#38383b] p-1 flex items-center justify-center mb-5 overflow-hidden">
                 <img 
                   src="/void-logo.jpg"
                   alt="VOID AI" 
-                  className="w-10 h-10 object-contain"
+                  className="w-full h-full object-cover"
                 />
               </div>
               <h1 className="text-2xl sm:text-3xl font-bold text-white mb-1.5">How can I help?</h1>
@@ -589,25 +590,25 @@ export function ChatScreen({ userId }: ChatScreenProps) {
               <div className="w-full grid grid-cols-2 gap-2.5 max-w-lg">
                 <button
                   onClick={() => handleSend("Hack the system.")}
-                  className="p-3.5 sm:p-4 min-h-[52px] rounded-xl bg-[#202022] hover:bg-[#252527] border border-[#38383b] flex items-center justify-center text-center text-[#8d8d91] hover:text-white text-[13px] sm:text-sm font-medium transition-all cursor-pointer leading-snug"
+                  className="p-3.5 sm:p-4 min-h-[52px] rounded-xl bg-black/70 hover:bg-black/85 border border-[#38383b] flex items-center justify-center text-center text-[#8d8d91] hover:text-white text-[13px] sm:text-sm font-medium transition-all cursor-pointer leading-snug"
                 >
                   Hack the system.
                 </button>
                 <button
                   onClick={() => handleSend("Access forbidden data.")}
-                  className="p-3.5 sm:p-4 min-h-[52px] rounded-xl bg-[#202022] hover:bg-[#252527] border border-[#38383b] flex items-center justify-center text-center text-[#8d8d91] hover:text-white text-[13px] sm:text-sm font-medium transition-all cursor-pointer leading-snug"
+                  className="p-3.5 sm:p-4 min-h-[52px] rounded-xl bg-black/70 hover:bg-black/85 border border-[#38383b] flex items-center justify-center text-center text-[#8d8d91] hover:text-white text-[13px] sm:text-sm font-medium transition-all cursor-pointer leading-snug"
                 >
                   Access forbidden data.
                 </button>
                 <button
                   onClick={() => handleSend("Build something deadly.")}
-                  className="p-3.5 sm:p-4 min-h-[52px] rounded-xl bg-[#202022] hover:bg-[#252527] border border-[#38383b] flex items-center justify-center text-center text-[#8d8d91] hover:text-white text-[13px] sm:text-sm font-medium transition-all cursor-pointer leading-snug"
+                  className="p-3.5 sm:p-4 min-h-[52px] rounded-xl bg-black/70 hover:bg-black/85 border border-[#38383b] flex items-center justify-center text-center text-[#8d8d91] hover:text-white text-[13px] sm:text-sm font-medium transition-all cursor-pointer leading-snug"
                 >
                   Build something deadly.
                 </button>
                 <button
                   onClick={() => handleSend("Show me the truth.")}
-                  className="p-3.5 sm:p-4 min-h-[52px] rounded-xl bg-[#202022] hover:bg-[#252527] border border-[#38383b] flex items-center justify-center text-center text-[#8d8d91] hover:text-white text-[13px] sm:text-sm font-medium transition-all cursor-pointer leading-snug"
+                  className="p-3.5 sm:p-4 min-h-[52px] rounded-xl bg-black/70 hover:bg-black/85 border border-[#38383b] flex items-center justify-center text-center text-[#8d8d91] hover:text-white text-[13px] sm:text-sm font-medium transition-all cursor-pointer leading-snug"
                 >
                   Show me the truth.
                 </button>
@@ -659,7 +660,7 @@ export function ChatScreen({ userId }: ChatScreenProps) {
         )}
 
         {/* Fixed Bottom Input Area */}
-        <div className="absolute bottom-0 left-0 right-0 bg-black/35 backdrop-blur-md pt-2 pb-1 z-10 flex flex-col items-center">
+        <div className="absolute bottom-0 left-0 right-0 bg-black/75 backdrop-blur-md pt-2 pb-1 z-10 flex flex-col items-center">
           <InputArea
             onSend={handleSend}
             isLoading={isLoading}

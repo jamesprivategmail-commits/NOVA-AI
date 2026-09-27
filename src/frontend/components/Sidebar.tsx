@@ -61,11 +61,11 @@ export function Sidebar({
       {/* Top Drawer Header */}
       <div className="p-3 border-b border-[#38383b] flex items-center justify-between">
         <div className="flex items-center gap-2.5">
-          <div className="w-8 h-8 rounded-lg bg-[#202022] border border-[#38383b] p-0.5 flex items-center justify-center">
+          <div className="w-10 h-10 rounded-lg bg-black/80 border border-[#38383b] p-0.5 flex items-center justify-center overflow-hidden">
             <img 
               src="/void-logo.jpg"
               alt="VOID Logo" 
-              className="w-full h-full object-contain"
+              className="w-full h-full object-cover"
             />
           </div>
           <span className="font-bold text-sm text-white">
