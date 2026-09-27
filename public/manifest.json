@@ -4,15 +4,15 @@
   "description": "VOID AI — your AI assistant with real-time intelligence.",
   "icons": [
     {
-      "src": "https://i.postimg.cc/8PVBFM75/file-00000000b40c82118dbaef206a9ebedc.png",
-      "type": "image/png",
-      "sizes": "192x192",
+      "src": "/void-logo.jpg",
+      "type": "image/jpeg",
+      "sizes": "280x280",
       "purpose": "any maskable"
     },
     {
-      "src": "https://i.postimg.cc/8PVBFM75/file-00000000b40c82118dbaef206a9ebedc.png",
-      "type": "image/png",
-      "sizes": "512x512",
+      "src": "/void-logo.jpg",
+      "type": "image/jpeg",
+      "sizes": "280x280",
       "purpose": "any maskable"
     }
   ],

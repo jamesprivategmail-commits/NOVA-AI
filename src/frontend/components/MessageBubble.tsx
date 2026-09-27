@@ -56,7 +56,7 @@ export const MessageBubble = React.memo(function MessageBubble({ message, isStre
           ) : (
             <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-[#202022] border border-[#38383b] p-1 flex items-center justify-center">
               <img 
-                src="https://i.postimg.cc/8PVBFM75/file-00000000b40c82118dbaef206a9ebedc.png" 
+                src="/void-logo.jpg"
                 alt="VOID AI" 
                 className="w-full h-full object-contain"
               />

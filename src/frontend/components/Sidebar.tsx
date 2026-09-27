@@ -63,7 +63,7 @@ export function Sidebar({
         <div className="flex items-center gap-2.5">
           <div className="w-8 h-8 rounded-lg bg-[#202022] border border-[#38383b] p-0.5 flex items-center justify-center">
             <img 
-              src="https://i.postimg.cc/8PVBFM75/file-00000000b40c82118dbaef206a9ebedc.png" 
+              src="/void-logo.jpg"
               alt="VOID Logo" 
               className="w-full h-full object-contain"
             />

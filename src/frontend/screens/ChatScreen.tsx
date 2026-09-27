@@ -577,7 +577,7 @@ export function ChatScreen({ userId }: ChatScreenProps) {
             <div className="flex-1 flex flex-col items-center justify-center px-4 max-w-2xl mx-auto w-full">
               <div className="w-16 h-16 rounded-2xl bg-[#202022] border border-[#38383b] flex items-center justify-center mb-5">
                 <img 
-                  src="https://i.postimg.cc/8PVBFM75/file-00000000b40c82118dbaef206a9ebedc.png" 
+                  src="/void-logo.jpg"
                   alt="VOID AI" 
                   className="w-10 h-10 object-contain"
                 />

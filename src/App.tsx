@@ -53,7 +53,7 @@ export default function App() {
         <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-red-900/20 rounded-full blur-3xl pointer-events-none" />
         <div className="relative w-16 h-16 rounded-2xl bg-black border border-red-600/80 p-2 shadow-[0_0_30px_rgba(220,38,38,0.4)] flex items-center justify-center">
           <img 
-            src="https://i.postimg.cc/8PVBFM75/file-00000000b40c82118dbaef206a9ebedc.png" 
+            src="/void-logo.jpg"
             alt="VOID AI Profile" 
             className="w-full h-full object-contain"
           />

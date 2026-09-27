@@ -143,7 +143,7 @@ export function AuthScreen() {
           <div className="absolute -inset-1 rounded-2xl bg-gradient-to-r from-[#3f86ff] via-amber-500 to-[#3f86ff] opacity-60 blur-md" />
           <div className="relative w-20 h-20 rounded-2xl bg-[#0D1019]/90 border border-[#2A3145] p-2.5 flex items-center justify-center shadow-2xl">
             <img 
-              src="https://i.postimg.cc/8PVBFM75/file-00000000b40c82118dbaef206a9ebedc.png" 
+              src="/void-logo.jpg"
               alt="VOID AI Logo" 
               className="w-full h-full object-contain"
             />
