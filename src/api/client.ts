@@ -1,5 +1,14 @@
 import type { ChatAttachment } from '../frontend/components/InputArea';
 
+export interface GitHubContextPayload {
+  owner?: string;
+  repo?: string;
+  branch?: string;
+  user?: string;
+  activeFile?: string;
+  fileTreeSnippet?: string;
+}
+
 export async function sendMessageToGroq(
   messages: { role: string; text: string }[], 
   systemPrompt: string = '',
@@ -9,10 +18,11 @@ export async function sendMessageToGroq(
   userTier?: string,
   provider: 'groq' | 'cohere' | 'bazaarlink' = 'groq',
   model?: string,
-  attachment?: ChatAttachment
+  attachment?: ChatAttachment,
+  githubContext?: GitHubContextPayload
 ) {
   try {
-    const payload = JSON.stringify({ messages, systemPrompt, userId, userTier, provider, model, attachment });
+    const payload = JSON.stringify({ messages, systemPrompt, userId, userTier, provider, model, attachment, githubContext });
 
     let response: Response;
     try {

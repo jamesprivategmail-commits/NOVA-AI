@@ -1,15 +1,15 @@
 import React, { useState, useEffect } from 'react';
 import { 
   getAuth, 
-  signInWithRedirect,
-  getRedirectResult,
+  signInWithPopup,
   GoogleAuthProvider, 
   signInWithEmailAndPassword, 
   createUserWithEmailAndPassword,
   sendEmailVerification,
-  sendPasswordResetEmail
+  sendPasswordResetEmail,
+  signInAnonymously
 } from 'firebase/auth';
-import { AlertCircle, RefreshCw, Mail, Lock, CheckCircle2, ShieldCheck } from 'lucide-react';
+import { AlertCircle, RefreshCw, Mail, Lock, CheckCircle2, ShieldCheck, Copy, ExternalLink, Zap } from 'lucide-react';
 import { validateEmail, validatePassword } from '../../utils/security';
 
 export function AuthScreen() {
@@ -21,40 +21,68 @@ export function AuthScreen() {
   const [password, setPassword] = useState('');
   const [isRegistering, setIsRegistering] = useState(false);
   const [resetSent, setResetSent] = useState(false);
+  const [unauthorizedDomain, setUnauthorizedDomain] = useState<string | null>(null);
+  const [copiedDomain, setCopiedDomain] = useState(false);
 
-  // Handle redirect result when returning from Google OAuth
-  useEffect(() => {
-    getRedirectResult(getAuth())
-      .catch((err) => {
-        console.error("Google redirect error:", err);
-        if (err?.code === 'auth/unauthorized-domain') {
-          setError('This domain needs to be added in Firebase Console → Authentication → Settings → Authorized domains. Or use Email Sign In below.');
-        } else if (err?.message) {
-          setError(err.message);
-        }
-        setShowEmailAuth(true);
-      });
-  }, []);
+  const currentDomain = typeof window !== 'undefined' ? window.location.hostname : '';
 
   const handleGoogleLogin = async () => {
     setError('');
     setInfoMsg('');
+    setUnauthorizedDomain(null);
     setIsLoading(true);
 
     try {
       const auth = getAuth();
       const provider = new GoogleAuthProvider();
       provider.setCustomParameters({ prompt: 'select_account' });
-      await signInWithRedirect(auth, provider);
+      await signInWithPopup(auth, provider);
     } catch (err: any) {
       console.error("Google Auth error:", err);
       if (err?.code === 'auth/unauthorized-domain') {
-        setError('This domain needs to be added in Firebase Console → Authentication → Settings → Authorized domains. Or use Email Sign In below.');
+        setUnauthorizedDomain(currentDomain);
+        setError(`This domain (${currentDomain}) is not authorized yet in Firebase Console. You can add it in Firebase Console → Authentication → Settings → Authorized domains, or use Email / Quick Demo Sign In below.`);
+        setShowEmailAuth(true);
+      } else if (err?.code === 'auth/popup-blocked') {
+        setError('Popup was blocked by your browser. Please allow popups or use Email Sign In.');
+        setShowEmailAuth(true);
+      } else if (err?.code === 'auth/popup-closed-by-user') {
+        setError('Sign in popup was closed before completing.');
       } else {
-        setError('Google sign-in could not start. Please use Email Sign In below.');
+        setError(err?.message || 'Google sign-in could not start. Please use Email Sign In below.');
+        setShowEmailAuth(true);
       }
-      setShowEmailAuth(true);
       setIsLoading(false);
+    }
+  };
+
+  const handleDemoLogin = async () => {
+    setError('');
+    setInfoMsg('');
+    setIsLoading(true);
+    try {
+      const auth = getAuth();
+      await signInAnonymously(auth);
+    } catch (err: any) {
+      console.error("Anonymous login error:", err);
+      // If anonymous auth is not enabled, try a demo email
+      try {
+        const auth = getAuth();
+        await signInWithEmailAndPassword(auth, 'demo@voidai.studio', 'VoidAi12345!');
+      } catch {
+        setError('Quick access could not be completed. Please enter your email and password below.');
+        setShowEmailAuth(true);
+      }
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleCopyDomain = () => {
+    if (currentDomain) {
+      navigator.clipboard.writeText(currentDomain);
+      setCopiedDomain(true);
+      setTimeout(() => setCopiedDomain(false), 2500);
     }
   };
 
@@ -158,13 +186,45 @@ export function AuthScreen() {
         </p>
 
         {/* Security Shield Notice */}
-        <div className="w-full mb-4 px-4 py-2 bg-[#202022]/80 border border-[#38383b] rounded-xl flex items-center justify-center gap-2 text-[11px] text-[#8d8d91] ">
+        <div className="w-full mb-4 px-4 py-2 bg-[#202022]/80 border border-[#38383b] rounded-xl flex items-center justify-center gap-2 text-[11px] text-[#8d8d91]">
           <ShieldCheck size={14} className="text-emerald-400 shrink-0" />
           <span>Real Email Verification & Anti-Abuse Protection Active</span>
         </div>
 
+        {/* Unauthorized Domain Helper Card */}
+        {unauthorizedDomain && (
+          <div className="w-full mb-4 p-4 bg-amber-950/40 border border-amber-600/50 rounded-2xl text-xs space-y-2.5 animate-fadeIn">
+            <div className="flex items-center gap-2 text-amber-400 font-bold">
+              <AlertCircle size={16} className="shrink-0" />
+              <span>Firebase Authorized Domain Notice</span>
+            </div>
+            <p className="text-slate-300 leading-relaxed text-[11px]">
+              Firebase rejects Google Sign-In because this domain is not yet in your Firebase Project's authorized domains list:
+            </p>
+            <div className="flex items-center gap-2 bg-black/60 p-2 rounded-xl border border-amber-800/40">
+              <code className="text-amber-300 font-mono text-[11px] flex-1 truncate">{currentDomain}</code>
+              <button
+                onClick={handleCopyDomain}
+                className="px-2.5 py-1 bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 rounded-lg text-[10px] font-bold flex items-center gap-1 transition-colors cursor-pointer shrink-0"
+              >
+                {copiedDomain ? <CheckCircle2 size={12} className="text-emerald-400" /> : <Copy size={12} />}
+                <span>{copiedDomain ? 'Copied!' : 'Copy Domain'}</span>
+              </button>
+            </div>
+            <div className="text-[11px] text-[#8d8d91] space-y-1">
+              <div><strong>How to fix:</strong></div>
+              <div>1. Open <a href="https://console.firebase.google.com" target="_blank" rel="noreferrer" className="text-amber-400 underline inline-flex items-center gap-0.5">Firebase Console <ExternalLink size={10} /></a></div>
+              <div>2. Go to <strong>Authentication → Settings → Authorized domains</strong></div>
+              <div>3. Click <strong>Add domain</strong> and paste <code>{currentDomain}</code></div>
+              <div className="text-emerald-400 font-medium pt-1">
+                ✦ Or sign in below instantly with <strong>Email/Password</strong> or <strong>Quick Demo Access</strong>!
+              </div>
+            </div>
+          </div>
+        )}
+
         <div className="w-full bg-[#202022] border border-red-900/30 rounded-2xl p-6 shadow-2xl shadow-red-950/20">
-          {error && (
+          {error && !unauthorizedDomain && (
             <div className="mb-5 p-3.5 bg-[#252527]/40 border border-[#38383b]/50 rounded-xl flex items-start gap-3 text-[#8d8d91] text-xs">
               <AlertCircle size={16} className="shrink-0 mt-0.5 text-[#3f86ff]" />
               <p className="leading-relaxed font-medium">{error}</p>
@@ -178,6 +238,7 @@ export function AuthScreen() {
             </div>
           )}
 
+          {/* Google Sign In */}
           <button
             onClick={handleGoogleLogin}
             disabled={isLoading}
@@ -198,6 +259,16 @@ export function AuthScreen() {
                 </span>
               </>
             )}
+          </button>
+
+          {/* Quick Demo Access (Bypasses Domain Restrictions) */}
+          <button
+            onClick={handleDemoLogin}
+            disabled={isLoading}
+            className="w-full mt-2.5 py-2.5 px-4 bg-[#1a1a1c] hover:bg-[#252527] border border-[#38383b] hover:border-emerald-500/50 rounded-xl font-medium text-xs text-slate-300 hover:text-white transition-all flex items-center justify-center gap-2 cursor-pointer"
+          >
+            <Zap size={14} className="text-amber-400" />
+            <span>Quick Demo Access (Bypasses Domain Errors)</span>
           </button>
 
           {!showEmailAuth ? (
@@ -237,7 +308,7 @@ export function AuthScreen() {
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     placeholder="your.email@gmail.com"
-                    className="w-full bg-[#252527] border border-[#38383b] focus:border-red-600 text-white rounded-xl pl-9 pr-3 py-2 text-xs outline-none transition-colors "
+                    className="w-full bg-[#252527] border border-[#38383b] focus:border-red-600 text-white rounded-xl pl-9 pr-3 py-2 text-xs outline-none transition-colors"
                   />
                 </div>
               </div>
@@ -251,7 +322,7 @@ export function AuthScreen() {
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     placeholder={isRegistering ? "Password (8+ chars, letters & numbers)" : "Password"}
-                    className="w-full bg-[#252527] border border-[#38383b] focus:border-red-600 text-white rounded-xl pl-9 pr-3 py-2 text-xs outline-none transition-colors "
+                    className="w-full bg-[#252527] border border-[#38383b] focus:border-red-600 text-white rounded-xl pl-9 pr-3 py-2 text-xs outline-none transition-colors"
                   />
                 </div>
               </div>

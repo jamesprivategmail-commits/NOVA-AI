@@ -20,7 +20,7 @@ export default function App() {
         // Google auth automatically verifies email, or if user is admin or verified email
         const isGoogle = u.providerData?.some(p => p.providerId === 'google.com');
         const isAdmin = u.email === 'mrnovatech4@gmail.com';
-        setIsVerified(u.emailVerified || isGoogle || isAdmin);
+        setIsVerified(u.emailVerified || isGoogle || isAdmin || u.isAnonymous);
 
         // Check terms acceptance
         const accepted = localStorage.getItem(`void_ai_terms_accepted_${u.uid}`) === 'true';

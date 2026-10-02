@@ -1,5 +1,5 @@
-import React, { useState, useRef, useLayoutEffect, useEffect } from 'react';
-import { Send, Square, Mic, MicOff, X, Image as ImageIcon, FileText, Plus, AudioLines } from 'lucide-react';
+import React, { useState, useRef, useLayoutEffect } from 'react';
+import { Send, Square, X, Image as ImageIcon, FileText, Plus, AudioLines } from 'lucide-react';
 import { clsx } from 'clsx';
 
 export interface ChatAttachment {
@@ -19,13 +19,10 @@ interface InputAreaProps {
 
 export function InputArea({ onSend, isLoading, onStop, onOpenLiveVoice, onImageGenerate }: InputAreaProps) {
   const [text, setText] = useState('');
-  const [isListening, setIsListening] = useState(false);
   const [attachment, setAttachment] = useState<ChatAttachment | null>(null);
-  const [speechError, setSpeechError] = useState<string | null>(null);
   const [imageMode, setImageMode] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const recognitionRef = useRef<any>(null);
 
   useLayoutEffect(() => {
     const textarea = textareaRef.current;
@@ -34,55 +31,6 @@ export function InputArea({ onSend, isLoading, onStop, onOpenLiveVoice, onImageG
     const newHeight = Math.min(Math.max(textarea.scrollHeight, 34), 110);
     textarea.style.height = `${newHeight}px`;
   }, [text]);
-
-  useEffect(() => {
-    if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
-      const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
-      try {
-        const recognition = new SpeechRecognition();
-        recognition.continuous = false;
-        recognition.interimResults = true;
-        recognition.onresult = (event: any) => {
-          let transcript = '';
-          for (let i = event.resultIndex; i < event.results.length; i++) {
-            transcript += event.results[i][0].transcript;
-          }
-          if (transcript) setText((prev) => (prev ? `${prev} ${transcript}` : transcript));
-        };
-        recognition.onerror = (event: any) => {
-          setIsListening(false);
-          if (event.error !== 'no-speech' && event.error !== 'aborted') {
-            setSpeechError('Voice input unavailable');
-            setTimeout(() => setSpeechError(null), 3000);
-          }
-        };
-        recognition.onend = () => setIsListening(false);
-        recognitionRef.current = recognition;
-      } catch (err) {
-        console.warn('Speech recognition init warning:', err);
-      }
-    }
-  }, []);
-
-  const toggleSpeechRecognition = () => {
-    if (!recognitionRef.current) {
-      setSpeechError('Voice input not supported on this browser');
-      setTimeout(() => setSpeechError(null), 3000);
-      return;
-    }
-    if (isListening) {
-      try { recognitionRef.current.stop(); } catch (_) {}
-      setIsListening(false);
-    } else {
-      try {
-        setSpeechError(null);
-        recognitionRef.current.start();
-        setIsListening(true);
-      } catch (err) {
-        setIsListening(false);
-      }
-    }
-  };
 
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -143,16 +91,6 @@ export function InputArea({ onSend, isLoading, onStop, onOpenLiveVoice, onImageG
 
   return (
     <div className="w-full max-w-2xl mx-auto px-2 pb-1">
-      {/* Speech Error Banner */}
-      {speechError && (
-        <div className="mb-1 p-1 px-2 bg-[#252527]/90 border border-[#38383b] rounded-lg text-[10px] text-[#8d8d91] flex items-center justify-between">
-          <span>{speechError}</span>
-          <button onClick={() => setSpeechError(null)} className="p-0.5 text-[#8d8d91] hover:text-white">
-            <X size={11} />
-          </button>
-        </div>
-      )}
-
       {/* Attachment Preview Card */}
       {attachment && (
         <div className="mb-1 p-1 px-2 bg-zinc-900 border border-zinc-700 rounded-lg flex items-center justify-between gap-2 text-xs text-slate-200">
@@ -226,19 +164,6 @@ export function InputArea({ onSend, isLoading, onStop, onOpenLiveVoice, onImageG
             imageMode && "placeholder:text-[#3f86ff]"
           )}
         />
-
-        {/* Mic Button */}
-        <button
-          type="button"
-          onClick={toggleSpeechRecognition}
-          className={clsx(
-            "w-10 h-10 rounded-full bg-[#252527] hover:bg-[#38383b] text-white flex items-center justify-center shrink-0 transition-colors cursor-pointer",
-            isListening && "text-[#3f86ff]"
-          )}
-          title={isListening ? "Stop listening" : "Voice input"}
-        >
-          {isListening ? <MicOff size={17} className="text-[#3f86ff]" /> : <Mic size={18} />}
-        </button>
 
         {/* Send / Stop / Live Voice */}
         {isLoading ? (

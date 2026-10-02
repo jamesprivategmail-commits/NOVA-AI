@@ -12,6 +12,8 @@ import { EmailCampaignGenerator } from '../components/EmailCampaignGenerator';
 import { LiveVoiceModal } from '../components/LiveVoiceModal';
 import { TelegramModal } from './TelegramModal';
 import { ApiKeyModal } from '../components/ApiKeyModal';
+import { GitHubModal } from '../components/GitHubModal';
+import { getStoredGitHubUser, getStoredActiveRepo, ActiveRepoState, GitHubUser } from '../utils/github';
 import { Chat, Message, UserProfile, BroadcastMessage } from '../../models/types';
 import {
   createChat,
@@ -63,6 +65,9 @@ export function ChatScreen({ userId }: ChatScreenProps) {
   const [showLiveVoice, setShowLiveVoice] = useState(false);
   const [showTelegramModal, setShowTelegramModal] = useState(false);
   const [showApiKeyModal, setShowApiKeyModal] = useState(false);
+  const [showGitHubModal, setShowGitHubModal] = useState(false);
+  const [activeRepo, setActiveRepo] = useState<ActiveRepoState | null>(() => getStoredActiveRepo());
+  const [gitHubUser, setGitHubUser] = useState<GitHubUser | null>(() => getStoredGitHubUser());
 
   // Broadcasts state
   const [broadcasts, setBroadcasts] = useState<BroadcastMessage[]>([]);
@@ -374,6 +379,14 @@ export function ChatScreen({ userId }: ChatScreenProps) {
       const systemPrompt = '';
       const userTier = updatedProfile?.tier || profile?.tier || 'free';
 
+      const githubContext = activeRepo ? {
+        owner: activeRepo.owner,
+        repo: activeRepo.repo,
+        branch: activeRepo.branch,
+        user: gitHubUser?.login || undefined,
+        activeFile: activeRepo.activeFile || undefined,
+      } : undefined;
+
       await sendMessageToGroq(
         context,
         systemPrompt,
@@ -390,7 +403,8 @@ export function ChatScreen({ userId }: ChatScreenProps) {
         userTier,
         selectedProvider,
         selectedModel,
-        attachment
+        attachment,
+        githubContext
       );
 
       // Save complete model message
@@ -456,6 +470,7 @@ export function ChatScreen({ userId }: ChatScreenProps) {
         onRenameChat={handleRenameChat}
         onClearAllHistory={handleClearAllHistory}
         onOpenSettings={() => setShowSettings(true)}
+        onOpenGitHub={() => setShowGitHubModal(true)}
         onOpenSupport={() => setShowSupport(true)}
         onOpenSubscription={() => setShowSubscription(true)}
         onOpenAdmin={() => setShowAdminPanel(true)}
@@ -548,6 +563,33 @@ export function ChatScreen({ userId }: ChatScreenProps) {
           </div>
 
           <div className="flex items-center gap-1.5 shrink-0">
+            <button
+              onClick={() => setShowGitHubModal(true)}
+              className={clsx(
+                "h-10 px-2.5 sm:px-3 rounded-full border text-xs font-medium flex items-center gap-1.5 transition-all cursor-pointer shrink-0",
+                activeRepo
+                  ? "bg-[#161B22] border-[#3f86ff]/70 text-white hover:border-[#3f86ff]"
+                  : gitHubUser
+                    ? "bg-[#202022] hover:bg-[#252527] border-[#38383b] text-white"
+                    : "bg-[#202022] hover:bg-[#252527] border-[#38383b] text-[#8d8d91] hover:text-white"
+              )}
+              title="GitHub Workspace (Direct Code & Repositories)"
+            >
+              <svg className="w-3.5 h-3.5 fill-current shrink-0" viewBox="0 0 24 24">
+                <path fillRule="evenodd" clipRule="evenodd" d="M12 2C6.477 2 2 6.484 2 12.017c0 4.425 2.865 8.18 6.839 9.504.5.092.682-.217.682-.483 0-.237-.008-.868-.013-1.703-2.782.605-3.369-1.343-3.369-1.343-.454-1.158-1.11-1.466-1.11-1.466-.908-.62.069-.608.069-.608 1.003.07 1.53 1.032 1.53 1.032.892 1.53 2.341 1.088 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.113-4.555-4.951 0-1.093.39-1.988 1.029-2.688-.103-.253-.446-1.272.098-2.65 0 0 .84-.27 2.75 1.026A9.564 9.564 0 0112 6.844c.85.004 1.705.115 2.504.337 1.909-1.296 2.747-1.027 2.747-1.027.546 1.379.202 2.398.1 2.651.64.7 1.028 1.595 1.028 2.688 0 3.848-2.339 4.695-4.566 4.943.359.309.678.92.678 1.855 0 1.338-.012 2.419-.012 2.747 0 .268.18.58.688.482A10.019 10.019 0 0022 12.017C22 6.484 17.522 2 12 2z" />
+              </svg>
+              {activeRepo ? (
+                <span className="flex items-center gap-1 font-mono text-[11px] max-w-[120px] truncate">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 shrink-0" />
+                  <span className="truncate">{activeRepo.repo}</span>
+                </span>
+              ) : gitHubUser ? (
+                <span className="hidden sm:inline text-xs">@{gitHubUser.login}</span>
+              ) : (
+                <span className="hidden sm:inline text-xs">GitHub</span>
+              )}
+            </button>
+
             <button
               onClick={() => setShowSubscription(true)}
               className="h-10 px-2.5 sm:px-3.5 rounded-full bg-[#202022] hover:bg-[#252527] border border-[#38383b] text-white text-xs sm:text-sm font-medium flex items-center gap-1 whitespace-nowrap transition-all cursor-pointer"
@@ -761,6 +803,19 @@ export function ChatScreen({ userId }: ChatScreenProps) {
         isOpen={showApiKeyModal}
         onClose={() => setShowApiKeyModal(false)}
         onOpenSubscription={() => setShowSubscription(true)}
+      />
+
+      {/* GitHub Workspace Modal */}
+      <GitHubModal
+        isOpen={showGitHubModal}
+        onClose={() => setShowGitHubModal(false)}
+        onSelectFileForChat={(repoName, filePath, content) => {
+          handleSend(`Please review, explain, or edit this file from **${repoName}**:\n\n\`\`\`\n// File: ${filePath}\n${content}\n\`\`\``);
+        }}
+        onRepoChanged={(newRepo) => {
+          setActiveRepo(newRepo);
+          setGitHubUser(getStoredGitHubUser());
+        }}
       />
     </div>
   );

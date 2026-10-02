@@ -9,6 +9,7 @@ import { doc, getDoc, setDoc, collection, query, where, getDocs } from "firebase
 import { db } from "../config/firebase.js";
 import { telegramBot } from "../telegram/bot.js";
 import { AI_CONFIG } from "../config/ai.js";
+import * as githubService from "./github.js";
 
 dotenv.config();
 
@@ -776,7 +777,7 @@ export function createApp(): express.Express {
   // Core streaming AI completion route (supports both /api/chat and /chat)
   app.post(["/api/chat", "/chat"], async (req, res) => {
     try {
-      const { messages = [], systemPrompt = "", userId = "", provider = "groq", model, attachment } = req.body;
+      const { messages = [], systemPrompt = "", userId = "", provider = "groq", model, attachment, githubContext } = req.body;
       
       res.setHeader("Content-Type", "text/event-stream; charset=utf-8");
       res.setHeader("Cache-Control", "no-cache, no-transform");
@@ -831,9 +832,33 @@ export function createApp(): express.Express {
         : tier === 'pro' ? brainSettings.proMaxTokens
         : brainSettings.freeMaxTokens) || 2048;
 
+      let githubInstructions = "";
+      if (githubContext && githubContext.repo) {
+        githubInstructions = `
+[CONNECTED GITHUB REPOSITORY — DIRECT REPO EDITING & CODING ACTIVE]:
+- Connected GitHub User: @${githubContext.user || 'developer'}
+- Target Repository: ${githubContext.owner || githubContext.user}/${githubContext.repo}
+- Target Branch: ${githubContext.branch || 'main'}
+${githubContext.activeFile ? `- Current Selected File: ${githubContext.activeFile}` : ''}
+${githubContext.fileTreeSnippet ? `- Key Repository Files:\n${githubContext.fileTreeSnippet}` : ''}
+
+You are equipped with direct GitHub repository integration! When the user asks you to write code, edit an existing file, create a new file, or fix a bug in their repository:
+1. Explain what you are implementing or fixing.
+2. Provide your complete, working code.
+3. You MUST provide an automated 1-click GitHub Commit block in the following exact format so the user can commit it immediately:
+\`\`\`github-commit
+path: ${githubContext.activeFile || 'src/App.tsx'}
+message: feat: update via VOID AI
+---CONTENT---
+<insert the full, complete file content here>
+\`\`\`
+The VOID AI interface will render a live 'Commit Directly to GitHub' button for this block.`;
+      }
+
       const masterPrompt = brainSettings.globalPrompt || "You are VOID AI, an elite AI assistant.";
       const combinedSystemPrompt = [
         masterPrompt,
+        githubInstructions,
         systemPrompt,
         BRAIN_CONFIDENTIALITY_SECURITY_GUARD
       ].filter(Boolean).map(s => s.trim()).join("\n\n");
@@ -1380,6 +1405,263 @@ export function createApp(): express.Express {
       }
     } catch (err: any) {
       return res.json({ valid: false, error: err?.message || "Key validation failed" });
+    }
+  });
+
+  // ── GitHub Integration Routes ─────────────────────────────────
+
+  // Get OAuth authorization URL
+  app.get(["/api/github/oauth/url", "/github/oauth/url"], (req, res) => {
+    try {
+      const origin = req.headers.origin || (req.headers.host ? `${req.protocol || 'https'}://${req.headers.host}` : '') || process.env.APP_URL || "https://ai.studio";
+      const redirectUri = `${origin}/auth/callback`;
+      const clientId = process.env.GITHUB_CLIENT_ID || "";
+      const url = githubService.getGitHubOAuthUrl(redirectUri);
+
+      res.json({
+        url,
+        redirectUri,
+        configured: Boolean(clientId),
+        clientIdMasked: clientId ? `${clientId.slice(0, 4)}...${clientId.slice(-4)}` : null,
+      });
+    } catch (err: any) {
+      res.status(500).json({ error: err?.message || "Failed to generate GitHub OAuth URL" });
+    }
+  });
+
+  // OAuth callback handler (compliant with oauth-integration skill)
+  const handleGitHubOAuthCallback = async (req: express.Request, res: express.Response) => {
+    const { code, error, error_description } = req.query;
+
+    if (error) {
+      return res.send(`
+        <!DOCTYPE html>
+        <html>
+          <body style="background:#090307;color:#fff;font-family:sans-serif;padding:24px;text-align:center;">
+            <h2 style="color:#ef4444;">GitHub Connection Failed</h2>
+            <p>${error_description || error}</p>
+            <script>
+              if (window.opener) {
+                window.opener.postMessage({ type: 'OAUTH_AUTH_ERROR', error: '${error}' }, '*');
+                setTimeout(() => window.close(), 2500);
+              }
+            </script>
+          </body>
+        </html>
+      `);
+    }
+
+    if (!code || typeof code !== 'string') {
+      return res.status(400).send("No authorization code received from GitHub.");
+    }
+
+    try {
+      const origin = req.headers.origin || (req.headers.host ? `https://${req.headers.host}` : '') || process.env.APP_URL || "";
+      const redirectUri = `${origin}/auth/callback`;
+      const tokenResult = await githubService.exchangeGitHubCode(code, redirectUri);
+
+      if (!tokenResult?.accessToken) {
+        throw new Error("No access token returned from GitHub");
+      }
+
+      // Verify and get user profile
+      const userCheck = await githubService.verifyGitHubToken(tokenResult.accessToken);
+      const userPayload = JSON.stringify(userCheck.user || {});
+      const token = tokenResult.accessToken;
+
+      res.send(`
+        <!DOCTYPE html>
+        <html>
+          <head>
+            <title>VOID AI - GitHub Connected</title>
+            <style>
+              body { background: #090307; color: #fff; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; display: flex; flex-direction: column; items-center; justify-content: center; height: 90vh; text-align: center; }
+              .box { background: #202022; border: 1px solid #38383b; border-radius: 16px; padding: 32px; max-width: 400px; margin: 0 auto; box-shadow: 0 10px 40px rgba(0,0,0,0.5); }
+              .badge { display: inline-flex; align-items: center; justify-content: center; width: 48px; height: 48px; border-radius: 12px; background: rgba(34, 197, 94, 0.15); color: #22c55e; margin-bottom: 16px; }
+            </style>
+          </head>
+          <body>
+            <div class="box">
+              <div class="badge">
+                <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
+              </div>
+              <h2 style="margin:0 0 8px;font-size:18px;">GitHub Account Connected!</h2>
+              <p style="color:#8d8d91;font-size:13px;margin:0 0 16px;">Connecting with VOID AI workspace...</p>
+            </div>
+            <script>
+              const payload = {
+                type: 'OAUTH_AUTH_SUCCESS',
+                provider: 'github',
+                token: ${JSON.stringify(token)},
+                user: ${userPayload}
+              };
+              if (window.opener) {
+                window.opener.postMessage(payload, '*');
+                setTimeout(() => window.close(), 700);
+              } else {
+                setTimeout(() => { window.location.href = '/'; }, 1000);
+              }
+            </script>
+          </body>
+        </html>
+      `);
+    } catch (err: any) {
+      console.error("[GitHub Callback Error]:", err);
+      res.send(`
+        <!DOCTYPE html>
+        <html>
+          <body style="background:#090307;color:#fff;font-family:sans-serif;padding:32px;text-align:center;">
+            <h2 style="color:#ef4444;">GitHub Connection Error</h2>
+            <p style="color:#8d8d91;font-size:14px;">${err?.message || "Failed to exchange token with GitHub."}</p>
+            <p style="color:#a1a1aa;font-size:12px;margin-top:20px;">You can also connect instantly by entering a GitHub Personal Access Token in VOID AI Settings.</p>
+            <script>
+              if (window.opener) {
+                window.opener.postMessage({ type: 'OAUTH_AUTH_ERROR', error: '${err?.message || "Failed"}' }, '*');
+              }
+            </script>
+          </body>
+        </html>
+      `);
+    }
+  };
+
+  app.get(["/auth/callback", "/auth/callback/", "/api/github/oauth/callback"], handleGitHubOAuthCallback);
+
+  // Verify any token (OAuth or Personal Access Token PAT)
+  app.post(["/api/github/verify", "/github/verify"], async (req, res) => {
+    try {
+      const { token } = req.body;
+      if (!token || typeof token !== 'string') {
+        return res.status(400).json({ valid: false, error: "Token is required" });
+      }
+
+      const result = await githubService.verifyGitHubToken(token.trim());
+      if (!result.valid) {
+        return res.status(401).json({ valid: false, error: result.error || "Invalid GitHub token" });
+      }
+
+      res.json({
+        valid: true,
+        user: result.user,
+        scopes: result.scopes,
+      });
+    } catch (err: any) {
+      res.status(500).json({ valid: false, error: err?.message || "Token verification failed" });
+    }
+  });
+
+  // List authenticated user's repositories
+  app.post(["/api/github/repos", "/github/repos"], async (req, res) => {
+    try {
+      const { token } = req.body;
+      if (!token) {
+        return res.status(401).json({ error: "GitHub token is required" });
+      }
+
+      const repos = await githubService.listGitHubRepos(token);
+      res.json({ repos });
+    } catch (err: any) {
+      res.status(500).json({ error: err?.message || "Failed to list repositories" });
+    }
+  });
+
+  // List branches for a repo
+  app.post(["/api/github/repo/branches", "/github/repo/branches"], async (req, res) => {
+    try {
+      const { token, owner, repo } = req.body;
+      if (!token || !owner || !repo) {
+        return res.status(400).json({ error: "token, owner, and repo are required" });
+      }
+
+      const branches = await githubService.getRepoBranches(token, owner, repo);
+      res.json({ branches });
+    } catch (err: any) {
+      res.status(500).json({ error: err?.message || "Failed to fetch branches" });
+    }
+  });
+
+  // Get repository file tree
+  app.post(["/api/github/repo/tree", "/github/repo/tree"], async (req, res) => {
+    try {
+      const { token, owner, repo, branch = "main" } = req.body;
+      if (!token || !owner || !repo) {
+        return res.status(400).json({ error: "token, owner, and repo are required" });
+      }
+
+      const treeData = await githubService.getRepoTree(token, owner, repo, branch);
+      res.json(treeData);
+    } catch (err: any) {
+      res.status(500).json({ error: err?.message || "Failed to fetch repository tree" });
+    }
+  });
+
+  // Read file from repository
+  app.post(["/api/github/repo/file", "/github/repo/file"], async (req, res) => {
+    try {
+      const { token, owner, repo, path: filePath, branch = "main" } = req.body;
+      if (!token || !owner || !repo || !filePath) {
+        return res.status(400).json({ error: "token, owner, repo, and path are required" });
+      }
+
+      const fileData = await githubService.getRepoFile(token, owner, repo, filePath, branch);
+      res.json(fileData);
+    } catch (err: any) {
+      res.status(500).json({ error: err?.message || "Failed to read file from repository" });
+    }
+  });
+
+  // Commit / edit / create file directly to repository
+  app.post(["/api/github/repo/commit", "/github/repo/commit"], async (req, res) => {
+    try {
+      const { token, owner, repo, path: filePath, content, message, branch = "main", sha } = req.body;
+      if (!token || !owner || !repo || !filePath || content === undefined) {
+        return res.status(400).json({ error: "token, owner, repo, path, and content are required" });
+      }
+
+      const commitResult = await githubService.commitRepoFile(
+        token,
+        owner,
+        repo,
+        filePath,
+        content,
+        message || `Update ${filePath} via VOID AI`,
+        branch,
+        sha
+      );
+
+      res.json(commitResult);
+    } catch (err: any) {
+      res.status(500).json({ error: err?.message || "Failed to commit changes to GitHub" });
+    }
+  });
+
+  // Create a new GitHub repository
+  app.post(["/api/github/repo/create", "/github/repo/create"], async (req, res) => {
+    try {
+      const { token, name, description = "", isPrivate = false, autoInit = true } = req.body;
+      if (!token || !name) {
+        return res.status(400).json({ error: "token and repository name are required" });
+      }
+
+      const newRepo = await githubService.createGitHubRepo(token, name, description, isPrivate, autoInit);
+      res.json({ success: true, repo: newRepo });
+    } catch (err: any) {
+      res.status(500).json({ error: err?.message || "Failed to create repository on GitHub" });
+    }
+  });
+
+  // Create a new branch
+  app.post(["/api/github/repo/branch", "/github/repo/branch"], async (req, res) => {
+    try {
+      const { token, owner, repo, branchName, fromBranch = "main" } = req.body;
+      if (!token || !owner || !repo || !branchName) {
+        return res.status(400).json({ error: "token, owner, repo, and branchName are required" });
+      }
+
+      const result = await githubService.createGitHubBranch(token, owner, repo, branchName, fromBranch);
+      res.json({ success: true, branch: result });
+    } catch (err: any) {
+      res.status(500).json({ error: err?.message || "Failed to create branch on GitHub" });
     }
   });
 
