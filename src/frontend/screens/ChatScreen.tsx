@@ -434,7 +434,7 @@ export function ChatScreen({ userId }: ChatScreenProps) {
   };
 
   return (
-    <div className="flex h-screen bg-transparent text-white overflow-hidden relative">
+    <div className="flex h-screen h-[100dvh] w-full bg-transparent text-white overflow-hidden relative overscroll-none select-none">
       {/* Demonic background glow — subtle red ambient lighting */}
       <div className="fixed inset-0 pointer-events-none z-0" style={{
         backgroundImage: `
@@ -488,7 +488,7 @@ export function ChatScreen({ userId }: ChatScreenProps) {
       {/* Clean solid background — no heavy images or gradients for speed */}
 
       {/* Main Chat Workspace */}
-      <div className="flex-1 flex flex-col h-full relative min-w-0 bg-transparent z-10">
+      <div className="flex-1 flex flex-col h-full min-h-0 relative min-w-0 bg-transparent z-10 overflow-hidden">
         {/* Broadcast System Banner Notice */}
         {activeBroadcast && (
           <div className="bg-[#202022] border-b border-[#38383b] p-2 px-3 flex items-center justify-between text-xs text-white z-30">
@@ -527,7 +527,7 @@ export function ChatScreen({ userId }: ChatScreenProps) {
               <Menu size={21} />
             </button>
 
-            <div className="relative min-w-0 flex-1 max-w-[190px] sm:max-w-[200px]">
+            <div className="relative min-w-0 max-w-[110px] sm:max-w-[125px]">
               <select
                 value={`${selectedProvider}:${selectedModel}`}
                 onChange={(e) => {
@@ -535,7 +535,7 @@ export function ChatScreen({ userId }: ChatScreenProps) {
                   setSelectedProvider(prov as 'groq' | 'cohere' | 'bazaarlink');
                   setSelectedModel(mod || 'auto');
                 }}
-                className="w-full h-10 bg-[#202022] border border-[#38383b] hover:border-[#454547] text-white text-xs sm:text-sm py-0 pl-3 pr-8 rounded-full focus:outline-none cursor-pointer appearance-none truncate"
+                className="w-full h-7 bg-[#202022] border border-[#38383b] hover:border-[#454547] text-white text-[11px] font-medium py-0 pl-2.5 pr-6 rounded-full focus:outline-none cursor-pointer appearance-none truncate transition-all shadow-sm"
                 title="Select AI Engine"
               >
                 <option value="groq:auto">Groq AI</option>
@@ -558,7 +558,7 @@ export function ChatScreen({ userId }: ChatScreenProps) {
                   <option value="bazaarlink:deepseek-r1">BazaarLink: DeepSeek R1</option>
                 </optgroup>
               </select>
-              <ChevronDown size={14} className="pointer-events-none absolute right-2.5 top-3 text-[#8d8d91]" />
+              <ChevronDown size={11} className="pointer-events-none absolute right-2 top-2 text-[#8d8d91]" />
             </div>
           </div>
 
@@ -613,7 +613,7 @@ export function ChatScreen({ userId }: ChatScreenProps) {
         <div
           ref={chatContainerRef}
           onScroll={handleScroll}
-          className="flex-1 overflow-y-auto relative flex flex-col justify-between pb-20 sm:pb-24"
+          className="flex-1 min-h-0 overflow-y-auto relative flex flex-col justify-between touch-scroll select-text"
         >
           {messages.length === 0 ? (
             /* Clean NOVA-style welcome screen */
@@ -658,7 +658,7 @@ export function ChatScreen({ userId }: ChatScreenProps) {
             </div>
           ) : (
             /* Render Message History */
-            <div className="pb-32">
+            <div className="py-2.5">
               {messages.map((msg) => (
                 <MessageBubble
                   key={msg.id}
@@ -688,21 +688,21 @@ export function ChatScreen({ userId }: ChatScreenProps) {
               <div ref={messagesEndRef} />
             </div>
           )}
+
+          {/* Floating Scroll to Bottom button */}
+          {showScrollBottom && (
+            <button
+              onClick={() => scrollToBottom(false)}
+              className="sticky bottom-4 self-end mr-4 p-2.5 bg-[#202022] hover:bg-[#252527] border border-[#38383b] text-white rounded-full shadow-xl transition-all z-20 flex items-center gap-1.5 text-xs font-medium cursor-pointer"
+            >
+              <ArrowDown size={14} />
+              <span className="hidden sm:inline text-xs">Jump to latest</span>
+            </button>
+          )}
         </div>
 
-        {/* Floating Scroll to Bottom button — increased by 20% */}
-        {showScrollBottom && (
-          <button
-            onClick={() => scrollToBottom(false)}
-            className="absolute bottom-28 right-6 p-3 bg-[#202022] border border-[#38383b] text-white rounded-full shadow-lg transition-all z-20 flex items-center gap-1.5 text-[13px] font-medium"
-          >
-            <ArrowDown size={18} />
-            <span className="hidden sm:inline">Jump to latest</span>
-          </button>
-        )}
-
-        {/* Fixed Bottom Input Area */}
-        <div className="absolute bottom-0 left-0 right-0 bg-black/75 backdrop-blur-md pt-2 pb-1 z-10 flex flex-col items-center">
+        {/* Fixed Bottom Input Area — flex flow docked, never overlaps messages or mobile keyboard */}
+        <div className="shrink-0 w-full bg-black/85 backdrop-blur-md pt-1.5 pb-2 px-2 z-10 flex flex-col items-center border-t border-[#38383b]/50">
           <InputArea
             onSend={handleSend}
             isLoading={isLoading}
@@ -710,7 +710,7 @@ export function ChatScreen({ userId }: ChatScreenProps) {
             onOpenLiveVoice={() => setShowLiveVoice(true)}
             onImageGenerate={handleImageGenerate}
           />
-          <div className="text-[10px] text-[#8d8d91] text-center px-2 pt-0.5">
+          <div className="text-[10px] text-[#8d8d91] text-center px-2 pt-0.5 select-none">
             VOID AI can make mistakes. Check important info.
           </div>
         </div>

@@ -743,7 +743,7 @@ export function createApp(): express.Express {
     const xForwardedUri = req.headers["x-forwarded-uri"] as string;
     const xMatched = req.headers["x-matched-path"] as string;
     const orig = xForwardedUri || xMatched;
-    if (orig && (orig.startsWith("/api") || orig.startsWith("/v1"))) {
+    if (orig && (orig.startsWith("/api") || orig.startsWith("/v1") || orig.startsWith("/auth"))) {
       req.url = orig;
     }
     next();

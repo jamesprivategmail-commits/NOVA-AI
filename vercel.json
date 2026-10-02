@@ -13,14 +13,18 @@
   "rewrites": [
     {
       "source": "/api/(.*)",
-      "destination": "/api/$1"
+      "destination": "/api"
+    },
+    {
+      "source": "/auth/(.*)",
+      "destination": "/api"
     },
     {
       "source": "/v1/(.*)",
-      "destination": "/api/v1/$1"
+      "destination": "/api"
     },
     {
-      "source": "/((?!api|v1|assets|public|void-logo\\.jpg|manifest\\.json|sw\\.js|.*\\..*).*)",
+      "source": "/((?!api|v1|auth|assets|public|void-logo\\.jpg|void-wallpaper\\.jpg|manifest\\.json|sw\\.js|.*\\..*).*)",
       "destination": "/index.html"
     }
   ]

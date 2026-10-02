@@ -39,7 +39,7 @@ export const MessageBubble = React.memo(function MessageBubble({ message, isStre
   return (
     <div
       className={clsx(
-        "group w-full py-2.5 px-3 sm:px-4 transition-colors",
+        "group w-full py-2.5 px-3 sm:px-4 transition-colors contain-paint",
         isUser ? "bg-transparent" : "bg-[#1a1a1c]"
       )}
     >
