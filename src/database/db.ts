@@ -451,7 +451,22 @@ export function listenToAIBrainSettings(callback: (brain: AIBrainSettings) => vo
   const docRef = doc(db, 'settings', 'brain');
   return onSnapshot(docRef, (docSnap) => {
     if (docSnap.exists()) {
-      callback(docSnap.data() as AIBrainSettings);
+      const data = docSnap.data();
+      callback({
+        globalPrompt: data.globalPrompt || "You are VOID AI, an elite, hyper-intelligent, dangerous AI assistant and master email marketing campaign strategist.",
+        freePrompt: data.freePrompt || "Free Tier Brain: Precise, focused email marketing and AI assistant responses.",
+        proPrompt: data.proPrompt || "Pro Tier Brain: Advanced marketing strategy, extended copy variations, deeper campaign analytics insights.",
+        premiumPrompt: data.premiumPrompt || "Premium Tier Brain: Full campaign strategy suite, multi-stage funnel email sequences, conversion rate optimization hacks.",
+        vipPrompt: data.vipPrompt || "VIP Tier Brain: Unrestricted elite AI capabilities, custom bespoke campaign designs, 1-on-1 copy teardowns.",
+        freeLimit: typeof data.freeLimit === 'number' ? data.freeLimit : 10,
+        proLimit: typeof data.proLimit === 'number' ? data.proLimit : 20,
+        premiumLimit: typeof data.premiumLimit === 'number' ? data.premiumLimit : 50,
+        vipLimit: typeof data.vipLimit === 'number' ? data.vipLimit : 99999,
+        freeMaxTokens: typeof data.freeMaxTokens === 'number' ? data.freeMaxTokens : 512,
+        proMaxTokens: typeof data.proMaxTokens === 'number' ? data.proMaxTokens : 1024,
+        premiumMaxTokens: typeof data.premiumMaxTokens === 'number' ? data.premiumMaxTokens : 2048,
+        vipMaxTokens: typeof data.vipMaxTokens === 'number' ? data.vipMaxTokens : 4096,
+      });
     }
   });
 }
@@ -484,10 +499,11 @@ export async function getSystemAPIKeys(): Promise<SystemAPIKeys> {
       cohereApiKey: data.cohereApiKey || (cohereApiKeys[0] || ''),
       cohereApiKeys,
       bazaarLinkApiKey: data.bazaarLinkApiKey || (bazaarLinkApiKeys[0] || ''),
-      bazaarLinkApiKeys
+      bazaarLinkApiKeys,
+      telegramBotToken: data.telegramBotToken || ''
     };
   }
-  return { groqApiKey: '', groqApiKeys: [], cohereApiKey: '', cohereApiKeys: [], bazaarLinkApiKey: '', bazaarLinkApiKeys: [] };
+  return { groqApiKey: '', groqApiKeys: [], cohereApiKey: '', cohereApiKeys: [], bazaarLinkApiKey: '', bazaarLinkApiKeys: [], telegramBotToken: '' };
 }
 
 export async function updateSystemAPIKeys(keys: SystemAPIKeys): Promise<void> {

@@ -36,6 +36,7 @@ export interface SystemAPIKeys {
   cohereApiKeys?: string[];
   bazaarLinkApiKey?: string;
   bazaarLinkApiKeys?: string[];
+  telegramBotToken?: string;
 }
 
 export interface AIBrainSettings {
@@ -64,7 +65,7 @@ export interface UserProfile {
   tier: UserTier;
   messageCount: number;
   lastMessageDate: string; // "YYYY-MM-DD"
-  lastResetTime?: number; // timestamp in ms for the current tier's reset window
+  lastResetTime?: number; // timestamp in ms for 2-hour reset window
   isAdmin: boolean;
   isSupportStaff?: boolean;
   isBanned?: boolean;

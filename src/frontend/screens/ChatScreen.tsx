@@ -14,7 +14,7 @@ import { TelegramModal } from './TelegramModal';
 import { ApiKeyModal } from '../components/ApiKeyModal';
 import { GitHubModal } from '../components/GitHubModal';
 import { getStoredGitHubUser, getStoredActiveRepo, ActiveRepoState, GitHubUser } from '../utils/github';
-import { Chat, Message, UserProfile, BroadcastMessage } from '../../models/types';
+import { Chat, Message, UserProfile, BroadcastMessage, AIBrainSettings } from '../../models/types';
 import {
   createChat,
   getUserChats,
@@ -30,6 +30,7 @@ import {
   updateMessage,
   sendSupportMessage,
   getAIBrainSettings,
+  listenToAIBrainSettings,
   listenToBroadcasts
 } from '../../database/db';
 import { sendMessageToGroq } from '../../api/client';
@@ -72,12 +73,19 @@ export function ChatScreen({ userId }: ChatScreenProps) {
   // Broadcasts state
   const [broadcasts, setBroadcasts] = useState<BroadcastMessage[]>([]);
   const [dismissedBroadcastIds, setDismissedBroadcastIds] = useState<string[]>([]);
+  const [brainSettings, setBrainSettings] = useState<AIBrainSettings | null>(null);
 
   useEffect(() => {
     const unsubBroadcasts = listenToBroadcasts((bList) => {
       setBroadcasts(bList);
     });
-    return () => unsubBroadcasts();
+    const unsubBrain = listenToAIBrainSettings((settings) => {
+      setBrainSettings(settings);
+    });
+    return () => {
+      unsubBroadcasts();
+      unsubBrain();
+    };
   }, []);
 
   const userTier = profile?.tier || 'free';
@@ -200,32 +208,36 @@ export function ChatScreen({ userId }: ChatScreenProps) {
     if (profile.tier === 'vip') return true;
 
     const now = Date.now();
-    const quotaWindowMs = profile.tier === 'free' ? 2 * 60 * 60 * 1000 : 3 * 60 * 60 * 1000;
+    const TWO_HOURS_MS = 2 * 60 * 60 * 1000;
     const lastResetTime = profile.lastResetTime || 0;
-    const isWithinQuotaWindow = lastResetTime > 0 && (now - lastResetTime < quotaWindowMs);
-    const currentCount = isWithinQuotaWindow ? (profile.messageCount || 0) : 0;
+    const isWithin2Hours = lastResetTime > 0 && (now - lastResetTime < TWO_HOURS_MS);
+    const currentCount = isWithin2Hours ? (profile.messageCount || 0) : 0;
 
-    const msRemaining = Math.max(0, quotaWindowMs - (now - lastResetTime));
+    const msRemaining = Math.max(0, TWO_HOURS_MS - (now - lastResetTime));
     const minsRemaining = Math.ceil(msRemaining / 60000);
     const hours = Math.floor(minsRemaining / 60);
     const mins = minsRemaining % 60;
     const timeStr = hours > 0 ? `${hours}h ${mins}m` : `${mins}m`;
 
+    const freeLimit = brainSettings?.freeLimit ?? 10;
+    const proLimit = brainSettings?.proLimit ?? 20;
+    const premiumLimit = brainSettings?.premiumLimit ?? 50;
+
     if (profile.tier === 'free') {
-      if (currentCount >= 10) {
-        alert(`Free tier limit reached (10 free messages per 2 hours). Your limit resets in ${timeStr}. Upgrade your plan for higher limits.`);
+      if (currentCount >= freeLimit) {
+        alert(`Free tier limit reached (${freeLimit} free messages per 2 hours). Your limit resets in ${timeStr}. Upgrade your plan for higher limits.`);
         setShowSubscription(true);
         return false;
       }
     } else if (profile.tier === 'pro') {
-      if (currentCount >= 20) {
-        alert(`Pro tier limit reached (20 messages per 3 hours). Your limit resets in ${timeStr}. Upgrade your plan for higher limits.`);
+      if (currentCount >= proLimit) {
+        alert(`Pro tier limit reached (${proLimit} messages per 2 hours). Your limit resets in ${timeStr}. Upgrade your plan for higher limits.`);
         setShowSubscription(true);
         return false;
       }
     } else if (profile.tier === 'premium') {
-      if (currentCount >= 50) {
-        alert(`Premium tier limit reached (50 messages per 3 hours). Your limit resets in ${timeStr}. Upgrade your plan for higher limits.`);
+      if (currentCount >= premiumLimit) {
+        alert(`Premium tier limit reached (${premiumLimit} messages per 2 hours). Your limit resets in ${timeStr}. Upgrade your plan for higher limits.`);
         setShowSubscription(true);
         return false;
       }

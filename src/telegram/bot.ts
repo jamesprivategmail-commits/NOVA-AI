@@ -1,4 +1,4 @@
-import { doc, getDoc, setDoc, collection, query, where, getDocs, addDoc } from "firebase/firestore";
+import { doc, getDoc, setDoc, collection, query, where, getDocs } from "firebase/firestore";
 import { db } from "../config/firebase.js";
 
 const DISCLAIMER_TEXT = `┏━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓
@@ -44,7 +44,8 @@ export interface TelegramBotInfo {
   supports_inline_queries?: boolean;
 }
 
-interface UserLoginState {
+interface UserAuthState {
+  mode: 'LOGIN' | 'REGISTER';
   step: 'AWAITING_EMAIL' | 'AWAITING_PASSWORD';
   email?: string;
   timestamp: number;
@@ -57,8 +58,9 @@ export class TelegramBotService {
   private botInfo: TelegramBotInfo | null = null;
   private appUrl: string = process.env.APP_URL || "https://ai.studio";
   private aiGenerator: ((prompt: string, history: { role: string; content: string }[], userId?: string) => Promise<string>) | null = null;
-  private userLoginStates: Map<number, UserLoginState> = new Map();
+  private userAuthStates: Map<number, UserAuthState> = new Map();
   private acceptedDisclaimers: Map<number, boolean> = new Map();
+  private abortController: AbortController | null = null;
 
   constructor(token?: string) {
     this.token = token || process.env.TELEGRAM_BOT_TOKEN || "8686494399:AAFqXXmzdsMXq4kCTBCjKXD_anJfzdw88SM";
@@ -74,6 +76,8 @@ export class TelegramBotService {
 
   public setToken(newToken: string) {
     this.token = newToken.trim();
+    this.lastUpdateId = 0; // CRITICAL: Reset update offset when switching bot tokens
+    this.botInfo = null;
   }
 
   public getBotInfo(): TelegramBotInfo | null {
@@ -82,6 +86,16 @@ export class TelegramBotService {
 
   public isConnected(): boolean {
     return this.isRunning && !!this.botInfo;
+  }
+
+  public async deleteWebhook(): Promise<boolean> {
+    try {
+      const res = await fetch(`https://api.telegram.org/bot${this.token}/deleteWebhook?drop_pending_updates=false`);
+      const data = await res.json().catch(() => null);
+      return !!data?.ok;
+    } catch (_) {
+      return false;
+    }
   }
 
   public async verifyToken(): Promise<{ valid: boolean; botInfo?: TelegramBotInfo; error?: string }> {
@@ -100,6 +114,17 @@ export class TelegramBotService {
 
   public async start() {
     if (this.isRunning) return;
+
+    // Load persisted token from Firestore if available
+    try {
+      const teleDoc = await getDoc(doc(db, "settings", "telegram"));
+      if (teleDoc.exists() && teleDoc.data()?.token) {
+        this.token = teleDoc.data().token.trim();
+      }
+    } catch (_) {}
+
+    // Clear any previous webhooks that cause 409 conflict
+    await this.deleteWebhook();
     
     const check = await this.verifyToken();
     if (!check.valid) {
@@ -114,14 +139,22 @@ export class TelegramBotService {
 
   public stop() {
     this.isRunning = false;
+    if (this.abortController) {
+      try {
+        this.abortController.abort();
+      } catch (_) {}
+      this.abortController = null;
+    }
     console.log("[Telegram Bot] Stopped long polling.");
   }
 
   private async pollUpdates() {
     while (this.isRunning) {
       try {
+        this.abortController = new AbortController();
         const url = `https://api.telegram.org/bot${this.token}/getUpdates?offset=${this.lastUpdateId + 1}&timeout=15`;
-        const res = await fetch(url);
+        const res = await fetch(url, { signal: this.abortController.signal });
+
         if (res.ok) {
           const data = await res.json();
           if (data.ok && Array.isArray(data.result)) {
@@ -139,10 +172,18 @@ export class TelegramBotService {
               }
             }
           }
+        } else if (res.status === 409) {
+          console.warn("[Telegram Bot] 409 Conflict received, clearing webhook and retrying in 4s...");
+          await this.deleteWebhook();
+          await new Promise(r => setTimeout(r, 4000));
+        } else if (res.status === 401 || res.status === 404) {
+          console.warn(`[Telegram Bot] Invalid token (${res.status}). Waiting before retry...`);
+          await new Promise(r => setTimeout(r, 8000));
         }
       } catch (err: any) {
-        // Suppress network logs on standard polling timeouts
-        await new Promise(r => setTimeout(r, 5000));
+        if (!this.isRunning) break;
+        // Suppress expected AbortError / polling network hiccups
+        await new Promise(r => setTimeout(r, 2000));
       }
     }
   }
@@ -206,7 +247,6 @@ export class TelegramBotService {
 
   public async sendMessage(chatId: number, text: string, replyMarkup?: any): Promise<boolean> {
     try {
-      // Split text into chunks if it exceeds Telegram's 4000 character limit
       const maxLength = 3800;
       const chunks: string[] = [];
       
@@ -244,7 +284,7 @@ export class TelegramBotService {
           body: JSON.stringify(payload)
         });
 
-        // If Markdown parsing fails due to unescaped special symbols, retry without parse_mode
+        // If Markdown parsing fails due to unescaped characters, retry without parse_mode
         if (!res.ok) {
           delete payload.parse_mode;
           res = await fetch(`https://api.telegram.org/bot${this.token}/sendMessage`, {
@@ -278,11 +318,84 @@ export class TelegramBotService {
         return { success: false, error: "Incorrect password or email address." };
       }
       if (errMsg.includes("EMAIL_NOT_FOUND")) {
-        return { success: false, error: "No account registered with this email on the website." };
+        return { success: false, error: "No account registered with this email. Send /register to create one." };
       }
       return { success: false, error: errMsg };
     } catch (err: any) {
       return { success: false, error: err?.message || "Authentication network error." };
+    }
+  }
+
+  private async registerWithFirebase(email: string, pass: string, telegramUserId: number, telegramUsername?: string): Promise<{ success: boolean; uid?: string; error?: string }> {
+    const apiKey = "AIzaSyBy0g8e-YgsI7fscFQWoRiWbpL7fXO6hho";
+    try {
+      const trimmedEmail = email.trim().toLowerCase();
+      if (!trimmedEmail.includes("@") || !trimmedEmail.includes(".")) {
+        return { success: false, error: "Invalid email address format." };
+      }
+      if (!pass || pass.length < 6) {
+        return { success: false, error: "Password must be at least 6 characters long." };
+      }
+
+      const res = await fetch(`https://identitytoolkit.googleapis.com/v1/accounts:signUp?key=${apiKey}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: trimmedEmail, password: pass, returnSecureToken: true })
+      });
+      const data = await res.json();
+      if (res.ok && data.localId) {
+        const uid = data.localId;
+        const idToken = data.idToken;
+
+        // Send email verification link
+        if (idToken) {
+          fetch(`https://identitytoolkit.googleapis.com/v1/accounts:sendOobCode?key=${apiKey}`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ requestType: "VERIFY_EMAIL", idToken })
+          }).catch(() => {});
+        }
+
+        // Create user profile in Firestore
+        try {
+          const now = Date.now();
+          const today = new Date().toISOString().split('T')[0];
+          await setDoc(doc(db, "users", uid), {
+            uid,
+            email: trimmedEmail,
+            displayName: trimmedEmail.split("@")[0],
+            tier: "free",
+            messageCount: 0,
+            lastMessageDate: today,
+            lastResetTime: now,
+            isAdmin: false,
+            isVerified: false,
+            telegramId: telegramUserId,
+            telegramUsername: telegramUsername || "",
+            createdAt: new Date().toISOString(),
+            disclaimerAccepted: true,
+            disclaimerAcceptedAt: new Date().toISOString()
+          }, { merge: true });
+        } catch (dbErr) {
+          console.warn("[Telegram Bot] Error saving new user document:", dbErr);
+        }
+
+        return { success: true, uid };
+      }
+
+      const errMsg = data.error?.message || "REGISTRATION_FAILED";
+      if (errMsg.includes("EMAIL_EXISTS")) {
+        return { success: false, error: "An account with this email already exists! Send /login to log in." };
+      }
+      if (errMsg.includes("WEAK_PASSWORD")) {
+        return { success: false, error: "Password is too weak. Please use at least 6 characters (letters and numbers)." };
+      }
+      if (errMsg.includes("INVALID_EMAIL")) {
+        return { success: false, error: "Invalid email address format." };
+      }
+      return { success: false, error: errMsg };
+    } catch (err: any) {
+      return { success: false, error: err?.message || "Registration network error." };
     }
   }
 
@@ -372,16 +485,19 @@ export class TelegramBotService {
 
       const confirmMsg = `🎉 *DISCLAIMER ACCEPTED & VERIFIED!*
 
-Welcome to **VOID AI**. You have acknowledged and accepted the official platform disclaimer.
+Welcome to **VOID AI**. You have acknowledged and accepted the official platform terms.
 
-🔐 *Next Step:* Log in with your website account to activate all features and tier privileges:
-• Send \`/login\` to log in step-by-step
-• Or send \`/login email@example.com password\` to log in instantly!`;
+🔐 *Next Step:* Connect your account or create a new one to activate free AI messages:
+• Click **Log In** below if you have an existing account
+• Click **Create Account** to register instantly!`;
 
       const replyMarkup = {
         inline_keyboard: [
           [
-            { text: "🔑 Login Now", callback_data: "start_login" },
+            { text: "🔑 Log In", callback_data: "start_login" },
+            { text: "✨ Create Account / Register", callback_data: "start_register" }
+          ],
+          [
             { text: "📲 Contact Admin @nova_tech_1", url: "https://t.me/nova_tech_1" }
           ]
         ]
@@ -390,8 +506,12 @@ Welcome to **VOID AI**. You have acknowledged and accepted the official platform
       await this.sendMessage(chatId, confirmMsg, replyMarkup);
     } else if (data === "start_login") {
       await this.answerCallbackQuery(queryData.id);
-      this.userLoginStates.set(telegramUserId, { step: 'AWAITING_EMAIL', timestamp: Date.now() });
-      await this.sendMessage(chatId, `📧 *VOID AI Website Login (Step 1/2)*\n\nPlease send your **website registered email address**:`);
+      this.userAuthStates.set(telegramUserId, { mode: 'LOGIN', step: 'AWAITING_EMAIL', timestamp: Date.now() });
+      await this.sendMessage(chatId, `📧 *VOID AI Account Login (Step 1/2)*\n\nPlease send your **registered email address**:`);
+    } else if (data === "start_register") {
+      await this.answerCallbackQuery(queryData.id);
+      this.userAuthStates.set(telegramUserId, { mode: 'REGISTER', step: 'AWAITING_EMAIL', timestamp: Date.now() });
+      await this.sendMessage(chatId, `✨ *VOID AI Account Registration (Step 1/2)*\n\nPlease send your **email address** to create your VOID AI account:`);
     }
   }
 
@@ -404,11 +524,11 @@ Welcome to **VOID AI**. You have acknowledged and accepted the official platform
 
     console.log(`[Telegram Bot] Message from ${senderName} (${chatId}): "${text.slice(0, 50)}"`);
 
-    // Clean up expired login states (older than 10 mins)
+    // Clean up expired auth states (older than 10 mins)
     const now = Date.now();
-    const currentState = this.userLoginStates.get(telegramUserId);
+    const currentState = this.userAuthStates.get(telegramUserId);
     if (currentState && now - currentState.timestamp > 10 * 60 * 1000) {
-      this.userLoginStates.delete(telegramUserId);
+      this.userAuthStates.delete(telegramUserId);
     }
 
     const linkedUser = await this.getLinkedUser(telegramUserId);
@@ -455,28 +575,30 @@ Welcome to **VOID AI**. You have acknowledged and accepted the official platform
 
 Hello, *${senderName}*! 👋
 
-I am your official **VOID AI Assistant** connected directly to the website platform!`;
+I am your official **VOID AI Assistant**!`;
 
       if (linkedUser) {
         welcomeText += `\n\n✅ *Account Status:* Logged In as \`${linkedUser.email}\`
 👑 *Tier Plan:* *${linkedUser.tier}*
-🔓 *Access:* Full Website Privileges Active!
+🔓 *Access:* Full AI Privileges Active (Resets every 2 hours)!
 
-Send any message below to chat with VOID AI directly in Telegram!`;
+Send any message below to chat with VOID AI directly!`;
       } else {
-        welcomeText += `\n\n🔐 *Authentication Required*
-To access VOID AI with all your website features, tier privileges, and saved chat history, please log in with your website email & password.
+        welcomeText += `\n\n🔐 *Account Connection Required*
+To chat with VOID AI, please log in with your account or create a new account in seconds.
 
-💡 *How to Log In:*
+💡 *Quick Commands:*
+• Send \`/register\` to create a new account
 • Send \`/login\` to log in step-by-step
 • Or send \`/login email@example.com password\``;
       }
 
       welcomeText += `\n\n🌐 *Commands:*
-/login - Log in with website account
-/status - View system status & active tier
-/topup - Contact @nova_tech_1 to top up or upgrade plan
-/disclaimer - View platform terms & disclaimer
+/login - Log in with email & password
+/register - Create a new account
+/status - View active tier & remaining messages
+/topup - Contact @nova_tech_1 to upgrade plan
+/disclaimer - View terms & disclaimer
 /logout - Log out from Telegram
 /help - View user guide`;
 
@@ -487,10 +609,22 @@ To access VOID AI with all your website features, tier privileges, and saved cha
 /users - View registered users overview`;
       }
 
-      // Send the official VOID AI Logo image
-      await this.sendPhoto(chatId, logoUrl, welcomeText);
+      const replyMarkup = !linkedUser ? {
+        inline_keyboard: [
+          [
+            { text: "🔑 Log In", callback_data: "start_login" },
+            { text: "✨ Create Account / Register", callback_data: "start_register" }
+          ],
+          [
+            { text: "📲 Contact Admin @nova_tech_1", url: "https://t.me/nova_tech_1" }
+          ]
+        ]
+      } : undefined;
 
-      // Send Disclaimer block
+      // Send the official VOID AI Logo image
+      await this.sendPhoto(chatId, logoUrl, welcomeText, replyMarkup);
+
+      // Send Disclaimer block if not accepted
       if (!isAccepted) {
         const disclaimerMarkup = {
           inline_keyboard: [
@@ -507,7 +641,7 @@ To access VOID AI with all your website features, tier privileges, and saved cha
       return;
     }
 
-    // Enforce Disclaimer Acceptance for all other commands & messages
+    // Enforce Disclaimer Acceptance
     if (!(await this.isDisclaimerAccepted(telegramUserId))) {
       const logoUrl = `${process.env.APP_URL || "https://ai.studio"}/void-logo.jpg`;
       await this.sendPhoto(chatId, logoUrl, `⚠️ *VOID AI Disclaimer Acceptance Required*\n\nHello, *${senderName}*! To use VOID AI, you must first acknowledge and accept our platform terms & disclaimer.`);
@@ -530,10 +664,11 @@ To access VOID AI with all your website features, tier privileges, and saved cha
     if (text === "/help") {
       let helpText = `📚 *VOID AI Telegram Assistant Guide*
 
-• */login:* Log in using your website account email & password.
-• */topup:* Contact admin @nova_tech_1 to top up tokens or upgrade tier.
+• */register:* Create a new account directly from Telegram.
+• */login:* Log in using your email & password.
+• */status:* View active tier plan & 2-hour limits.
+• */topup:* Contact admin @nova_tech_1 to upgrade tier.
 • */logout:* Log out your Telegram session.
-• */status:* View active AI engine & tier plan privileges.
 • */clear:* Clear current chat context.`;
 
       if (isAdmin) {
@@ -544,7 +679,6 @@ To access VOID AI with all your website features, tier privileges, and saved cha
 • \`/revoke user@example.com\``;
       }
 
-      helpText += `\n\nNeed top-up or custom plan support? Message **@nova_tech_1** on Telegram!`;
       await this.sendMessage(chatId, helpText);
       return;
     }
@@ -553,7 +687,7 @@ To access VOID AI with all your website features, tier privileges, and saved cha
     if (text === "/topup" || text === "/buy" || text === "/upgrade") {
       const topupText = `💳 *VOID AI Plan Top-Up & Upgrades*
 
-To top up your account limits, purchase additional AI tokens, or upgrade your plan (Pro, Premium, VIP):
+To top up your limits or upgrade your plan (Pro, Premium, VIP):
 
 📲 **Contact Admin directly on Telegram:**
 👉 [@nova_tech_1](https://t.me/nova_tech_1)
@@ -571,7 +705,7 @@ Once approved, the admin will grant your upgrade using \`/grant\` and your accou
       return;
     }
 
-    // Admin Command: /grant <tier> <email> or /grant <email> <tier>
+    // Admin Command: /grant <tier> <email>
     if (text.startsWith("/grant")) {
       if (!isAdmin) {
         await this.sendMessage(chatId, `⚠️ *Access Denied:* Only admin (@nova_tech_1) can execute \`/grant\` commands.`);
@@ -580,16 +714,13 @@ Once approved, the admin will grant your upgrade using \`/grant\` and your accou
 
       const parts = text.split(" ").filter((p: string) => p.trim().length > 0);
       if (parts.length < 2) {
-        await this.sendMessage(chatId, `⚠️ *Usage:* \`/grant <tier> <user_email>\`
-Example: \`/grant premium user@example.com\`
-Example: \`/grant vip user@example.com\`
-Available Tiers: \`pro\`, \`premium\`, \`vip\`, \`god_mode\`, \`free\``);
+        await this.sendMessage(chatId, `⚠️ *Usage:* \`/grant <tier> <user_email>\`\nExample: \`/grant premium user@example.com\``);
         return;
       }
 
       const knownTiers = ["free", "pro", "premium", "vip", "god_mode"];
       let targetEmail = "";
-      let targetTier = "vip"; // default if tier not specified
+      let targetTier = "vip";
 
       for (let i = 1; i < parts.length; i++) {
         const arg = parts[i].trim().toLowerCase();
@@ -613,7 +744,7 @@ Available Tiers: \`pro\`, \`premium\`, \`vip\`, \`god_mode\`, \`free\``);
         const snapshot = await getDocs(q);
 
         if (snapshot.empty) {
-          await this.sendMessage(chatId, `❌ *User Not Found:* No account registered with email \`${targetEmail}\` in Firestore database. Make sure they registered on the website first!`);
+          await this.sendMessage(chatId, `❌ *User Not Found:* No account registered with email \`${targetEmail}\`. They can create an account using \`/register\`!`);
           return;
         }
 
@@ -621,7 +752,6 @@ Available Tiers: \`pro\`, \`premium\`, \`vip\`, \`god_mode\`, \`free\``);
         const userData = userDoc.data();
         const targetTelegramId = userData.telegramId;
 
-        // Update Tier in Firestore
         await setDoc(doc(db, "users", userDoc.id), {
           tier: targetTier,
           isPaid: targetTier !== 'free',
@@ -629,24 +759,16 @@ Available Tiers: \`pro\`, \`premium\`, \`vip\`, \`god_mode\`, \`free\``);
           tierGrantedAt: new Date().toISOString()
         }, { merge: true });
 
-        // If target user is on Telegram, send direct notification
-        let userNotified = false;
         if (targetTelegramId) {
-          userNotified = await this.sendMessage(Number(targetTelegramId), `🎉 *Plan Upgrade Granted!*
+          await this.sendMessage(Number(targetTelegramId), `🎉 *Plan Upgrade Granted!*
 
 Your VOID AI account (\`${targetEmail}\`) has been upgraded to the **${targetTier.toUpperCase()}** plan by **@nova_tech_1**!
-
-✨ All limits, high-speed AI generation, and tier features are active! Send any prompt below to chat with VOID AI.`);
+✨ All 2-hour limits and tier features are active! Send any prompt to chat.`);
         }
 
-        // Confirmation to Admin
         await this.sendMessage(chatId, `✅ *Grant Successful!*
-
-👤 **User Email:** \`${targetEmail}\`
-👑 **Granted Tier:** *${targetTier.toUpperCase()}*
-📲 **Telegram Notification Sent:** ${userNotified ? 'Yes 📲' : 'No (User not connected on Telegram yet) 🌐'}
-
-The user's website and Telegram limits are now updated!`);
+👤 User: \`${targetEmail}\`
+👑 Granted Tier: *${targetTier.toUpperCase()}*`);
       } catch (err: any) {
         await this.sendMessage(chatId, `❌ *Error executing grant:* ${err?.message || "Database error"}`);
       }
@@ -656,7 +778,7 @@ The user's website and Telegram limits are now updated!`);
     // Admin Command: /revoke <email>
     if (text.startsWith("/revoke")) {
       if (!isAdmin) {
-        await this.sendMessage(chatId, `⚠️ *Access Denied:* Only admin (@nova_tech_1) can execute \`/revoke\` commands.`);
+        await this.sendMessage(chatId, `⚠️ *Access Denied:* Admin command only.`);
         return;
       }
 
@@ -717,9 +839,7 @@ The user's website and Telegram limits are now updated!`);
 • **Free:** ${freeCount}
 • **Pro:** ${proCount}
 • **Premium:** ${premiumCount}
-• **VIP:** ${vipCount}
-
-💡 Use \`/grant <tier> <email>\` to upgrade any user account!`);
+• **VIP:** ${vipCount}`);
       } catch (err: any) {
         await this.sendMessage(chatId, `❌ Failed to fetch users: ${err?.message}`);
       }
@@ -728,12 +848,19 @@ The user's website and Telegram limits are now updated!`);
 
     // Command: /status or /account or /profile
     if (text === "/status" || text === "/account" || text === "/profile") {
-      let statusText = `⚡ *System & AI Engine Status*\n\n🟢 *Telegram Bot:* Active (@${this.botInfo?.username || 'VoidAiBot'})\n🤖 *Primary AI:* Groq LLaMA 3.1 & Cohere Failover Pool\n🔒 *Security:* Server-Side Encrypted Routing\n`;
+      let statusText = `⚡ *System & AI Engine Status*\n\n🟢 *Telegram Bot:* Active (@${this.botInfo?.username || 'VoidAiBot'})\n🤖 *Engine:* Multi-Provider Rotation Pool (Groq/Cohere/BazaarLink)\n⏳ *Reset Window:* Every 2 hours\n`;
 
       if (linkedUser) {
-        statusText += `\n👤 *Account Email:* \`${linkedUser.email}\`\n👑 *Website Tier:* *${linkedUser.tier}*\n⚡ *Privileges:* Fully Active & Synced!`;
+        try {
+          const uSnap = await getDoc(doc(db, "users", linkedUser.uid));
+          const uD = uSnap.data();
+          const msgs = uD?.messageCount || 0;
+          statusText += `\n👤 *Account Email:* \`${linkedUser.email}\`\n👑 *Plan Tier:* *${linkedUser.tier}*\n📊 *Messages in Window:* ${msgs}\n⚡ *Privileges:* Fully Synced!`;
+        } catch (_) {
+          statusText += `\n👤 *Account Email:* \`${linkedUser.email}\`\n👑 *Plan Tier:* *${linkedUser.tier}*`;
+        }
       } else {
-        statusText += `\n⚠️ *Account Status:* Not Logged In\nSend \`/login\` to log in with your website account.`;
+        statusText += `\n⚠️ *Account Status:* Not Connected\nSend \`/register\` to create an account or \`/login\` to log in.`;
       }
 
       await this.sendMessage(chatId, statusText);
@@ -747,20 +874,60 @@ The user's website and Telegram limits are now updated!`);
           await setDoc(doc(db, "users", linkedUser.uid), { telegramId: null, telegramUsername: null }, { merge: true });
         } catch (_) {}
       }
-      this.userLoginStates.delete(telegramUserId);
-      await this.sendMessage(chatId, "🚪 *Logged Out Successfully.* Send `/login` anytime to log back in.");
+      this.userAuthStates.delete(telegramUserId);
+      await this.sendMessage(chatId, "🚪 *Logged Out Successfully.* Send `/login` or `/register` anytime to connect.");
+      return;
+    }
+
+    // Command: /register or /signup
+    if (text === "/register" || text.startsWith("/register ") || text === "/signup" || text.startsWith("/signup ")) {
+      const parts = text.split(" ").filter((p: string) => p.trim().length > 0);
+      if (parts.length === 1) {
+        // Start interactive step-by-step registration
+        this.userAuthStates.set(telegramUserId, { mode: 'REGISTER', step: 'AWAITING_EMAIL', timestamp: Date.now() });
+        await this.sendMessage(chatId, `✨ *VOID AI Account Registration (Step 1/2)*
+
+Please send the **email address** you want to use for your VOID AI account:`);
+        return;
+      }
+
+      // One-line registration: /register email password
+      const email = parts[1]?.trim().toLowerCase();
+      const pass = parts.slice(2).join(" ").trim();
+
+      if (!email || !email.includes("@") || !pass) {
+        await this.sendMessage(chatId, `⚠️ *Usage:* Send \`/register your-email@example.com yourpassword\` (min 6 characters)`);
+        return;
+      }
+
+      await this.sendTypingAction(chatId);
+      await this.deleteMessage(chatId, msg.message_id);
+
+      const regRes = await this.registerWithFirebase(email, pass, telegramUserId, msg.from?.username);
+      if (regRes.success && regRes.uid) {
+        await this.sendMessage(chatId, `🎉 *Account Created Successfully!*
+
+Welcome to **VOID AI**, *${email}*! 🚀
+• **Account Email:** \`${email}\`
+• **Tier Plan:** *FREE* (10 messages per 2 hours)
+• **Telegram Linked:** Yes ✅
+
+A verification link has been sent to your email. You can now send any prompt below to chat with VOID AI directly!`);
+      } else {
+        await this.sendMessage(chatId, `❌ *Registration Failed:* ${regRes.error || "Could not complete account creation."}\nPlease try again or send \`/register\`.`);
+      }
       return;
     }
 
     // Command: /login
     if (text === "/login" || text.startsWith("/login ")) {
-      const parts = text.split(" ");
+      const parts = text.split(" ").filter((p: string) => p.trim().length > 0);
       if (parts.length === 1) {
         // Start interactive step-by-step login
-        this.userLoginStates.set(telegramUserId, { step: 'AWAITING_EMAIL', timestamp: Date.now() });
-        await this.sendMessage(chatId, `📧 *VOID AI Website Login (Step 1/2)*
+        this.userAuthStates.set(telegramUserId, { mode: 'LOGIN', step: 'AWAITING_EMAIL', timestamp: Date.now() });
+        await this.sendMessage(chatId, `📧 *VOID AI Account Login (Step 1/2)*
 
-Please send your **website registered email address**:`);
+Please send your **account email address**:`);
         return;
       }
 
@@ -774,12 +941,10 @@ Please send your **website registered email address**:`);
       }
 
       await this.sendTypingAction(chatId);
-      // Attempt to delete password message for privacy
       await this.deleteMessage(chatId, msg.message_id);
 
       const authRes = await this.authenticateWithFirebase(email, pass);
       if (authRes.success && authRes.uid) {
-        // Link in Firestore
         await setDoc(doc(db, "users", authRes.uid), {
           telegramId: telegramUserId,
           telegramUsername: msg.from?.username || "",
@@ -793,92 +958,142 @@ Welcome back, *${updatedUser?.name || email}*! 🎉
 • **Account Email:** \`${email}\`
 • **Tier Plan:** *${updatedUser?.tier || 'FREE'}*
 
-All your website features, tier limits, and settings are now active on Telegram! Ask any question below to generate content.`);
+All your 2-hour limits and tier settings are active! Send any message below to chat with VOID AI.`);
       } else {
-        await this.sendMessage(chatId, `❌ *Login Failed:* ${authRes.error || "Invalid credentials."} Please try again.`);
+        await this.sendMessage(chatId, `❌ *Login Failed:* ${authRes.error || "Invalid credentials."}\nSend \`/login\` or \`/register\` to try again.`);
       }
       return;
     }
 
-    // Step-by-Step Login State Machine
-    const activeState = this.userLoginStates.get(telegramUserId);
+    // Interactive Auth State Machine (Login & Register)
+    const activeState = this.userAuthStates.get(telegramUserId);
     if (activeState) {
       if (activeState.step === 'AWAITING_EMAIL') {
         const inputEmail = text.toLowerCase();
-        if (!inputEmail.includes("@")) {
-          await this.sendMessage(chatId, `⚠️ *Invalid Email:* Please enter a valid email address (e.g., \`user@example.com\`):`);
+        if (!inputEmail.includes("@") || !inputEmail.includes(".")) {
+          await this.sendMessage(chatId, `⚠️ *Invalid Email:* Please enter a valid email address (e.g. \`user@example.com\`):`);
           return;
         }
 
-        // Check if user account exists
-        try {
-          const usersRef = collection(db, "users");
-          const q = query(usersRef, where("email", "==", inputEmail));
-          const snapshot = await getDocs(q);
-          if (snapshot.empty) {
-            await this.sendMessage(chatId, `❌ No account registered with email \`${inputEmail}\`. Please register on the website first, or check for typos. Send \`/login\` to retry.`);
-            this.userLoginStates.delete(telegramUserId);
-            return;
-          }
-        } catch (_) {}
+        if (activeState.mode === 'LOGIN') {
+          // Verify account exists before asking for password
+          try {
+            const usersRef = collection(db, "users");
+            const q = query(usersRef, where("email", "==", inputEmail));
+            const snapshot = await getDocs(q);
+            if (snapshot.empty) {
+              await this.sendMessage(chatId, `❌ No account registered with email \`${inputEmail}\`.\nSend \`/register\` to create a new account, or \`/login\` to check for typos.`);
+              this.userAuthStates.delete(telegramUserId);
+              return;
+            }
+          } catch (_) {}
 
-        // Move to Step 2
-        this.userLoginStates.set(telegramUserId, {
-          step: 'AWAITING_PASSWORD',
-          email: inputEmail,
-          timestamp: Date.now()
-        });
+          activeState.step = 'AWAITING_PASSWORD';
+          activeState.email = inputEmail;
+          activeState.timestamp = Date.now();
 
-        await this.sendMessage(chatId, `🔑 *VOID AI Website Login (Step 2/2)*
+          await this.sendMessage(chatId, `🔑 *VOID AI Account Login (Step 2/2)*
 
 Email: \`${inputEmail}\`
 
-Now please send your **website account password** to authenticate:`);
-        return;
+Now please send your **account password** to authenticate:`);
+          return;
+        } else if (activeState.mode === 'REGISTER') {
+          // Check if email already registered
+          try {
+            const usersRef = collection(db, "users");
+            const q = query(usersRef, where("email", "==", inputEmail));
+            const snapshot = await getDocs(q);
+            if (!snapshot.empty) {
+              await this.sendMessage(chatId, `⚠️ An account with \`${inputEmail}\` already exists! Send \`/login\` to log in.`);
+              this.userAuthStates.delete(telegramUserId);
+              return;
+            }
+          } catch (_) {}
+
+          activeState.step = 'AWAITING_PASSWORD';
+          activeState.email = inputEmail;
+          activeState.timestamp = Date.now();
+
+          await this.sendMessage(chatId, `🔐 *VOID AI Account Registration (Step 2/2)*
+
+Email: \`${inputEmail}\`
+
+Now choose and send a **password** (at least 6 characters) to secure your account:`);
+          return;
+        }
       }
 
       if (activeState.step === 'AWAITING_PASSWORD') {
         const email = activeState.email!;
         const password = text;
 
-        // Delete user's password message for privacy
         await this.deleteMessage(chatId, msg.message_id);
-        this.userLoginStates.delete(telegramUserId);
-
+        const mode = activeState.mode;
+        this.userAuthStates.delete(telegramUserId);
         await this.sendTypingAction(chatId);
-        const authRes = await this.authenticateWithFirebase(email, password);
 
-        if (authRes.success && authRes.uid) {
-          await setDoc(doc(db, "users", authRes.uid), {
-            telegramId: telegramUserId,
-            telegramUsername: msg.from?.username || "",
-            email: email
-          }, { merge: true });
+        if (mode === 'REGISTER') {
+          const regRes = await this.registerWithFirebase(email, password, telegramUserId, msg.from?.username);
+          if (regRes.success && regRes.uid) {
+            await this.sendMessage(chatId, `🎉 *Account Created Successfully!*
 
-          const updatedUser = await this.getLinkedUser(telegramUserId);
-          await this.sendMessage(chatId, `✅ *Login Successful!*
+Welcome to **VOID AI**, *${email}*! 🚀
+• **Account Email:** \`${email}\`
+• **Tier Plan:** *FREE* (10 messages per 2 hours)
+• **Telegram Linked:** Yes ✅
+
+Send any question below to chat with VOID AI directly!`);
+          } else {
+            await this.sendMessage(chatId, `❌ *Registration Failed:* ${regRes.error || "Could not complete account creation."}\nSend \`/register\` to try again.`);
+          }
+          return;
+        } else {
+          const authRes = await this.authenticateWithFirebase(email, password);
+          if (authRes.success && authRes.uid) {
+            await setDoc(doc(db, "users", authRes.uid), {
+              telegramId: telegramUserId,
+              telegramUsername: msg.from?.username || "",
+              email: email
+            }, { merge: true });
+
+            const updatedUser = await this.getLinkedUser(telegramUserId);
+            await this.sendMessage(chatId, `✅ *Login Successful!*
 
 Welcome back, *${updatedUser?.name || email}*! 🎉
 • **Account Email:** \`${email}\`
 • **Tier Plan:** *${updatedUser?.tier || 'FREE'}*
 
-All your website features, tier limits, and settings are active! Send any message below to chat with VOID AI.`);
-        } else {
-          await this.sendMessage(chatId, `❌ *Login Failed:* ${authRes.error || "Invalid password."}\nSend \`/login\` to try again.`);
+All your 2-hour limits and features are active! Send any prompt to chat.`);
+          } else {
+            await this.sendMessage(chatId, `❌ *Login Failed:* ${authRes.error || "Invalid password."}\nSend \`/login\` to try again.`);
+          }
+          return;
         }
-        return;
       }
     }
 
-    // Check if user is logged in for standard AI chat
+    // Check if user is linked for standard AI chat
     if (!linkedUser) {
-      await this.sendMessage(chatId, `🔐 *Website Login Required*
+      const replyMarkup = {
+        inline_keyboard: [
+          [
+            { text: "🔑 Log In", callback_data: "start_login" },
+            { text: "✨ Create Account / Register", callback_data: "start_register" }
+          ],
+          [
+            { text: "📲 Contact Admin @nova_tech_1", url: "https://t.me/nova_tech_1" }
+          ]
+        ]
+      };
 
-To chat with **VOID AI** on Telegram with all your website features, saved history, and tier privileges, please log in with your website account.
+      await this.sendMessage(chatId, `🔐 *Account Connection Required*
 
-💡 *How to Log In:*
-• Send \`/login\` to log in step-by-step
-• Or send \`/login email@example.com password\``);
+To chat with **VOID AI** on Telegram with full 2-hour reset limits, please log in with your existing account or create a new account in seconds!
+
+💡 *Quick Commands:*
+• Send \`/register\` to create a new account
+• Send \`/login\` to log in`, replyMarkup);
       return;
     }
 
@@ -887,23 +1102,103 @@ To chat with **VOID AI** on Telegram with all your website features, saved histo
       return;
     }
 
-    // Standard Chat Message -> AI Generation for Logged In User
-    await this.sendTypingAction(chatId);
+    // ─────────────────────────────────────────────────────────────
+    // Standard Chat Message -> AI Generation for Linked User
+    // ─────────────────────────────────────────────────────────────
 
     if (!this.aiGenerator) {
-      await this.sendMessage(chatId, "⚡ AI generator engine is loading. Please try again in a moment.");
+      await this.sendMessage(chatId, "⚡ AI generator engine is initializing. Please send your query again in a moment.");
       return;
     }
 
+    // 1. Check 2-Hour Limit Before Running AI
+    const TWO_HOURS_MS = 2 * 60 * 60 * 1000;
+    let userTier = linkedUser.tier.toLowerCase();
+    let messageCount = 0;
+    let lastResetTime = 0;
+    let freeLimit = 10;
+    let proLimit = 20;
+    let premiumLimit = 50;
+    let vipLimit = 99999;
+
+    try {
+      const [uSnap, bSnap] = await Promise.all([
+        getDoc(doc(db, "users", linkedUser.uid)),
+        getDoc(doc(db, "settings", "brain"))
+      ]);
+      if (uSnap.exists()) {
+        const uD = uSnap.data();
+        userTier = (uD.tier || userTier).toLowerCase();
+        messageCount = uD.messageCount || 0;
+        lastResetTime = uD.lastResetTime || 0;
+      }
+      if (bSnap.exists()) {
+        const bD = bSnap.data();
+        if (typeof bD.freeLimit === 'number') freeLimit = bD.freeLimit;
+        if (typeof bD.proLimit === 'number') proLimit = bD.proLimit;
+        if (typeof bD.premiumLimit === 'number') premiumLimit = bD.premiumLimit;
+      }
+    } catch (err) {
+      console.warn("[Telegram Bot] Could not load user limit from Firestore:", err);
+    }
+
+    const limitForTier = userTier === 'vip' || userTier === 'god_mode' ? vipLimit
+      : userTier === 'premium' ? premiumLimit
+      : userTier === 'pro' ? proLimit
+      : freeLimit;
+
+    const isWithin2Hours = lastResetTime > 0 && (now - lastResetTime < TWO_HOURS_MS);
+    const currentCount = isWithin2Hours ? messageCount : 0;
+
+    if (userTier !== 'vip' && userTier !== 'god_mode' && currentCount >= limitForTier) {
+      const msRemaining = Math.max(0, TWO_HOURS_MS - (now - lastResetTime));
+      const minsRemaining = Math.ceil(msRemaining / 60000);
+      const hours = Math.floor(minsRemaining / 60);
+      const mins = minsRemaining % 60;
+      const timeStr = hours > 0 ? `${hours}h ${mins}m` : `${mins}m`;
+
+      await this.sendMessage(chatId, `⚠️ *2-Hour Message Limit Reached!*
+
+You have used your limit of **${limitForTier} messages per 2 hours** on the **${userTier.toUpperCase()}** plan.
+⏳ Resets in: **${timeStr}**
+
+💡 Upgrade to PRO, PREMIUM, or VIP for higher limits! Contact @nova_tech_1 on Telegram.`);
+      return;
+    }
+
+    // 2. Keep typing action active every 4 seconds so Telegram doesn't stop typing
+    await this.sendTypingAction(chatId);
+    const typingInterval = setInterval(() => {
+      this.sendTypingAction(chatId).catch(() => {});
+    }, 4000);
+
     try {
       const aiReply = await this.aiGenerator(text, [], linkedUser.uid);
+      clearInterval(typingInterval);
+
+      // Only increment user message count if generation succeeded!
+      if (aiReply && !aiReply.startsWith("⚡ **VOID AI Notice:** AI engine is currently processing high demand")) {
+        try {
+          const today = new Date().toISOString().split('T')[0];
+          let newCount = currentCount + 1;
+          let newResetTime = isWithin2Hours ? lastResetTime : now;
+          await setDoc(doc(db, "users", linkedUser.uid), {
+            messageCount: newCount,
+            lastResetTime: newResetTime,
+            lastMessageDate: today
+          }, { merge: true });
+        } catch (_) {}
+      }
+
       await this.sendMessage(chatId, aiReply);
     } catch (err: any) {
+      clearInterval(typingInterval);
       console.error("[Telegram Bot] AI Generation error:", err);
-      await this.sendMessage(chatId, "⚡ *Notice:* System busy or temporary AI limit reached. Please send your query again in a few seconds.");
+      await this.sendMessage(chatId, "⚡ *Notice:* System busy or temporary AI limit reached. Your message credit was NOT deducted. Please send your query again in a moment.");
+    } finally {
+      clearInterval(typingInterval);
     }
   }
 }
 
 export const telegramBot = new TelegramBotService();
-

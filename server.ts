@@ -86,9 +86,29 @@ async function startServer() {
   // Bind AI generator to Telegram Bot Service and start polling only when NOT on Vercel serverless
   if (!process.env.VERCEL && !process.env.NOW_REGION && !process.env.AWS_LAMBDA_FUNCTION_NAME) {
     telegramBot.setAiGenerator(generateAiTextForTelegram);
-    telegramBot.start().catch(err => {
-      console.warn("[Telegram Bot] Initial startup error (continuing without bot):", err);
-    });
+    
+    // Load persisted custom bot token from Firestore if set
+    (async () => {
+      try {
+        const { getDoc, doc } = await import("firebase/firestore");
+        const { db } = await import("./src/config/firebase.js");
+        const teleDoc = await getDoc(doc(db, "settings", "telegram"));
+        if (teleDoc.exists() && teleDoc.data()?.token) {
+          telegramBot.setToken(teleDoc.data().token);
+        } else {
+          const apiDoc = await getDoc(doc(db, "settings", "apikeys"));
+          if (apiDoc.exists() && apiDoc.data()?.telegramBotToken) {
+            telegramBot.setToken(apiDoc.data().telegramBotToken);
+          }
+        }
+      } catch (err) {
+        console.warn("[Telegram Bot] Could not load persisted token from Firestore:", err);
+      }
+
+      telegramBot.start().catch(err => {
+        console.warn("[Telegram Bot] Initial startup error (continuing without bot):", err);
+      });
+    })();
   }
 
   // Vite middleware for development (AI Studio) or static hosting in production (Docker)
