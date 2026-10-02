@@ -141,7 +141,7 @@ export async function fetchUserAndTierSettings(userId?: string) {
     proPrompt: "Pro Tier Brain: Advanced marketing strategy, extended copy variations, deeper campaign analytics insights.",
     premiumPrompt: "Premium Tier Brain: Full campaign strategy suite, multi-stage funnel email sequences, conversion rate optimization hacks.",
     vipPrompt: "VIP Tier Brain: Unrestricted elite AI capabilities, custom bespoke campaign designs, 1-on-1 copy teardowns.",
-    freeLimit: 5,
+    freeLimit: 10,
     proLimit: 20,
     premiumLimit: 50,
     vipLimit: 99999,
@@ -166,7 +166,7 @@ export async function fetchUserAndTierSettings(userId?: string) {
         premiumPrompt: bData.premiumPrompt || brainSettings.premiumPrompt,
         vipPrompt: bData.vipPrompt || brainSettings.vipPrompt,
 
-        freeLimit: typeof bData.freeLimit === 'number' ? bData.freeLimit : brainSettings.freeLimit,
+        freeLimit: typeof bData.freeLimit === 'number' ? (bData.freeLimit === 5 ? 10 : bData.freeLimit) : brainSettings.freeLimit,
         proLimit: typeof bData.proLimit === 'number' ? bData.proLimit : brainSettings.proLimit,
         premiumLimit: typeof bData.premiumLimit === 'number' ? bData.premiumLimit : brainSettings.premiumLimit,
         vipLimit: typeof bData.vipLimit === 'number' ? bData.vipLimit : brainSettings.vipLimit,
@@ -636,7 +636,14 @@ export async function executeBazaarLinkWithRotation(messages: any[], systemPromp
   throw lastError || new Error("All BazaarLink keys and models failed");
 }
 
-export async function incrementUserMessageCountServer(userId: string) {
+const FREE_QUOTA_WINDOW_MS = 2 * 60 * 60 * 1000;
+const PAID_QUOTA_WINDOW_MS = 3 * 60 * 60 * 1000;
+
+function getQuotaWindowMs(tier: string) {
+  return tier === 'free' ? FREE_QUOTA_WINDOW_MS : PAID_QUOTA_WINDOW_MS;
+}
+
+export async function incrementUserMessageCountServer(userId: string, tier: string = 'free') {
   if (!userId) return;
   try {
     const userRef = doc(db, "users", userId);
@@ -644,12 +651,12 @@ export async function incrementUserMessageCountServer(userId: string) {
     if (userSnap.exists()) {
       const uData = userSnap.data();
       const now = Date.now();
-      const THREE_HOURS_MS = 3 * 60 * 60 * 1000;
+      const quotaWindowMs = getQuotaWindowMs(tier);
       const today = new Date().toISOString().split('T')[0];
       let lastResetTime = uData.lastResetTime || 0;
       let newCount = uData.messageCount || 0;
 
-      if (!lastResetTime || (now - lastResetTime >= THREE_HOURS_MS)) {
+      if (!lastResetTime || (now - lastResetTime >= quotaWindowMs)) {
         newCount = 1;
         lastResetTime = now;
       } else {
@@ -800,32 +807,33 @@ export function createApp(): express.Express {
         return;
       }
 
-      // Enforce 3-hour message limits per tier
+      // Enforce tier-specific message limits: free resets every 2 hours; paid tiers every 3 hours.
       const now = Date.now();
-      const THREE_HOURS_MS = 3 * 60 * 60 * 1000;
+      const quotaWindowMs = getQuotaWindowMs(tier);
+      const quotaWindowLabel = tier === 'free' ? '2 hours' : '3 hours';
       const limitForTier = tier === 'vip' ? brainSettings.vipLimit 
         : tier === 'premium' ? brainSettings.premiumLimit 
         : tier === 'pro' ? brainSettings.proLimit 
         : brainSettings.freeLimit;
 
-      const isWithin3Hours = lastResetTime > 0 && (now - lastResetTime < THREE_HOURS_MS);
-      const currentCount = isWithin3Hours ? (messageCount || 0) : 0;
+      const isWithinQuotaWindow = lastResetTime > 0 && (now - lastResetTime < quotaWindowMs);
+      const currentCount = isWithinQuotaWindow ? (messageCount || 0) : 0;
 
       if (tier !== 'vip' && currentCount >= limitForTier) {
-        const msRemaining = Math.max(0, THREE_HOURS_MS - (now - lastResetTime));
+        const msRemaining = Math.max(0, quotaWindowMs - (now - lastResetTime));
         const minsRemaining = Math.ceil(msRemaining / 60000);
         const hours = Math.floor(minsRemaining / 60);
         const mins = minsRemaining % 60;
         const timeStr = hours > 0 ? `${hours}h ${mins}m` : `${mins}m`;
 
-        res.write(`data: ${JSON.stringify({ text: `\n\n**Tier Limit Exceeded:** You have reached your limit of ${limitForTier} messages per 3 hours on the ${tier.toUpperCase()} plan. Your limit will reset in ${timeStr}. Upgrade your plan for higher limits.` })}\n\n`);
+        res.write(`data: ${JSON.stringify({ text: `\n\n**Tier Limit Exceeded:** You have reached your limit of ${limitForTier} messages per ${quotaWindowLabel} on the ${tier.toUpperCase()} plan. Your limit will reset in ${timeStr}. Upgrade your plan for higher limits.` })}\n\n`);
         res.write("data: [DONE]\n\n");
         res.end();
         return;
       }
 
       // Increment message count on server side
-      await incrementUserMessageCountServer(userId);
+      await incrementUserMessageCountServer(userId, tier);
 
       const maxTokens = (tier === 'vip' ? brainSettings.vipMaxTokens
         : tier === 'premium' ? brainSettings.premiumMaxTokens
@@ -1027,16 +1035,17 @@ The VOID AI interface will render a live 'Commit Directly to GitHub' button for 
       const { messageCount, lastResetTime, brainSettings } = await fetchUserAndTierSettings(userId);
 
       const now = Date.now();
-      const THREE_HOURS_MS = 3 * 60 * 60 * 1000;
+      const quotaWindowMs = getQuotaWindowMs(tier);
+      const quotaWindowLabel = tier === 'free' ? '2 hours' : '3 hours';
       const limitForTier = tier === 'vip' ? brainSettings.vipLimit 
         : tier === 'premium' ? brainSettings.premiumLimit 
         : tier === 'pro' ? brainSettings.proLimit 
         : brainSettings.freeLimit;
 
-      const isWithin3Hours = lastResetTime > 0 && (now - lastResetTime < THREE_HOURS_MS);
-      const currentCount = isWithin3Hours ? (messageCount || 0) : 0;
+      const isWithinQuotaWindow = lastResetTime > 0 && (now - lastResetTime < quotaWindowMs);
+      const currentCount = isWithinQuotaWindow ? (messageCount || 0) : 0;
       if (tier !== 'vip' && currentCount >= limitForTier) {
-        const msRemaining = Math.max(0, THREE_HOURS_MS - (now - lastResetTime));
+        const msRemaining = Math.max(0, quotaWindowMs - (now - lastResetTime));
         const minsRemaining = Math.ceil(msRemaining / 60000);
         const hours = Math.floor(minsRemaining / 60);
         const mins = minsRemaining % 60;
@@ -1044,14 +1053,14 @@ The VOID AI interface will render a live 'Commit Directly to GitHub' button for 
 
         return res.status(429).json({
           error: {
-            message: `Message limit of ${limitForTier} per 3 hours reached for your ${tier.toUpperCase()} tier. Resets in ${timeStr}. Please upgrade your plan on VOID AI.`,
+            message: `Message limit of ${limitForTier} per ${quotaWindowLabel} reached for your ${tier.toUpperCase()} tier. Resets in ${timeStr}. Please upgrade your plan on VOID AI.`,
             type: "rate_limit_error",
             code: "rate_limit_exceeded"
           }
         });
       }
 
-      await incrementUserMessageCountServer(userId);
+      await incrementUserMessageCountServer(userId, tier);
 
       const maxTokens = max_tokens || (tier === 'vip' ? brainSettings.vipMaxTokens
         : tier === 'premium' ? brainSettings.premiumMaxTokens

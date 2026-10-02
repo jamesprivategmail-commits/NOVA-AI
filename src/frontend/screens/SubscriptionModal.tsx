@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { X, Check, Crown, ShieldAlert, Sparkles, Wallet, ArrowLeft, Send, CreditCard, History, Plus } from 'lucide-react';
-import { UserTier, PricingSettings, WalletTransaction } from '../../models/types';
-import { listenToPricingSettings, purchaseTierWithWallet, listenToWalletTransactions } from '../../database/db';
+import { UserTier, PricingSettings, AIBrainSettings, WalletTransaction } from '../../models/types';
+import { listenToPricingSettings, getAIBrainSettings, purchaseTierWithWallet, listenToWalletTransactions } from '../../database/db';
 import { clsx } from 'clsx';
 
 interface SubscriptionModalProps {
@@ -15,6 +15,7 @@ interface SubscriptionModalProps {
 export function SubscriptionModal({ userId, walletBalance = 0, onClose, currentTier, onRequestUpgrade }: SubscriptionModalProps) {
   const [loadingTier, setLoadingTier] = useState<UserTier | null>(null);
   const [pricing, setPricing] = useState<PricingSettings | null>(null);
+  const [brain, setBrain] = useState<AIBrainSettings | null>(null);
   const [billingCycle, setBillingCycle] = useState<'monthly' | 'yearly'>('monthly');
   const [txs, setTxs] = useState<WalletTransaction[]>([]);
   const [showHistory, setShowHistory] = useState(false);
@@ -24,6 +25,31 @@ export function SubscriptionModal({ userId, walletBalance = 0, onClose, currentT
       setPricing(settings);
     });
     return () => unsub();
+  }, []);
+
+  // Keep plan limits in sync with the values managed in Admin > AI Brain.
+  // The existing settings getter is intentionally reused; no Firebase/config
+  // modules are changed here. Refreshing while this modal is open also makes
+  // an admin update visible without requiring a page reload.
+  useEffect(() => {
+    let mounted = true;
+
+    const refreshBrainSettings = async () => {
+      try {
+        const settings = await getAIBrainSettings();
+        if (mounted) setBrain(settings);
+      } catch (error) {
+        console.warn('Unable to refresh subscription limits:', error);
+      }
+    };
+
+    refreshBrainSettings();
+    const refreshTimer = window.setInterval(refreshBrainSettings, 2000);
+
+    return () => {
+      mounted = false;
+      window.clearInterval(refreshTimer);
+    };
   }, []);
 
   useEffect(() => {
@@ -36,6 +62,9 @@ export function SubscriptionModal({ userId, walletBalance = 0, onClose, currentT
   }, [userId]);
 
   const isYearly = billingCycle === 'yearly';
+  const freeLimit = brain?.freeLimit ?? 10;
+  const proLimit = brain?.proLimit ?? 20;
+  const premiumLimit = brain?.premiumLimit ?? 50;
 
   const getPlanCost = (tier: UserTier): number => {
     if (tier === 'free') return 0;
@@ -94,9 +123,9 @@ export function SubscriptionModal({ userId, walletBalance = 0, onClose, currentT
       priceStr: '₦0',
       interval: '/forever',
       discountTag: null,
-      description: 'Standard AI assistant access with 5 free messages every 3 hours.',
+      description: `Standard AI assistant access with ${freeLimit} free messages every 2 hours.`,
       features: [
-        '5 free messages per 3 hours',
+        `${freeLimit} free messages per 2 hours`,
         'Standard response speed',
         'Basic email campaign generator',
         'Community user support'
@@ -113,9 +142,9 @@ export function SubscriptionModal({ userId, walletBalance = 0, onClose, currentT
       priceStr: `₦${getPlanCost('pro').toLocaleString()}`,
       interval: isYearly ? '/year' : '/month',
       discountTag: isYearly ? `${pricing?.proDiscount ?? 16}% OFF` : null,
-      description: 'Enhanced speeds with 20 messages every 3 hours.',
+      description: `Enhanced speeds with ${proLimit} messages every 3 hours.`,
       features: [
-        '20 messages per 3 hours',
+        `${proLimit} messages per 3 hours`,
         'Fast response generation',
         'Extended context tokens (1,024 max)',
         'Full Email Marketing Suite',
@@ -134,9 +163,9 @@ export function SubscriptionModal({ userId, walletBalance = 0, onClose, currentT
       priceStr: `₦${getPlanCost('premium').toLocaleString()}`,
       interval: isYearly ? '/year' : '/month',
       discountTag: isYearly ? `${pricing?.premiumDiscount ?? 16}% OFF` : null,
-      description: 'High volume limits with 50 messages every 3 hours.',
+      description: `High volume limits with ${premiumLimit} messages every 3 hours.`,
       features: [
-        '50 messages per 3 hours',
+        `${premiumLimit} messages per 3 hours`,
         'High-priority generation speed',
         '2,048 token max output limit',
         'Custom file exporter (PDF/CSV/Code)',

@@ -200,20 +200,20 @@ export function ChatScreen({ userId }: ChatScreenProps) {
     if (profile.tier === 'vip') return true;
 
     const now = Date.now();
-    const THREE_HOURS_MS = 3 * 60 * 60 * 1000;
+    const quotaWindowMs = profile.tier === 'free' ? 2 * 60 * 60 * 1000 : 3 * 60 * 60 * 1000;
     const lastResetTime = profile.lastResetTime || 0;
-    const isWithin3Hours = lastResetTime > 0 && (now - lastResetTime < THREE_HOURS_MS);
-    const currentCount = isWithin3Hours ? (profile.messageCount || 0) : 0;
+    const isWithinQuotaWindow = lastResetTime > 0 && (now - lastResetTime < quotaWindowMs);
+    const currentCount = isWithinQuotaWindow ? (profile.messageCount || 0) : 0;
 
-    const msRemaining = Math.max(0, THREE_HOURS_MS - (now - lastResetTime));
+    const msRemaining = Math.max(0, quotaWindowMs - (now - lastResetTime));
     const minsRemaining = Math.ceil(msRemaining / 60000);
     const hours = Math.floor(minsRemaining / 60);
     const mins = minsRemaining % 60;
     const timeStr = hours > 0 ? `${hours}h ${mins}m` : `${mins}m`;
 
     if (profile.tier === 'free') {
-      if (currentCount >= 5) {
-        alert(`Free tier limit reached (5 free messages per 3 hours). Your limit resets in ${timeStr}. Upgrade your plan for higher limits.`);
+      if (currentCount >= 10) {
+        alert(`Free tier limit reached (10 free messages per 2 hours). Your limit resets in ${timeStr}. Upgrade your plan for higher limits.`);
         setShowSubscription(true);
         return false;
       }

@@ -70,7 +70,7 @@ export function AdminDashboard({ onClose }: AdminDashboardProps) {
     proPrompt: "Pro Tier Brain: Advanced marketing strategy, extended copy variations, deeper campaign analytics insights.",
     premiumPrompt: "Premium Tier Brain: Full campaign strategy suite, multi-stage funnel email sequences, conversion rate optimization hacks.",
     vipPrompt: "VIP Tier Brain: Unrestricted elite AI capabilities, custom bespoke campaign designs, 1-on-1 copy teardowns.",
-    freeLimit: 5,
+    freeLimit: 10,
     proLimit: 20,
     premiumLimit: 50,
     vipLimit: 99999,
@@ -1200,7 +1200,7 @@ export function AdminDashboard({ onClose }: AdminDashboardProps) {
                       </label>
                       <div className="space-y-2">
                         <div>
-                          <span className="text-[10px] text-[#8d8d91] block mb-1">3-Hour Msgs Limit</span>
+                          <span className="text-[10px] text-[#8d8d91] block mb-1">2-Hour Msgs Limit</span>
                           <input
                             type="number"
                             value={brain.freeLimit}

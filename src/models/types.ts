@@ -64,7 +64,7 @@ export interface UserProfile {
   tier: UserTier;
   messageCount: number;
   lastMessageDate: string; // "YYYY-MM-DD"
-  lastResetTime?: number; // timestamp in ms for 3-hour reset window
+  lastResetTime?: number; // timestamp in ms for the current tier's reset window
   isAdmin: boolean;
   isSupportStaff?: boolean;
   isBanned?: boolean;
