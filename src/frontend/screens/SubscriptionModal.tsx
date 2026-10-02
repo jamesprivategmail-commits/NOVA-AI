@@ -93,7 +93,7 @@ export function SubscriptionModal({ userId, walletBalance = 0, onClose, currentT
     }
   };
 
-    const freeLimit = brainSettings?.freeLimit ?? 10;
+    const freeLimit = brainSettings?.freeLimit ?? 15;
     const proLimit = brainSettings?.proLimit ?? 20;
     const premiumLimit = brainSettings?.premiumLimit ?? 50;
 
@@ -105,9 +105,9 @@ export function SubscriptionModal({ userId, walletBalance = 0, onClose, currentT
       priceStr: '₦0',
       interval: '/forever',
       discountTag: null,
-      description: `Standard AI assistant access with ${freeLimit} free messages every 2 hours.`,
+      description: `Standard AI assistant access with ${freeLimit} free messages per day (resets every 2 hours).`,
       features: [
-        `${freeLimit} free messages per 2 hours (Resets every 2 hours)`,
+        `${freeLimit} free messages per day (Resets every 2 hours)`,
         'Standard response speed',
         'Basic email campaign generator',
         'Community user support'

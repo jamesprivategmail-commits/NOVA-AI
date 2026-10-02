@@ -1,5 +1,8 @@
 import { doc, getDoc, setDoc, collection, query, where, getDocs } from "firebase/firestore";
 import { db } from "../config/firebase.js";
+import { validateEmail, validatePassword } from "../utils/security.js";
+import fs from "fs";
+import path from "path";
 
 const DISCLAIMER_TEXT = `┏━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓
 ᴠᴏɪᴅ ᴀɪ • ᴅɪꜱᴄʟᴀɪᴍᴇR ⚠️
@@ -54,11 +57,13 @@ interface UserAuthState {
 export class TelegramBotService {
   private token: string;
   private isRunning: boolean = false;
+  private pollingSessionId: number = 0;
   private lastUpdateId: number = 0;
   private botInfo: TelegramBotInfo | null = null;
   private appUrl: string = process.env.APP_URL || "https://ai.studio";
   private aiGenerator: ((prompt: string, history: { role: string; content: string }[], userId?: string) => Promise<string>) | null = null;
   private userAuthStates: Map<number, UserAuthState> = new Map();
+  private userConversationHistory: Map<number, { role: string; content: string }[]> = new Map();
   private acceptedDisclaimers: Map<number, boolean> = new Map();
   private abortController: AbortController | null = null;
 
@@ -78,6 +83,11 @@ export class TelegramBotService {
     this.token = newToken.trim();
     this.lastUpdateId = 0; // CRITICAL: Reset update offset when switching bot tokens
     this.botInfo = null;
+    this.pollingSessionId++; // Invalidate any running polling loop
+    try {
+      const tokenFile = path.join(process.cwd(), ".telegram_token.json");
+      fs.writeFileSync(tokenFile, JSON.stringify({ token: this.token }), "utf8");
+    } catch (_) {}
   }
 
   public getBotInfo(): TelegramBotInfo | null {
@@ -100,6 +110,9 @@ export class TelegramBotService {
 
   public async verifyToken(): Promise<{ valid: boolean; botInfo?: TelegramBotInfo; error?: string }> {
     try {
+      if (!this.token || !this.token.includes(":")) {
+        return { valid: false, error: "Invalid bot token format (must contain colon ':' e.g. 123456:ABC...)" };
+      }
       const res = await fetch(`https://api.telegram.org/bot${this.token}/getMe`);
       const data = await res.json();
       if (data.ok && data.result) {
@@ -112,33 +125,67 @@ export class TelegramBotService {
     }
   }
 
-  public async start() {
-    if (this.isRunning) return;
+  public async start(overrideToken?: string) {
+    if (this.isRunning) {
+      this.stop();
+      await new Promise(r => setTimeout(r, 200));
+    }
 
-    // Load persisted token from Firestore if available
-    try {
-      const teleDoc = await getDoc(doc(db, "settings", "telegram"));
-      if (teleDoc.exists() && teleDoc.data()?.token) {
-        this.token = teleDoc.data().token.trim();
+    const currentSession = ++this.pollingSessionId;
+
+    if (overrideToken && overrideToken.trim()) {
+      this.setToken(overrideToken.trim());
+    } else {
+      // 1. Check local disk cache
+      try {
+        const tokenFile = path.join(process.cwd(), ".telegram_token.json");
+        if (fs.existsSync(tokenFile)) {
+          const raw = JSON.parse(fs.readFileSync(tokenFile, "utf8"));
+          if (raw?.token && typeof raw.token === "string" && raw.token.includes(":")) {
+            this.token = raw.token.trim();
+          }
+        }
+      } catch (_) {}
+
+      // 2. Load persisted token from Firestore if available
+      if (!this.token || !this.token.includes(":") || this.token === "8686494399:AAFqXXmzdsMXq4kCTBCjKXD_anJfzdw88SM") {
+        try {
+          const teleDoc = await getDoc(doc(db, "settings", "telegram"));
+          if (teleDoc.exists() && teleDoc.data()?.token) {
+            this.token = teleDoc.data().token.trim();
+          } else {
+            const apiDoc = await getDoc(doc(db, "settings", "apikeys"));
+            if (apiDoc.exists() && apiDoc.data()?.telegramBotToken) {
+              this.token = apiDoc.data().telegramBotToken.trim();
+            }
+          }
+        } catch (_) {}
       }
-    } catch (_) {}
+    }
+
+    if (!this.token || !this.token.includes(":")) {
+      console.warn("[Telegram Bot] No valid bot token configured yet.");
+      return;
+    }
 
     // Clear any previous webhooks that cause 409 conflict
     await this.deleteWebhook();
     
     const check = await this.verifyToken();
     if (!check.valid) {
-      console.warn(`[Telegram Bot] Token verification failed: ${check.error}. Bot will retry...`);
+      console.warn(`[Telegram Bot] Token verification failed: ${check.error}. Bot will wait for a valid token.`);
+      return;
     } else {
       console.log(`[Telegram Bot] Connected successfully! Bot username: @${this.botInfo?.username} (${this.botInfo?.first_name})`);
     }
 
     this.isRunning = true;
-    this.pollUpdates();
+    this.pollUpdates(currentSession);
   }
 
   public stop() {
     this.isRunning = false;
+    this.pollingSessionId++; // Invalidate current polling session
     if (this.abortController) {
       try {
         this.abortController.abort();
@@ -148,17 +195,22 @@ export class TelegramBotService {
     console.log("[Telegram Bot] Stopped long polling.");
   }
 
-  private async pollUpdates() {
-    while (this.isRunning) {
+  private async pollUpdates(sessionId: number) {
+    while (this.isRunning && sessionId === this.pollingSessionId) {
       try {
         this.abortController = new AbortController();
         const url = `https://api.telegram.org/bot${this.token}/getUpdates?offset=${this.lastUpdateId + 1}&timeout=15`;
         const res = await fetch(url, { signal: this.abortController.signal });
 
+        if (sessionId !== this.pollingSessionId) break;
+
         if (res.ok) {
           const data = await res.json();
+          if (sessionId !== this.pollingSessionId) break;
+
           if (data.ok && Array.isArray(data.result)) {
             for (const update of data.result) {
+              if (sessionId !== this.pollingSessionId) break;
               this.lastUpdateId = Math.max(this.lastUpdateId, update.update_id);
               if (update.message) {
                 this.handleMessage(update.message).catch(err => {
@@ -173,15 +225,15 @@ export class TelegramBotService {
             }
           }
         } else if (res.status === 409) {
-          console.warn("[Telegram Bot] 409 Conflict received, clearing webhook and retrying in 4s...");
+          console.warn("[Telegram Bot] 409 Conflict received, clearing webhook and retrying in 3s...");
           await this.deleteWebhook();
-          await new Promise(r => setTimeout(r, 4000));
+          await new Promise(r => setTimeout(r, 3000));
         } else if (res.status === 401 || res.status === 404) {
           console.warn(`[Telegram Bot] Invalid token (${res.status}). Waiting before retry...`);
           await new Promise(r => setTimeout(r, 8000));
         }
       } catch (err: any) {
-        if (!this.isRunning) break;
+        if (!this.isRunning || sessionId !== this.pollingSessionId) break;
         // Suppress expected AbortError / polling network hiccups
         await new Promise(r => setTimeout(r, 2000));
       }
@@ -210,6 +262,11 @@ export class TelegramBotService {
 
   public async sendPhoto(chatId: number, photoUrl: string, caption?: string, replyMarkup?: any): Promise<boolean> {
     try {
+      if (!photoUrl || photoUrl.includes("ai.studio") || photoUrl.includes("localhost") || !photoUrl.startsWith("http")) {
+        if (caption) return await this.sendMessage(chatId, caption, replyMarkup);
+        return false;
+      }
+
       const payload: any = {
         chat_id: chatId,
         photo: photoUrl,
@@ -236,7 +293,7 @@ export class TelegramBotService {
       if (!res.ok && caption) {
         return await this.sendMessage(chatId, caption, replyMarkup);
       }
-      return true;
+      return res.ok;
     } catch (err) {
       if (caption) {
         return await this.sendMessage(chatId, caption, replyMarkup);
@@ -293,6 +350,11 @@ export class TelegramBotService {
             body: JSON.stringify(payload)
           });
         }
+
+        if (!res.ok) {
+          console.warn(`[Telegram Bot] Delivery failed (HTTP ${res.status}) for chunk ${i+1}/${chunks.length}`);
+          return false;
+        }
       }
       return true;
     } catch (err) {
@@ -330,11 +392,13 @@ export class TelegramBotService {
     const apiKey = "AIzaSyBy0g8e-YgsI7fscFQWoRiWbpL7fXO6hho";
     try {
       const trimmedEmail = email.trim().toLowerCase();
-      if (!trimmedEmail.includes("@") || !trimmedEmail.includes(".")) {
-        return { success: false, error: "Invalid email address format." };
+      const emailValidation = validateEmail(trimmedEmail);
+      if (!emailValidation.valid) {
+        return { success: false, error: emailValidation.reason || "Invalid email address format." };
       }
-      if (!pass || pass.length < 6) {
-        return { success: false, error: "Password must be at least 6 characters long." };
+      const passValidation = validatePassword(pass);
+      if (!passValidation.valid) {
+        return { success: false, error: passValidation.reason || "Password must be at least 8 characters long and contain both letters and numbers." };
       }
 
       const res = await fetch(`https://identitytoolkit.googleapis.com/v1/accounts:signUp?key=${apiKey}`, {
@@ -423,6 +487,16 @@ export class TelegramBotService {
   public async isDisclaimerAccepted(telegramUserId: number): Promise<boolean> {
     if (this.acceptedDisclaimers.get(telegramUserId)) return true;
     try {
+      const disclaimersFile = path.join(process.cwd(), ".telegram_disclaimers.json");
+      if (fs.existsSync(disclaimersFile)) {
+        const list = JSON.parse(fs.readFileSync(disclaimersFile, "utf8"));
+        if (Array.isArray(list) && list.includes(telegramUserId)) {
+          this.acceptedDisclaimers.set(telegramUserId, true);
+          return true;
+        }
+      }
+    } catch (_) {}
+    try {
       const docRef = doc(db, "telegramDisclaimers", String(telegramUserId));
       const docSnap = await getDoc(docRef);
       if (docSnap.exists() && docSnap.data()?.accepted) {
@@ -462,6 +536,17 @@ export class TelegramBotService {
 
     if (data === "accept_disclaimer") {
       this.acceptedDisclaimers.set(telegramUserId, true);
+      try {
+        const disclaimersFile = path.join(process.cwd(), ".telegram_disclaimers.json");
+        let list: number[] = [];
+        if (fs.existsSync(disclaimersFile)) {
+          try { list = JSON.parse(fs.readFileSync(disclaimersFile, "utf8")); } catch (_) {}
+        }
+        if (!list.includes(telegramUserId)) {
+          list.push(telegramUserId);
+          fs.writeFileSync(disclaimersFile, JSON.stringify(list), "utf8");
+        }
+      } catch (_) {}
       try {
         await setDoc(doc(db, "telegramDisclaimers", String(telegramUserId)), {
           telegramId: telegramUserId,
@@ -887,7 +972,8 @@ Your VOID AI account (\`${targetEmail}\`) has been upgraded to the **${targetTie
         this.userAuthStates.set(telegramUserId, { mode: 'REGISTER', step: 'AWAITING_EMAIL', timestamp: Date.now() });
         await this.sendMessage(chatId, `✨ *VOID AI Account Registration (Step 1/2)*
 
-Please send the **email address** you want to use for your VOID AI account:`);
+Please send the **email address** you want to use for your VOID AI account:
+*(This account works across both the Website and Telegram)*`);
         return;
       }
 
@@ -895,8 +981,15 @@ Please send the **email address** you want to use for your VOID AI account:`);
       const email = parts[1]?.trim().toLowerCase();
       const pass = parts.slice(2).join(" ").trim();
 
-      if (!email || !email.includes("@") || !pass) {
-        await this.sendMessage(chatId, `⚠️ *Usage:* Send \`/register your-email@example.com yourpassword\` (min 6 characters)`);
+      const emailCheck = validateEmail(email || "");
+      if (!emailCheck.valid) {
+        await this.sendMessage(chatId, `⚠️ *Invalid Email:* ${emailCheck.reason || "Please use a valid email."}\nExample: \`/register name@example.com Password123\``);
+        return;
+      }
+
+      const passCheck = validatePassword(pass || "");
+      if (!passCheck.valid) {
+        await this.sendMessage(chatId, `⚠️ *Password Notice:* ${passCheck.reason || "Password must be at least 8 characters long with both letters and numbers."}`);
         return;
       }
 
@@ -909,10 +1002,13 @@ Please send the **email address** you want to use for your VOID AI account:`);
 
 Welcome to **VOID AI**, *${email}*! 🚀
 • **Account Email:** \`${email}\`
-• **Tier Plan:** *FREE* (10 messages per 2 hours)
+• **Tier Plan:** *FREE* (15 messages per 2 hours)
 • **Telegram Linked:** Yes ✅
 
-A verification link has been sent to your email. You can now send any prompt below to chat with VOID AI directly!`);
+📧 A verification link has been dispatched to your email address.
+🌐 **Cross-Platform Access:** You can now log into both the **VOID AI Web App** and this **Telegram Bot** using this exact email and password!
+
+Send any prompt below to chat with VOID AI directly!`);
       } else {
         await this.sendMessage(chatId, `❌ *Registration Failed:* ${regRes.error || "Could not complete account creation."}\nPlease try again or send \`/register\`.`);
       }
@@ -969,9 +1065,10 @@ All your 2-hour limits and tier settings are active! Send any message below to c
     const activeState = this.userAuthStates.get(telegramUserId);
     if (activeState) {
       if (activeState.step === 'AWAITING_EMAIL') {
-        const inputEmail = text.toLowerCase();
-        if (!inputEmail.includes("@") || !inputEmail.includes(".")) {
-          await this.sendMessage(chatId, `⚠️ *Invalid Email:* Please enter a valid email address (e.g. \`user@example.com\`):`);
+        const inputEmail = text.toLowerCase().trim();
+        const emailCheck = validateEmail(inputEmail);
+        if (!emailCheck.valid) {
+          await this.sendMessage(chatId, `⚠️ *Invalid Email:* ${emailCheck.reason || 'Please enter a valid email address.'}\nPlease send your email again:`);
           return;
         }
 
@@ -1019,7 +1116,10 @@ Now please send your **account password** to authenticate:`);
 
 Email: \`${inputEmail}\`
 
-Now choose and send a **password** (at least 6 characters) to secure your account:`);
+Now choose and send a **secure password**:
+• Minimum 8 characters
+• Must contain both letters and numbers
+*(Same login details for both the website and Telegram)*`);
           return;
         }
       }
@@ -1030,18 +1130,28 @@ Now choose and send a **password** (at least 6 characters) to secure your accoun
 
         await this.deleteMessage(chatId, msg.message_id);
         const mode = activeState.mode;
-        this.userAuthStates.delete(telegramUserId);
-        await this.sendTypingAction(chatId);
 
         if (mode === 'REGISTER') {
+          const passCheck = validatePassword(password);
+          if (!passCheck.valid) {
+            await this.sendMessage(chatId, `⚠️ *Password Requirements:* ${passCheck.reason || 'Password must be at least 8 characters long with both letters and numbers.'}\n\nPlease send a valid password:`);
+            return;
+          }
+
+          this.userAuthStates.delete(telegramUserId);
+          await this.sendTypingAction(chatId);
+
           const regRes = await this.registerWithFirebase(email, password, telegramUserId, msg.from?.username);
           if (regRes.success && regRes.uid) {
             await this.sendMessage(chatId, `🎉 *Account Created Successfully!*
 
 Welcome to **VOID AI**, *${email}*! 🚀
 • **Account Email:** \`${email}\`
-• **Tier Plan:** *FREE* (10 messages per 2 hours)
+• **Tier Plan:** *FREE* (15 messages per 2 hours)
 • **Telegram Linked:** Yes ✅
+
+📧 A confirmation link has been sent to your email inbox.
+🌐 **Web & Telegram Synced:** You can now log into the **VOID AI Web App** and this **Telegram Bot** using this exact email and password!
 
 Send any question below to chat with VOID AI directly!`);
           } else {
@@ -1049,6 +1159,9 @@ Send any question below to chat with VOID AI directly!`);
           }
           return;
         } else {
+          this.userAuthStates.delete(telegramUserId);
+          await this.sendTypingAction(chatId);
+
           const authRes = await this.authenticateWithFirebase(email, password);
           if (authRes.success && authRes.uid) {
             await setDoc(doc(db, "users", authRes.uid), {
@@ -1098,6 +1211,7 @@ To chat with **VOID AI** on Telegram with full 2-hour reset limits, please log i
     }
 
     if (text === "/clear") {
+      this.userConversationHistory.delete(chatId);
       await this.sendMessage(chatId, "🧹 *Conversation Memory Cleared!* Starting fresh chat context.");
       return;
     }
@@ -1116,7 +1230,7 @@ To chat with **VOID AI** on Telegram with full 2-hour reset limits, please log i
     let userTier = linkedUser.tier.toLowerCase();
     let messageCount = 0;
     let lastResetTime = 0;
-    let freeLimit = 10;
+    let freeLimit = 15;
     let proLimit = 20;
     let premiumLimit = 50;
     let vipLimit = 99999;
@@ -1137,6 +1251,7 @@ To chat with **VOID AI** on Telegram with full 2-hour reset limits, please log i
         if (typeof bD.freeLimit === 'number') freeLimit = bD.freeLimit;
         if (typeof bD.proLimit === 'number') proLimit = bD.proLimit;
         if (typeof bD.premiumLimit === 'number') premiumLimit = bD.premiumLimit;
+        if (typeof bD.vipLimit === 'number') vipLimit = bD.vipLimit;
       }
     } catch (err) {
       console.warn("[Telegram Bot] Could not load user limit from Firestore:", err);
@@ -1168,16 +1283,44 @@ You have used your limit of **${limitForTier} messages per 2 hours** on the **${
 
     // 2. Keep typing action active every 4 seconds so Telegram doesn't stop typing
     await this.sendTypingAction(chatId);
+    let typingActive = true;
     const typingInterval = setInterval(() => {
-      this.sendTypingAction(chatId).catch(() => {});
+      if (typingActive) {
+        this.sendTypingAction(chatId).catch(() => {});
+      }
     }, 4000);
 
     try {
-      const aiReply = await this.aiGenerator(text, [], linkedUser.uid);
+      const historyForAi = this.userConversationHistory.get(chatId) || [];
+      const aiPromise = this.aiGenerator(text, historyForAi, linkedUser.uid);
+      const timeoutPromise = new Promise<string>((_, reject) =>
+        setTimeout(() => reject(new Error("AI generation request timed out after 35s")), 35000)
+      );
+      const aiReply = await Promise.race([aiPromise, timeoutPromise]);
+      typingActive = false;
       clearInterval(typingInterval);
 
-      // Only increment user message count if generation succeeded!
-      if (aiReply && !aiReply.startsWith("⚡ **VOID AI Notice:** AI engine is currently processing high demand")) {
+      if (!aiReply || aiReply.includes("VOID AI Notice") || aiReply.includes("processing high demand")) {
+        await this.sendMessage(chatId, "⚡ *Notice:* System is currently experiencing peak traffic. Your message credits were NOT deducted. Please try sending your query again in a moment.");
+        return;
+      }
+
+      // CRITICAL: Deliver message first
+      const delivered = await this.sendMessage(chatId, aiReply);
+
+      // ONLY deduct/increment credit IF message was successfully delivered to Telegram
+      if (delivered) {
+        // Record message in multi-turn conversation memory
+        try {
+          const currentHist = this.userConversationHistory.get(chatId) || [];
+          currentHist.push({ role: 'user', content: text });
+          currentHist.push({ role: 'assistant', content: aiReply });
+          if (currentHist.length > 10) {
+            currentHist.splice(0, currentHist.length - 10);
+          }
+          this.userConversationHistory.set(chatId, currentHist);
+        } catch (_) {}
+
         try {
           const today = new Date().toISOString().split('T')[0];
           let newCount = currentCount + 1;
@@ -1187,15 +1330,20 @@ You have used your limit of **${limitForTier} messages per 2 hours** on the **${
             lastResetTime: newResetTime,
             lastMessageDate: today
           }, { merge: true });
-        } catch (_) {}
+        } catch (dbErr) {
+          console.warn("[Telegram Bot] Could not increment message count:", dbErr);
+        }
+      } else {
+        console.warn("[Telegram Bot] Message failed to deliver, NOT deducting user credit");
+        await this.sendMessage(chatId, "⚠️ *Notice:* Could not format response for Telegram. Your credits were NOT deducted. Please try asking again.");
       }
-
-      await this.sendMessage(chatId, aiReply);
     } catch (err: any) {
+      typingActive = false;
       clearInterval(typingInterval);
-      console.error("[Telegram Bot] AI Generation error:", err);
-      await this.sendMessage(chatId, "⚡ *Notice:* System busy or temporary AI limit reached. Your message credit was NOT deducted. Please send your query again in a moment.");
+      console.error("[Telegram Bot] AI Generation error:", err?.message || err);
+      await this.sendMessage(chatId, "⚡ *Notice:* System is busy or the request timed out. Your message credit was NOT deducted. Please resend your prompt.");
     } finally {
+      typingActive = false;
       clearInterval(typingInterval);
     }
   }

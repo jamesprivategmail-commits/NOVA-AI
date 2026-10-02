@@ -74,12 +74,12 @@ export async function incrementMessageCount(uid: string): Promise<UserProfile> {
     profile = userSnap.data() as UserProfile;
   }
   
-  const quotaWindowMs = profile.tier === 'free' ? 2 * 60 * 60 * 1000 : 3 * 60 * 60 * 1000;
+  const quotaWindowMs = 2 * 60 * 60 * 1000;
   let lastResetTime = profile.lastResetTime || 0;
   let newCount = profile.messageCount || 0;
 
   if (!lastResetTime || (now - lastResetTime >= quotaWindowMs)) {
-    newCount = 1; // Reset count for the current tier's quota window
+    newCount = 1; // Reset count every 2 hours
     lastResetTime = now;
   } else {
     newCount += 1;
@@ -406,7 +406,7 @@ export async function getAIBrainSettings(): Promise<AIBrainSettings> {
     premiumPrompt: "Premium Tier Brain: Full campaign strategy suite, multi-stage funnel email sequences, conversion rate optimization hacks.",
     vipPrompt: "VIP Tier Brain: Unrestricted elite AI capabilities, custom bespoke campaign designs, 1-on-1 copy teardowns.",
 
-    freeLimit: 10,
+    freeLimit: 15,
     proLimit: 20,
     premiumLimit: 50,
     vipLimit: 99999,
@@ -426,7 +426,7 @@ export async function getAIBrainSettings(): Promise<AIBrainSettings> {
       premiumPrompt: data.premiumPrompt || defaultBrain.premiumPrompt,
       vipPrompt: data.vipPrompt || defaultBrain.vipPrompt,
 
-      freeLimit: typeof data.freeLimit === 'number' ? (data.freeLimit === 5 ? 10 : data.freeLimit) : defaultBrain.freeLimit,
+      freeLimit: typeof data.freeLimit === 'number' ? data.freeLimit : defaultBrain.freeLimit,
       proLimit: typeof data.proLimit === 'number' ? data.proLimit : defaultBrain.proLimit,
       premiumLimit: typeof data.premiumLimit === 'number' ? data.premiumLimit : defaultBrain.premiumLimit,
       vipLimit: typeof data.vipLimit === 'number' ? data.vipLimit : defaultBrain.vipLimit,
@@ -458,7 +458,7 @@ export function listenToAIBrainSettings(callback: (brain: AIBrainSettings) => vo
         proPrompt: data.proPrompt || "Pro Tier Brain: Advanced marketing strategy, extended copy variations, deeper campaign analytics insights.",
         premiumPrompt: data.premiumPrompt || "Premium Tier Brain: Full campaign strategy suite, multi-stage funnel email sequences, conversion rate optimization hacks.",
         vipPrompt: data.vipPrompt || "VIP Tier Brain: Unrestricted elite AI capabilities, custom bespoke campaign designs, 1-on-1 copy teardowns.",
-        freeLimit: typeof data.freeLimit === 'number' ? data.freeLimit : 10,
+        freeLimit: typeof data.freeLimit === 'number' ? data.freeLimit : 15,
         proLimit: typeof data.proLimit === 'number' ? data.proLimit : 20,
         premiumLimit: typeof data.premiumLimit === 'number' ? data.premiumLimit : 50,
         vipLimit: typeof data.vipLimit === 'number' ? data.vipLimit : 99999,

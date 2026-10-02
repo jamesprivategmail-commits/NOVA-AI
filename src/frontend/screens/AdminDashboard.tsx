@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { UserProfile, SupportChat, PricingSettings, AIBrainSettings, SystemAPIKeys, BroadcastMessage, UserTier, WalletTransaction } from '../../models/types';
-import { listenToAllUsers, updateUserTier, updateUserStatus, updateUserVerification, updateUserSupportStaff, listenToAllSupportChats, getPricingSettings, updatePricingSettings, getAIBrainSettings, updateAIBrainSettings, getSystemAPIKeys, updateSystemAPIKeys, sendBroadcastMessage, listenToBroadcasts, deleteBroadcast, grantUserWalletFunds, withdrawUserWalletFunds, resetUserWalletBalance, listenToWalletTransactions } from '../../database/db';
-import { X, ArrowLeft, Shield, Crown, User, RefreshCw, Ban, CheckCircle, BadgeCheck, MessageSquare, ChevronUp, ChevronDown, DollarSign, Cpu, Save, Sparkles, Key, Eye, EyeOff, Lock, ShieldCheck, Trash2, Radio, Megaphone, Maximize2, Search, Check, Wallet, CreditCard, History, Plus } from 'lucide-react';
+import { listenToAllUsers, updateUserTier, updateUserStatus, updateUserVerification, updateUserSupportStaff, listenToAllSupportChats, getPricingSettings, updatePricingSettings, getAIBrainSettings, updateAIBrainSettings, listenToAIBrainSettings, getSystemAPIKeys, updateSystemAPIKeys, sendBroadcastMessage, listenToBroadcasts, deleteBroadcast, grantUserWalletFunds, withdrawUserWalletFunds, resetUserWalletBalance, listenToWalletTransactions } from '../../database/db';
+import { X, ArrowLeft, Shield, Crown, User, RefreshCw, Ban, CheckCircle, BadgeCheck, MessageSquare, ChevronUp, ChevronDown, DollarSign, Cpu, Save, Sparkles, Key, Eye, EyeOff, Lock, ShieldCheck, Trash2, Radio, Megaphone, Maximize2, Search, Check, Wallet, CreditCard, History, Plus, Bot, Send, ExternalLink } from 'lucide-react';
 import { clsx } from 'clsx';
 import { SupportChatScreen } from './SupportChatScreen';
 import { FullPageSupportDesk } from './FullPageSupportDesk';
@@ -14,7 +14,7 @@ export function AdminDashboard({ onClose }: AdminDashboardProps) {
   const [users, setUsers] = useState<UserProfile[]>([]);
   const [loading, setLoading] = useState(true);
   const [userSearchQuery, setUserSearchQuery] = useState('');
-  const [activeTab, setActiveTab] = useState<'users' | 'wallet' | 'broadcast' | 'support' | 'pricing' | 'brain' | 'apikeys'>('users');
+  const [activeTab, setActiveTab] = useState<'users' | 'wallet' | 'broadcast' | 'support' | 'pricing' | 'brain' | 'apikeys' | 'telegram'>('users');
   
   // Wallet Funding state
   const [fundingUser, setFundingUser] = useState<UserProfile | null>(null);
@@ -35,6 +35,15 @@ export function AdminDashboard({ onClose }: AdminDashboardProps) {
   const [broadcastMessage, setBroadcastMessage] = useState('');
   const [broadcastTargetTier, setBroadcastTargetTier] = useState<'all' | UserTier>('all');
   const [sendingBroadcast, setSendingBroadcast] = useState(false);
+
+  // Telegram Bot State
+  const [telegramStatus, setTelegramStatus] = useState<any>(null);
+  const [telegramTokenInput, setTelegramTokenInput] = useState('');
+  const [updatingTelegramToken, setUpdatingTelegramToken] = useState(false);
+  const [telegramNotice, setTelegramNotice] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
+  const [testTelegramChatId, setTestTelegramChatId] = useState('');
+  const [testTelegramMsg, setTestTelegramMsg] = useState('');
+  const [sendingTestTelegram, setSendingTestTelegram] = useState(false);
 
   const [pricing, setPricing] = useState<PricingSettings>({
     pro: 7000,
@@ -70,7 +79,7 @@ export function AdminDashboard({ onClose }: AdminDashboardProps) {
     proPrompt: "Pro Tier Brain: Advanced marketing strategy, extended copy variations, deeper campaign analytics insights.",
     premiumPrompt: "Premium Tier Brain: Full campaign strategy suite, multi-stage funnel email sequences, conversion rate optimization hacks.",
     vipPrompt: "VIP Tier Brain: Unrestricted elite AI capabilities, custom bespoke campaign designs, 1-on-1 copy teardowns.",
-    freeLimit: 10,
+    freeLimit: 15,
     proLimit: 20,
     premiumLimit: 50,
     vipLimit: 99999,
@@ -86,6 +95,79 @@ export function AdminDashboard({ onClose }: AdminDashboardProps) {
   const [sortField, setSortField] = useState<SortField>('email');
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
 
+  const fetchTelegramStatus = async () => {
+    try {
+      const res = await fetch('/api/telegram/status');
+      const data = await res.json();
+      setTelegramStatus(data);
+    } catch (_) {}
+  };
+
+  const handleUpdateTelegramToken = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    if (!telegramTokenInput.trim()) return;
+    setUpdatingTelegramToken(true);
+    setTelegramNotice(null);
+    try {
+      // 1. Direct authenticated write to Firestore so database stays updated
+      try {
+        const { setDoc, doc } = await import('firebase/firestore');
+        const { db } = await import('../../config/firebase');
+        await setDoc(doc(db, "settings", "telegram"), {
+          token: telegramTokenInput.trim(),
+          updatedAt: Date.now()
+        }, { merge: true });
+        await setDoc(doc(db, "settings", "apikeys"), {
+          telegramBotToken: telegramTokenInput.trim()
+        }, { merge: true });
+      } catch (fErr) {
+        console.warn("Direct Firestore update warning:", fErr);
+      }
+
+      const res = await fetch('/api/telegram/update-token', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ token: telegramTokenInput.trim() })
+      });
+      const data = await res.json();
+      if (data.success) {
+        setTelegramNotice({ type: 'success', message: 'Telegram Bot token reconnected successfully!' });
+        fetchTelegramStatus();
+      } else {
+        setTelegramNotice({ type: 'error', message: data.error || 'Failed to update token.' });
+      }
+    } catch (err: any) {
+      setTelegramNotice({ type: 'error', message: err?.message || 'Server connection error.' });
+    } finally {
+      setUpdatingTelegramToken(false);
+    }
+  };
+
+  const handleSendTestTelegram = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    if (!testTelegramChatId.trim()) return;
+    setSendingTestTelegram(true);
+    setTelegramNotice(null);
+    try {
+      const res = await fetch('/api/telegram/send-test', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ chatId: testTelegramChatId.trim(), message: testTelegramMsg.trim() || undefined })
+      });
+      const data = await res.json();
+      if (data.success) {
+        setTelegramNotice({ type: 'success', message: 'Test message sent to Telegram successfully! Check your Telegram chat.' });
+        setTestTelegramMsg('');
+      } else {
+        setTelegramNotice({ type: 'error', message: data.error || 'Failed to send test message.' });
+      }
+    } catch (err: any) {
+      setTelegramNotice({ type: 'error', message: err?.message || 'Network error.' });
+    } finally {
+      setSendingTestTelegram(false);
+    }
+  };
+
   useEffect(() => {
     setLoading(true);
     const unsubUsers = listenToAllUsers((fetchedUsers) => {
@@ -96,7 +178,12 @@ export function AdminDashboard({ onClose }: AdminDashboardProps) {
     const unsubBroadcasts = listenToBroadcasts((bList) => setBroadcastsList(bList));
     
     getPricingSettings().then(setPricing);
-    getAIBrainSettings().then(setBrain);
+    const unsubBrain = listenToAIBrainSettings((settings) => {
+      setBrain(settings);
+    });
+
+    fetchTelegramStatus();
+
     getSystemAPIKeys().then(keys => {
       const gKeys = keys.groqApiKeys && keys.groqApiKeys.length > 0 ? keys.groqApiKeys : (keys.groqApiKey ? [keys.groqApiKey] : []);
       const cKeys = keys.cohereApiKeys && keys.cohereApiKeys.length > 0 ? keys.cohereApiKeys : (keys.cohereApiKey ? [keys.cohereApiKey] : []);
@@ -105,6 +192,10 @@ export function AdminDashboard({ onClose }: AdminDashboardProps) {
       setBulkGroqText(gKeys.join('\n'));
       setBulkCohereText(cKeys.join('\n'));
       setBulkBazaarLinkText(bKeys.join('\n'));
+
+      if (keys.telegramBotToken) {
+        setTelegramTokenInput(keys.telegramBotToken);
+      }
 
       const gList = Array(10).fill('');
       gKeys.slice(0, 10).forEach((k, idx) => { gList[idx] = k; });
@@ -127,6 +218,7 @@ export function AdminDashboard({ onClose }: AdminDashboardProps) {
       unsubUsers();
       unsubChats();
       unsubBroadcasts();
+      unsubBrain();
       unsubTxs();
     };
   }, []);
@@ -234,14 +326,41 @@ export function AdminDashboard({ onClose }: AdminDashboardProps) {
       const parsedCohere = parseRawKeyInput(bulkCohereText, cohereKeysList);
       const parsedBazaarLink = parseRawKeyInput(bulkBazaarLinkText, bazaarLinkKeysList);
 
-      await updateSystemAPIKeys({ 
+      const payload: any = { 
         groqApiKey: parsedGroq[0] || '',
         groqApiKeys: parsedGroq,
         cohereApiKey: parsedCohere[0] || '',
         cohereApiKeys: parsedCohere,
         bazaarLinkApiKey: parsedBazaarLink[0] || '',
         bazaarLinkApiKeys: parsedBazaarLink
-      });
+      };
+
+      if (telegramTokenInput.trim()) {
+        payload.telegramBotToken = telegramTokenInput.trim();
+      }
+
+      await updateSystemAPIKeys(payload);
+
+      // If a telegram token was provided, also sync directly to settings/telegram and notify the backend
+      if (telegramTokenInput.trim()) {
+        try {
+          const { setDoc, doc } = await import('firebase/firestore');
+          const { db } = await import('../../config/firebase');
+          await setDoc(doc(db, "settings", "telegram"), {
+            token: telegramTokenInput.trim(),
+            updatedAt: Date.now()
+          }, { merge: true });
+        } catch (_) {}
+
+        try {
+          await fetch('/api/telegram/update-token', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ token: telegramTokenInput.trim() })
+          });
+          fetchTelegramStatus();
+        } catch (_) {}
+      }
 
       // Update bulk text and slots view to reflect saved keys
       setBulkGroqText(parsedGroq.join('\n'));
@@ -517,6 +636,20 @@ export function AdminDashboard({ onClose }: AdminDashboardProps) {
         >
           <Key size={15} />
           <span>API Key Room Vault</span>
+        </button>
+
+        <button 
+          onClick={() => setActiveTab('telegram')}
+          className={clsx(
+            "px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 shrink-0 border",
+            activeTab === 'telegram' 
+              ? "bg-sky-600 border-sky-500 text-white shadow-md shadow-sky-950/40" 
+              : "bg-[#161B22] border-[#30363D] text-white hover:text-white hover:bg-[#21262D]"
+          )}
+        >
+          <Bot size={15} className="text-sky-400" />
+          <span>Telegram Bot Integration</span>
+          <span className={clsx("w-2 h-2 rounded-full", telegramStatus?.connected ? "bg-emerald-400 animate-pulse" : "bg-red-500")} />
         </button>
       </nav>
 
@@ -1227,7 +1360,7 @@ export function AdminDashboard({ onClose }: AdminDashboardProps) {
                       </label>
                       <div className="space-y-2">
                         <div>
-                          <span className="text-[10px] text-[#8d8d91] block mb-1">3-Hour Msgs Limit</span>
+                          <span className="text-[10px] text-[#8d8d91] block mb-1">2-Hour Msgs Limit</span>
                           <input
                             type="number"
                             value={brain.proLimit}
@@ -1254,7 +1387,7 @@ export function AdminDashboard({ onClose }: AdminDashboardProps) {
                       </label>
                       <div className="space-y-2">
                         <div>
-                          <span className="text-[10px] text-[#8d8d91] block mb-1">3-Hour Msgs Limit</span>
+                          <span className="text-[10px] text-[#8d8d91] block mb-1">2-Hour Msgs Limit</span>
                           <input
                             type="number"
                             value={brain.premiumLimit}
@@ -1281,7 +1414,7 @@ export function AdminDashboard({ onClose }: AdminDashboardProps) {
                       </label>
                       <div className="space-y-2">
                         <div>
-                          <span className="text-[10px] text-[#8d8d91] block mb-1">3-Hour Msgs Limit</span>
+                          <span className="text-[10px] text-[#8d8d91] block mb-1">2-Hour Msgs Limit</span>
                           <input
                             type="number"
                             value={brain.vipLimit}
@@ -2022,6 +2155,29 @@ export function AdminDashboard({ onClose }: AdminDashboardProps) {
                   </div>
                 )}
 
+                {/* TELEGRAM BOT TOKEN IN VAULT */}
+                <div className="space-y-2 p-4 bg-[#252527]/60 border border-[#38383b] rounded-xl">
+                  <div className="flex items-center justify-between">
+                    <label className="text-xs font-bold text-sky-400 uppercase tracking-wider flex items-center gap-2">
+                      <Bot size={15} />
+                      <span>Telegram Bot Token (HTTP API from @BotFather)</span>
+                    </label>
+                    <span className="text-[10px] text-[#8d8d91] font-mono px-2 py-0.5 rounded bg-[#1e2330] border border-[#2b354d]">
+                      {telegramStatus?.connected ? "🟢 BOT CONNECTED" : "⚪ BOT READY"}
+                    </span>
+                  </div>
+                  <p className="text-[11px] text-[#8d8d91] leading-relaxed">
+                    Paste your Telegram Bot HTTP API token here (e.g. <code>1234567890:ABCdef...</code>). This activates the Telegram assistant live.
+                  </p>
+                  <input
+                    type={showKeys ? "text" : "password"}
+                    value={telegramTokenInput}
+                    onChange={(e) => setTelegramTokenInput(e.target.value)}
+                    placeholder="e.g. 1234567890:ABCdefGHIjklMNOpqrSTUvwxYZ"
+                    className="w-full bg-[#202022] border border-[#38383b] focus:border-sky-500 rounded-xl p-3 text-white text-xs outline-none font-mono transition-colors"
+                  />
+                </div>
+
                 {keySaveSuccess && (
                   <div className="p-3 bg-emerald-950/50 border border-emerald-800/60 rounded-xl text-emerald-400 text-xs flex items-center gap-2 font-semibold">
                     <CheckCircle size={16} />
@@ -2044,6 +2200,198 @@ export function AdminDashboard({ onClose }: AdminDashboardProps) {
                   </button>
                 </div>
               </form>
+            </div>
+          ) : activeTab === 'telegram' ? (
+            <div className="max-w-4xl mx-auto space-y-6 animate-fadeIn">
+              {telegramNotice && (
+                <div className={clsx(
+                  "p-4 rounded-2xl border text-xs flex items-center justify-between shadow-lg",
+                  telegramNotice.type === 'success'
+                    ? "bg-emerald-950/80 border-emerald-700 text-emerald-300"
+                    : "bg-[#252527] border-[#38383b] text-[#8d8d91]"
+                )}>
+                  <span>{telegramNotice.message}</span>
+                  <button onClick={() => setTelegramNotice(null)} className="text-white hover:opacity-80 p-1">
+                    <X size={14} />
+                  </button>
+                </div>
+              )}
+
+              {/* Bot Status & Overview Card */}
+              <div className="bg-[#202022]/90 border border-[#38383b] rounded-2xl p-6 shadow-2xl space-y-5">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-[#38383b]">
+                  <div className="flex items-center gap-3">
+                    <div className="p-3 bg-sky-950/80 border border-sky-800 text-sky-400 rounded-2xl shadow-inner">
+                      <Bot size={28} />
+                    </div>
+                    <div>
+                      <div className="flex items-center gap-2.5">
+                        <h3 className="text-lg font-black text-white uppercase tracking-wider">
+                          Telegram AI Bot Integration
+                        </h3>
+                        <span className={clsx(
+                          "text-[10px] px-2.5 py-0.5 rounded-full font-bold uppercase border flex items-center gap-1.5",
+                          telegramStatus?.connected
+                            ? "bg-emerald-950 text-emerald-400 border-emerald-700"
+                            : "bg-[#252527] text-[#8d8d91] border-[#38383b]"
+                        )}>
+                          <span className={clsx("w-2 h-2 rounded-full", telegramStatus?.connected ? "bg-emerald-400 animate-pulse" : "bg-red-500")} />
+                          {telegramStatus?.connected ? "ONLINE & POLLING" : "DISCONNECTED"}
+                        </span>
+                      </div>
+                      <p className="text-xs text-[#8d8d91] mt-0.5">
+                        Allows users to chat with VOID AI directly on Telegram, create accounts, and manage tiers.
+                      </p>
+                    </div>
+                  </div>
+
+                  <button
+                    onClick={fetchTelegramStatus}
+                    className="flex items-center gap-1.5 px-3 py-1.5 bg-[#252527] hover:bg-[#38383b] border border-[#38383b] text-xs font-bold text-white rounded-xl transition-all self-start sm:self-auto cursor-pointer"
+                  >
+                    <RefreshCw size={14} className={updatingTelegramToken ? "animate-spin" : ""} />
+                    <span>Refresh Bot Status</span>
+                  </button>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                  <div className="p-3 bg-[#252527]/70 border border-[#38383b] rounded-xl">
+                    <span className="text-[10px] text-[#8d8d91] block uppercase font-bold">Bot Username</span>
+                    <span className="text-sm font-bold text-sky-400">
+                      {telegramStatus?.botUsername ? `@${telegramStatus.botUsername}` : "Not Configured"}
+                    </span>
+                  </div>
+                  <div className="p-3 bg-[#252527]/70 border border-[#38383b] rounded-xl">
+                    <span className="text-[10px] text-[#8d8d91] block uppercase font-bold">Active Token</span>
+                    <span className="text-sm font-bold text-emerald-400 font-mono">
+                      {telegramStatus?.tokenMasked || "None"}
+                    </span>
+                  </div>
+                  <div className="p-3 bg-[#252527]/70 border border-[#38383b] rounded-xl flex items-center justify-between">
+                    <div>
+                      <span className="text-[10px] text-[#8d8d91] block uppercase font-bold">Direct Telegram Link</span>
+                      <span className="text-xs text-white">Open in Telegram</span>
+                    </div>
+                    {telegramStatus?.botUsername ? (
+                      <a
+                        href={`https://t.me/${telegramStatus.botUsername}`}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="px-2.5 py-1.5 bg-sky-600 hover:bg-sky-500 text-white rounded-lg text-xs font-bold flex items-center gap-1 transition-all"
+                      >
+                        <Send size={12} />
+                        <span>Chat</span>
+                        <ExternalLink size={11} />
+                      </a>
+                    ) : (
+                      <span className="text-xs text-[#8d8d91]">--</span>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              {/* Bot Token Configuration Form */}
+              <form onSubmit={handleUpdateTelegramToken} className="bg-[#202022]/90 border border-[#38383b] rounded-2xl p-6 shadow-2xl space-y-4">
+                <div className="flex items-center gap-2 border-b border-[#38383b] pb-3">
+                  <Key size={18} className="text-emerald-400" />
+                  <h4 className="text-sm font-bold text-white uppercase tracking-wider">
+                    Update Telegram Bot Token
+                  </h4>
+                </div>
+
+                <p className="text-xs text-[#8d8d91] leading-relaxed">
+                  To connect your Telegram bot, create a new bot using <strong>@BotFather</strong> on Telegram, copy the HTTP API Token, and paste it below. When updated, VOID AI immediately reconnects and starts receiving user messages live.
+                </p>
+
+                <div className="space-y-1.5">
+                  <label className="text-xs font-bold text-white uppercase tracking-wider block">
+                    New Telegram Bot Token
+                  </label>
+                  <div className="flex gap-2">
+                    <input
+                      type="password"
+                      placeholder="e.g. 1234567890:ABCdefGHIjklMNOpqrSTUvwxYZ"
+                      value={telegramTokenInput}
+                      onChange={(e) => setTelegramTokenInput(e.target.value)}
+                      className="flex-1 bg-[#252527] border border-[#38383b] focus:border-emerald-500 rounded-xl px-4 py-2.5 text-xs text-white outline-none font-mono"
+                    />
+                    <button
+                      type="submit"
+                      disabled={updatingTelegramToken || !telegramTokenInput.trim()}
+                      className="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-white font-bold text-xs uppercase tracking-wider rounded-xl transition-all flex items-center gap-1.5 shrink-0 cursor-pointer shadow-lg shadow-emerald-950/40"
+                    >
+                      {updatingTelegramToken ? <RefreshCw size={14} className="animate-spin" /> : <Save size={14} />}
+                      <span>{updatingTelegramToken ? "Connecting..." : "Save & Reconnect Bot"}</span>
+                    </button>
+                  </div>
+                </div>
+              </form>
+
+              {/* Test Message Tool */}
+              <div className="bg-[#202022]/90 border border-[#38383b] rounded-2xl p-6 shadow-2xl space-y-4">
+                <div className="flex items-center gap-2 border-b border-[#38383b] pb-3">
+                  <Send size={18} className="text-sky-400" />
+                  <h4 className="text-sm font-bold text-white uppercase tracking-wider">
+                    Live Telegram Test Messenger
+                  </h4>
+                </div>
+
+                <p className="text-xs text-[#8d8d91]">
+                  Verify your bot can send messages. Obtain your Telegram numeric Chat ID (by texting @userinfobot on Telegram) and click send.
+                </p>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <label className="text-[11px] font-bold text-white uppercase block mb-1">
+                      Telegram Chat ID (Numeric)
+                    </label>
+                    <input
+                      type="text"
+                      placeholder="e.g. 582910394"
+                      value={testTelegramChatId}
+                      onChange={(e) => setTestTelegramChatId(e.target.value)}
+                      className="w-full bg-[#252527] border border-[#38383b] focus:border-sky-500 rounded-xl px-3 py-2 text-xs text-white outline-none"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-[11px] font-bold text-white uppercase block mb-1">
+                      Custom Message (Optional)
+                    </label>
+                    <input
+                      type="text"
+                      placeholder="Testing bot response..."
+                      value={testTelegramMsg}
+                      onChange={(e) => setTestTelegramMsg(e.target.value)}
+                      className="w-full bg-[#252527] border border-[#38383b] focus:border-sky-500 rounded-xl px-3 py-2 text-xs text-white outline-none"
+                    />
+                  </div>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={handleSendTestTelegram}
+                  disabled={sendingTestTelegram || !testTelegramChatId.trim()}
+                  className="px-5 py-2.5 bg-sky-600 hover:bg-sky-500 disabled:opacity-50 text-white font-bold text-xs uppercase tracking-wider rounded-xl transition-all flex items-center gap-2 cursor-pointer shadow-lg shadow-sky-950/40"
+                >
+                  {sendingTestTelegram ? <RefreshCw size={14} className="animate-spin" /> : <Send size={14} />}
+                  <span>{sendingTestTelegram ? "Sending..." : "Dispatch Test Telegram Message"}</span>
+                </button>
+              </div>
+
+              {/* Bot User & Feature Guide Card */}
+              <div className="bg-[#202022]/60 border border-[#38383b] rounded-2xl p-6 space-y-3">
+                <h4 className="text-xs font-bold text-amber-400 uppercase tracking-wider flex items-center gap-2">
+                  <Sparkles size={16} />
+                  <span>Telegram Bot Capabilities & Admin Controls</span>
+                </h4>
+                <ul className="text-xs text-[#8d8d91] space-y-2 list-disc list-inside leading-relaxed">
+                  <li><strong>Account Registration:</strong> Users can create an account directly in Telegram using <code className="text-white bg-[#252527] px-1 py-0.5 rounded">/register</code> or interactively with strong password protection and email verification.</li>
+                  <li><strong>Account Login:</strong> Users with website accounts can log in using <code className="text-white bg-[#252527] px-1 py-0.5 rounded">/login email password</code>.</li>
+                  <li><strong>Free Tier Limits:</strong> Free users get 15 messages (resetting every 2 hours). No credits are deducted on errors or timeouts.</li>
+                  <li><strong>Admin Plan Grants:</strong> Admin can promote any user directly in Telegram chat using <code className="text-white bg-[#252527] px-1 py-0.5 rounded">/grant pro user@example.com</code>, <code className="text-white bg-[#252527] px-1 py-0.5 rounded">/grant premium user@example.com</code>, or <code className="text-white bg-[#252527] px-1 py-0.5 rounded">/grant vip user@example.com</code>.</li>
+                  <li><strong>Admin Revoke:</strong> Admin can reset any user with <code className="text-white bg-[#252527] px-1 py-0.5 rounded">/revoke user@example.com</code>.</li>
+                </ul>
+              </div>
             </div>
           ) : null}
 

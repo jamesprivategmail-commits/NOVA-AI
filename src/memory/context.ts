@@ -18,11 +18,7 @@ export class MemoryManager {
     // but we can prepend it as a system/user hint for now, or just send it if backend supports.
     // We will just return the messages. The backend could be updated to inject system prompt.
     
-    return [
-      { role: "user", text: `System Instruction: ${this.systemPrompt}` },
-      { role: "model", text: "Understood. I am NOVA AI." },
-      ...contextMessages
-    ];
+    return contextMessages;
   }
 }
 

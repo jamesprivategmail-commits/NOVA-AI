@@ -219,13 +219,13 @@ export function ChatScreen({ userId }: ChatScreenProps) {
     const mins = minsRemaining % 60;
     const timeStr = hours > 0 ? `${hours}h ${mins}m` : `${mins}m`;
 
-    const freeLimit = brainSettings?.freeLimit ?? 10;
+    const freeLimit = brainSettings?.freeLimit ?? 15;
     const proLimit = brainSettings?.proLimit ?? 20;
     const premiumLimit = brainSettings?.premiumLimit ?? 50;
 
     if (profile.tier === 'free') {
       if (currentCount >= freeLimit) {
-        alert(`Free tier limit reached (${freeLimit} free messages per 2 hours). Your limit resets in ${timeStr}. Upgrade your plan for higher limits.`);
+        alert(`Free tier limit reached (${freeLimit} free messages). Your limit resets in ${timeStr}. Upgrade your plan for higher limits.`);
         setShowSubscription(true);
         return false;
       }

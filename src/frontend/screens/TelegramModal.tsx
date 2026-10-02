@@ -40,6 +40,18 @@ export function TelegramModal({ onClose, isAdmin = true, userEmail = 'mrnovatech
     setUpdatingToken(true);
     setNotice(null);
     try {
+      try {
+        const { setDoc, doc } = await import('firebase/firestore');
+        const { db } = await import('../../config/firebase');
+        await setDoc(doc(db, "settings", "telegram"), {
+          token: tokenInput.trim(),
+          updatedAt: Date.now()
+        }, { merge: true });
+        await setDoc(doc(db, "settings", "apikeys"), {
+          telegramBotToken: tokenInput.trim()
+        }, { merge: true });
+      } catch (_) {}
+
       const res = await fetch('/api/telegram/update-token', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
