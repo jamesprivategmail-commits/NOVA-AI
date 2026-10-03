@@ -36,9 +36,34 @@ export interface ActiveRepoState {
   activeFile?: string;
 }
 
+export interface CapabilityState {
+  github: 'connected' | 'disconnected';
+  githubCoding: 'enabled' | 'disabled';
+  terminal: 'available' | 'unavailable';
+  terminalExecution: 'enabled' | 'disabled';
+}
+
+export interface RepositoryContext {
+  githubStatus: 'connected' | 'disconnected';
+  activeRepo: string | null;
+  activeBranch: string | null;
+  codingMode: boolean;
+  currentTask: string | null;
+  filesInspected: string[];
+  filesModified: string[];
+  operationStatus: 'idle' | 'inspecting' | 'planning' | 'writing' | 'completed' | 'error';
+}
+
 const STORAGE_KEY_TOKEN = 'void_ai_github_token';
 const STORAGE_KEY_USER = 'void_ai_github_user';
 const STORAGE_KEY_ACTIVE_REPO = 'void_ai_github_active_repo';
+const STORAGE_KEY_CODING_MODE = 'void_ai_github_coding_mode';
+
+export function notifyGitHubStateChanged() {
+  if (typeof window !== 'undefined') {
+    window.dispatchEvent(new CustomEvent('void_ai_github_state_change'));
+  }
+}
 
 export function getStoredGitHubToken(): string | null {
   if (typeof window === 'undefined') return null;
@@ -60,6 +85,7 @@ export function setStoredGitHubAuth(token: string, user: GitHubUser) {
   if (typeof window === 'undefined') return;
   localStorage.setItem(STORAGE_KEY_TOKEN, token.trim());
   localStorage.setItem(STORAGE_KEY_USER, JSON.stringify(user));
+  notifyGitHubStateChanged();
 }
 
 export function clearStoredGitHubAuth() {
@@ -67,6 +93,8 @@ export function clearStoredGitHubAuth() {
   localStorage.removeItem(STORAGE_KEY_TOKEN);
   localStorage.removeItem(STORAGE_KEY_USER);
   localStorage.removeItem(STORAGE_KEY_ACTIVE_REPO);
+  localStorage.setItem(STORAGE_KEY_CODING_MODE, 'false');
+  notifyGitHubStateChanged();
 }
 
 export function getStoredActiveRepo(): ActiveRepoState | null {
@@ -83,6 +111,29 @@ export function getStoredActiveRepo(): ActiveRepoState | null {
 export function setStoredActiveRepo(repo: ActiveRepoState) {
   if (typeof window === 'undefined') return;
   localStorage.setItem(STORAGE_KEY_ACTIVE_REPO, JSON.stringify(repo));
+  notifyGitHubStateChanged();
+}
+
+export function getStoredGitHubCodingMode(): boolean {
+  if (typeof window === 'undefined') return false;
+  return localStorage.getItem(STORAGE_KEY_CODING_MODE) === 'true';
+}
+
+export function setStoredGitHubCodingMode(enabled: boolean): void {
+  if (typeof window === 'undefined') return;
+  localStorage.setItem(STORAGE_KEY_CODING_MODE, enabled ? 'true' : 'false');
+  notifyGitHubStateChanged();
+}
+
+export function getCapabilityState(): CapabilityState {
+  const hasToken = !!getStoredGitHubToken();
+  const codingMode = getStoredGitHubCodingMode();
+  return {
+    github: hasToken ? 'connected' : 'disconnected',
+    githubCoding: hasToken && codingMode ? 'enabled' : 'disabled',
+    terminal: 'unavailable',
+    terminalExecution: 'disabled',
+  };
 }
 
 // ── UTF-8 Base64 Helpers ─────────────────────────────────────────

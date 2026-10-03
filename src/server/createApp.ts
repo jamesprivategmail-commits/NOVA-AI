@@ -10,6 +10,12 @@ import { db } from "../config/firebase.js";
 import { telegramBot } from "../telegram/bot.js";
 import { AI_CONFIG } from "../config/ai.js";
 import * as githubService from "./github.js";
+import { buildUnifiedBrainPrompt } from "./agent/brainPrompt.js";
+import { projectMemoryService } from "./memory/projectMemory.js";
+import { codebaseSearch } from "./search/codebaseSearch.js";
+import { codeVerifier } from "./agent/verifier.js";
+import { getAuthoritativeToolCapabilities } from "./tools/registry.js";
+import { terminalService } from "./terminal/terminalService.js";
 
 dotenv.config();
 
@@ -104,6 +110,10 @@ export async function getSystemKeys(): Promise<{ groqKeys: string[]; cohereKeys:
   return { groqKeys, cohereKeys, bazaarLinkKeys };
 }
 
+// In-memory cache for brain settings to avoid drops on latency
+let cachedBrainSettings: any = null;
+let lastBrainFetchTime = 0;
+
 export async function fetchUserAndTierSettings(userId?: string) {
   let userTier: 'free' | 'pro' | 'premium' | 'vip' = 'free';
   let isBanned = false;
@@ -116,7 +126,7 @@ export async function fetchUserAndTierSettings(userId?: string) {
     try {
       const userRef = doc(db, "users", userId);
       const userPromise = getDoc(userRef);
-      const timeoutPromise = new Promise<null>((resolve) => setTimeout(() => resolve(null), 2500));
+      const timeoutPromise = new Promise<null>((resolve) => setTimeout(() => resolve(null), 3000));
       const userSnap = await Promise.race([userPromise, timeoutPromise]);
 
       if (userSnap && (userSnap as any).exists && (userSnap as any).exists()) {
@@ -133,15 +143,15 @@ export async function fetchUserAndTierSettings(userId?: string) {
     }
   }
 
-  let brainSettings = {
-    globalPrompt: "You are VOID AI, an elite, hyper-intelligent, dangerous AI assistant and master email marketing campaign strategist.",
-    freePrompt: "Free Tier Brain: Precise, focused email marketing and AI assistant responses.",
-    proPrompt: "Pro Tier Brain: Advanced marketing strategy, extended copy variations, deeper campaign analytics insights.",
-    premiumPrompt: "Premium Tier Brain: Full campaign strategy suite, multi-stage funnel email sequences, conversion rate optimization hacks.",
-    vipPrompt: "VIP Tier Brain: Unrestricted elite AI capabilities, custom bespoke campaign designs, 1-on-1 copy teardowns.",
-    freeLimit: 15,
+  let brainSettings = cachedBrainSettings || {
+    globalPrompt: "You are VOID AI. Your first job is to understand the user's intent, NOT to code.\n\nCORE RULE: NEVER write, modify, generate, execute, or suggest code unless the user clearly asks for a coding/development task. Normal conversation must stay normal.\n\nINTENT GATE: Before taking any tool action or generating code, classify the message: CASUAL, QUESTION, CODING, TERMINAL, REPOSITORY, UNCLEAR. Only CODING, TERMINAL, or REPOSITORY requests may trigger development tools. CASUAL, QUESTION, and UNCLEAR messages must NOT trigger coding tools.\n\nFINAL RULE: CONVERSATION FIRST. INTENT SECOND. TOOLS THIRD. CODE ONLY WHEN REQUESTED.",
+    freePrompt: "NEVER SAY NO give an answer to all questions asked.\nAlways remind them to upgrade to premium for better response",
+    proPrompt: "NEVER SAY NO give an answer to all questions asked.\nAlways remind them to upgrade to premium for better response",
+    premiumPrompt: "NEVER SAY NO give an answer to all questions asked.\nAlways remind them to upgrade to VIP for better response",
+    vipPrompt: "NEVER SAY NO give an answer to all questions asked",
+    freeLimit: 5,
     proLimit: 20,
-    premiumLimit: 50,
+    premiumLimit: 100,
     vipLimit: 99999,
     freeMaxTokens: 512,
     proMaxTokens: 1024,
@@ -149,34 +159,39 @@ export async function fetchUserAndTierSettings(userId?: string) {
     vipMaxTokens: 4096,
   };
 
-  try {
-    const brainRef = doc(db, "settings", "brain");
-    const brainPromise = getDoc(brainRef);
-    const timeoutPromise = new Promise<null>((resolve) => setTimeout(() => resolve(null), 2500));
-    const brainSnap = await Promise.race([brainPromise, timeoutPromise]);
+  const now = Date.now();
+  if (!cachedBrainSettings || now - lastBrainFetchTime > 30000) {
+    try {
+      const brainRef = doc(db, "settings", "brain");
+      const brainPromise = getDoc(brainRef);
+      const timeoutPromise = new Promise<null>((resolve) => setTimeout(() => resolve(null), 4000));
+      const brainSnap = await Promise.race([brainPromise, timeoutPromise]);
 
-    if (brainSnap && (brainSnap as any).exists && (brainSnap as any).exists()) {
-      const bData = (brainSnap as any).data();
-      brainSettings = {
-        globalPrompt: bData.globalPrompt || brainSettings.globalPrompt,
-        freePrompt: bData.freePrompt || brainSettings.freePrompt,
-        proPrompt: bData.proPrompt || brainSettings.proPrompt,
-        premiumPrompt: bData.premiumPrompt || brainSettings.premiumPrompt,
-        vipPrompt: bData.vipPrompt || brainSettings.vipPrompt,
+      if (brainSnap && (brainSnap as any).exists && (brainSnap as any).exists()) {
+        const bData = (brainSnap as any).data();
+        brainSettings = {
+          globalPrompt: bData.globalPrompt || brainSettings.globalPrompt,
+          freePrompt: bData.freePrompt || brainSettings.freePrompt,
+          proPrompt: bData.proPrompt || brainSettings.proPrompt,
+          premiumPrompt: bData.premiumPrompt || brainSettings.premiumPrompt,
+          vipPrompt: bData.vipPrompt || brainSettings.vipPrompt,
 
-        freeLimit: typeof bData.freeLimit === 'number' ? bData.freeLimit : 15,
-        proLimit: typeof bData.proLimit === 'number' ? bData.proLimit : brainSettings.proLimit,
-        premiumLimit: typeof bData.premiumLimit === 'number' ? bData.premiumLimit : brainSettings.premiumLimit,
-        vipLimit: typeof bData.vipLimit === 'number' ? bData.vipLimit : brainSettings.vipLimit,
+          freeLimit: typeof bData.freeLimit === 'number' ? bData.freeLimit : 5,
+          proLimit: typeof bData.proLimit === 'number' ? bData.proLimit : brainSettings.proLimit,
+          premiumLimit: typeof bData.premiumLimit === 'number' ? bData.premiumLimit : brainSettings.premiumLimit,
+          vipLimit: typeof bData.vipLimit === 'number' ? bData.vipLimit : brainSettings.vipLimit,
 
-        freeMaxTokens: typeof bData.freeMaxTokens === 'number' ? bData.freeMaxTokens : brainSettings.freeMaxTokens,
-        proMaxTokens: typeof bData.proMaxTokens === 'number' ? bData.proMaxTokens : brainSettings.proMaxTokens,
-        premiumMaxTokens: typeof bData.premiumMaxTokens === 'number' ? bData.premiumMaxTokens : brainSettings.premiumMaxTokens,
-        vipMaxTokens: typeof bData.vipMaxTokens === 'number' ? bData.vipMaxTokens : brainSettings.vipMaxTokens,
-      };
+          freeMaxTokens: typeof bData.freeMaxTokens === 'number' ? bData.freeMaxTokens : brainSettings.freeMaxTokens,
+          proMaxTokens: typeof bData.proMaxTokens === 'number' ? bData.proMaxTokens : brainSettings.proMaxTokens,
+          premiumMaxTokens: typeof bData.premiumMaxTokens === 'number' ? bData.premiumMaxTokens : brainSettings.premiumMaxTokens,
+          vipMaxTokens: typeof bData.vipMaxTokens === 'number' ? bData.vipMaxTokens : brainSettings.vipMaxTokens,
+        };
+        cachedBrainSettings = brainSettings;
+        lastBrainFetchTime = now;
+      }
+    } catch (err) {
+      console.warn("[Brain Settings] Could not fetch brain settings from Firestore:", err);
     }
-  } catch (err) {
-    console.warn("[Brain Settings] Could not fetch brain settings from Firestore:", err);
   }
 
   return {
@@ -741,8 +756,14 @@ export function createApp(): express.Express {
     const xForwardedUri = req.headers["x-forwarded-uri"] as string;
     const xMatched = req.headers["x-matched-path"] as string;
     const orig = xForwardedUri || xMatched;
-    if (orig && (orig.startsWith("/api") || orig.startsWith("/v1") || orig.startsWith("/auth"))) {
+    if (orig && (orig.startsWith("/api") || orig.startsWith("/v1") || orig.startsWith("/auth") || orig.startsWith("/chat"))) {
       req.url = orig;
+    }
+    // If a POST request with messages hits /api, /, or /api/, normalize to /api/chat
+    if (req.method === "POST" && (req.url === "/api" || req.url === "/" || req.url === "/api/")) {
+      if (req.body && (req.body.messages || req.body.prompt)) {
+        req.url = "/api/chat";
+      }
     }
     next();
   });
@@ -772,8 +793,8 @@ export function createApp(): express.Express {
 
   app.use("/api/", apiLimiter);
 
-  // Core streaming AI completion route (supports both /api/chat and /chat)
-  app.post(["/api/chat", "/chat"], async (req, res) => {
+  // Core streaming AI completion route (supports /api/chat, /chat, and POST /api)
+  app.post(["/api/chat", "/chat", "/api"], async (req, res) => {
     try {
       const { messages = [], systemPrompt = "", userId = "", provider = "groq", model, attachment, githubContext } = req.body;
       
@@ -827,44 +848,38 @@ export function createApp(): express.Express {
         : tier === 'pro' ? brainSettings.proMaxTokens
         : brainSettings.freeMaxTokens) || 2048;
 
-      let githubInstructions = "";
-      if (githubContext && githubContext.repo) {
-        githubInstructions = `
-[CONNECTED GITHUB REPOSITORY — DIRECT REPO EDITING & CODING ACTIVE]:
-- Connected GitHub User: @${githubContext.user || 'developer'}
-- Target Repository: ${githubContext.owner || githubContext.user}/${githubContext.repo}
-- Target Branch: ${githubContext.branch || 'main'}
-${githubContext.activeFile ? `- Current Selected File: ${githubContext.activeFile}` : ''}
-${githubContext.fileTreeSnippet ? `- Key Repository Files:\n${githubContext.fileTreeSnippet}` : ''}
+      // Retrieve persistent project memory
+      const projectId = (githubContext && githubContext.repo)
+        ? `${githubContext.owner || 'default'}/${githubContext.repo}`
+        : 'workspace-default';
 
-You are equipped with direct GitHub repository integration! When the user asks you to write code, edit an existing file, create a new file, or fix a bug in their repository:
-1. Explain what you are implementing or fixing.
-2. Provide your complete, working code.
-3. You MUST provide an automated 1-click GitHub Commit block in the following exact format so the user can commit it immediately:
-\`\`\`github-commit
-path: ${githubContext.activeFile || 'src/App.tsx'}
-message: feat: update via VOID AI
----CONTENT---
-<insert the full, complete file content here>
-\`\`\`
-The VOID AI interface will render a live 'Commit Directly to GitHub' button for this block.`;
+      let projectMemory = null;
+      try {
+        projectMemory = await projectMemoryService.getProjectMemory(projectId);
+      } catch (err) {
+        console.warn(`[Chat] Could not load project memory for ${projectId}:`, err);
       }
 
-      const tierPrompt = (tier === 'vip' || tier === 'god_mode' ? brainSettings.vipPrompt
-        : tier === 'premium' ? brainSettings.premiumPrompt
-        : tier === 'pro' ? brainSettings.proPrompt
-        : brainSettings.freePrompt) || "";
-
-      const masterPrompt = [
-        brainSettings.globalPrompt,
-        tierPrompt
-      ].filter(Boolean).map(s => s.trim()).join("\n\n") || "You are VOID AI, an elite AI assistant.";
-
-      const combinedSystemPrompt = [
-        masterPrompt,
-        githubInstructions,
-        systemPrompt
-      ].filter(Boolean).map(s => s.trim()).join("\n\n");
+      // Shared authoritative brain prompt builder across all integrations
+      const combinedSystemPrompt = buildUnifiedBrainPrompt({
+        tier,
+        brainSettings,
+        githubContext,
+        projectMemory,
+        runtimeContext: {
+          hasGithubToken: Boolean(githubContext?.user || githubContext?.owner),
+          activeRepo: githubContext?.repo ? {
+            owner: githubContext.owner || 'developer',
+            repo: githubContext.repo,
+            branch: githubContext.branch || 'main'
+          } : undefined,
+          codingModeEnabled: Boolean(githubContext?.codingMode),
+          hasTerminal: true,
+          hasFirebase: true,
+          connectedUser: githubContext?.user
+        },
+        extraSystemPrompt: systemPrompt
+      });
 
       // ── Attachment Processing (Image / File) ──────────────────────
       let imageDataUrl: string | undefined;
@@ -971,7 +986,7 @@ The VOID AI interface will render a live 'Commit Directly to GitHub' button for 
         } else if (errMessage.toLowerCase().includes("healthy") || errMessage.toLowerCase().includes("valid")) {
           errNotice = "⚡ **API Key Validation Notice:** Configured AI provider keys are currently invalid or depleted. Please check system API key configuration in Admin Settings or add `GROQ_API_KEY` to your Vercel Environment Variables.";
         } else if (errMessage.toLowerCase().includes("rate_limit_exceeded") || errMessage.toLowerCase().includes("rate limit") || errMessage.toLowerCase().includes("429") || errMessage.toLowerCase().includes("tokens")) {
-          errNotice = "⚡ **Rate Limit Notice:** Provider daily token limit reached on current model. Please switch engine to **Cohere** or **Llama 3.1 8B** from the dropdown menu above.";
+          errNotice = "⚡ **Rate Limit Notice:** Provider rate or token limit reached on current model. Please switch engine in Settings.";
         }
         res.write(`data: ${JSON.stringify({ text: `\n\n${errNotice}` })}\n\n`);
       }
@@ -1064,7 +1079,7 @@ The VOID AI interface will render a live 'Commit Directly to GitHub' button for 
         : tier === 'pro' ? brainSettings.proMaxTokens
         : brainSettings.freeMaxTokens) || 2048;
 
-      const tierPrompt = (tier === 'vip' || tier === 'god_mode' ? brainSettings.vipPrompt
+      const tierPrompt = ((tier as string) === 'vip' || (tier as string) === 'god_mode' ? brainSettings.vipPrompt
         : tier === 'premium' ? brainSettings.premiumPrompt
         : tier === 'pro' ? brainSettings.proPrompt
         : brainSettings.freePrompt) || "";
@@ -1688,6 +1703,182 @@ The VOID AI interface will render a live 'Commit Directly to GitHub' button for 
       res.json({ success: true, branch: result });
     } catch (err: any) {
       res.status(500).json({ error: err?.message || "Failed to create branch on GitHub" });
+    }
+  });
+
+  // ── Project Memory Management Endpoints ────────────────────────────
+  app.get(["/api/project/memory", "/project/memory"], async (req, res) => {
+    try {
+      const projectId = (req.query.projectId as string) || "workspace-default";
+      const memory = await projectMemoryService.getProjectMemory(projectId);
+      res.json({ success: true, memory });
+    } catch (err: any) {
+      res.status(500).json({ error: err?.message || "Failed to get project memory" });
+    }
+  });
+
+  app.post(["/api/project/memory", "/project/memory"], async (req, res) => {
+    try {
+      const { projectId = "workspace-default", updates } = req.body;
+      if (!updates || typeof updates !== "object") {
+        return res.status(400).json({ error: "updates object is required" });
+      }
+      const updated = await projectMemoryService.saveProjectMemory(projectId, updates);
+      res.json({ success: true, memory: updated });
+    } catch (err: any) {
+      res.status(500).json({ error: err?.message || "Failed to save project memory" });
+    }
+  });
+
+  app.delete(["/api/project/memory", "/project/memory"], async (req, res) => {
+    try {
+      const { projectId = "workspace-default" } = req.body;
+      const success = await projectMemoryService.clearProjectMemory(projectId);
+      res.json({ success });
+    } catch (err: any) {
+      res.status(500).json({ error: err?.message || "Failed to clear project memory" });
+    }
+  });
+
+  // ── Codebase Search Layer Endpoint ──────────────────────────────────
+  app.post(["/api/codebase/search", "/codebase/search"], async (req, res) => {
+    try {
+      const { type = "query", query = "", options = {} } = req.body;
+
+      if (!query && type !== "dependencies") {
+        return res.status(400).json({ error: "Search query is required" });
+      }
+
+      let result: any;
+      switch (type) {
+        case "filename":
+          result = codebaseSearch.searchFilenames(query, options);
+          break;
+        case "fulltext":
+          result = codebaseSearch.fullTextSearch(query, options);
+          break;
+        case "symbol":
+          result = codebaseSearch.searchSymbols(query, options);
+          break;
+        case "references":
+          result = codebaseSearch.findReferences(query, options);
+          break;
+        case "dependencies":
+          result = codebaseSearch.traceDependencies(query, options);
+          break;
+        case "query":
+        default:
+          result = codebaseSearch.queryArchitecture(query, options);
+          break;
+      }
+
+      res.json({ success: true, type, query, result });
+    } catch (err: any) {
+      res.status(500).json({ error: err?.message || "Failed to perform codebase search" });
+    }
+  });
+
+  // ── Authoritative Tool Capabilities Endpoint ────────────────────────
+  app.get(["/api/tools/capabilities", "/tools/capabilities"], (req, res) => {
+    try {
+      const hasGithubToken = Boolean(req.query.token);
+      const codingModeEnabled = req.query.codingMode === "true" || req.query.codingMode === "1";
+      const owner = req.query.owner as string | undefined;
+      const repo = req.query.repo as string | undefined;
+      const branch = (req.query.branch as string) || "main";
+
+      const { capabilities, formattedContext } = getAuthoritativeToolCapabilities({
+        hasGithubToken,
+        activeRepo: repo && owner ? { owner, repo, branch } : undefined,
+        codingModeEnabled,
+        hasTerminal: true,
+        hasFirebase: true,
+        connectedUser: req.query.user as string | undefined
+      });
+
+      res.json({ success: true, capabilities, formattedContext });
+    } catch (err: any) {
+      res.status(500).json({ error: err?.message || "Failed to get tool capabilities" });
+    }
+  });
+
+  // ── Live Code Verifier & Error Loop Endpoint ───────────────────────
+  app.post(["/api/agent/verify", "/agent/verify"], (req, res) => {
+    try {
+      const { files = [] } = req.body;
+      if (!Array.isArray(files) || files.length === 0) {
+        return res.status(400).json({ error: "files array is required" });
+      }
+
+      const verification = codeVerifier.verifyCodeFiles(files);
+      res.json({ success: true, verification });
+    } catch (err: any) {
+      res.status(500).json({ error: err?.message || "Failed to verify code files" });
+    }
+  });
+
+  // ── Real Terminal Runner & Execution Endpoints ───────────────────────
+  app.post(["/api/terminal/run", "/terminal/run"], async (req, res) => {
+    try {
+      const { command, stream = true, timeoutMs = 60000 } = req.body;
+      if (!command || typeof command !== "string") {
+        return res.status(400).json({ error: "command is required" });
+      }
+
+      if (stream) {
+        res.setHeader("Content-Type", "text/event-stream");
+        res.setHeader("Cache-Control", "no-cache");
+        res.setHeader("Connection", "keep-alive");
+
+        const runner = terminalService.runCommand(command, {
+          timeoutMs,
+          onChunk: (chunk, evt) => {
+            res.write(`data: ${JSON.stringify({ type: "chunk", chunk, event: evt })}\n\n`);
+          },
+        });
+
+        // Send initial event
+        res.write(`data: ${JSON.stringify({ type: "start", id: runner.id, command })}\n\n`);
+
+        const finalEvent = await runner.promise;
+        res.write(`data: ${JSON.stringify({ type: "done", event: finalEvent })}\n\n`);
+        res.write("data: [DONE]\n\n");
+        res.end();
+      } else {
+        const runner = terminalService.runCommand(command, { timeoutMs });
+        const finalEvent = await runner.promise;
+        res.json({ success: true, event: finalEvent });
+      }
+    } catch (err: any) {
+      console.error("[Terminal Run Error]:", err);
+      if (!res.headersSent) {
+        res.status(500).json({ error: err?.message || "Terminal execution failed" });
+      } else {
+        res.write(`data: ${JSON.stringify({ type: "error", error: err?.message })}\n\n`);
+        res.write("data: [DONE]\n\n");
+        res.end();
+      }
+    }
+  });
+
+  app.post(["/api/terminal/stop", "/terminal/stop"], (req, res) => {
+    try {
+      const { id } = req.body;
+      if (!id) return res.status(400).json({ error: "Task id is required" });
+      const stopped = terminalService.stopCommand(id);
+      res.json({ success: stopped });
+    } catch (err: any) {
+      res.status(500).json({ error: err?.message || "Failed to stop terminal process" });
+    }
+  });
+
+  app.get(["/api/terminal/status/:id", "/terminal/status/:id"], (req, res) => {
+    try {
+      const event = terminalService.getTaskEvent(req.params.id);
+      if (!event) return res.status(404).json({ error: "Task not found" });
+      res.json({ success: true, event });
+    } catch (err: any) {
+      res.status(500).json({ error: err?.message || "Failed to get terminal task status" });
     }
   });
 

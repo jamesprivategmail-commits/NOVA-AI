@@ -17,7 +17,13 @@ interface InputAreaProps {
   onImageGenerate?: (text: string) => void;
 }
 
-export function InputArea({ onSend, isLoading, onStop, onOpenLiveVoice, onImageGenerate }: InputAreaProps) {
+export function InputArea({ 
+  onSend, 
+  isLoading, 
+  onStop, 
+  onOpenLiveVoice, 
+  onImageGenerate
+}: InputAreaProps) {
   const [text, setText] = useState('');
   const [attachment, setAttachment] = useState<ChatAttachment | null>(null);
   const [imageMode, setImageMode] = useState(false);
@@ -50,11 +56,10 @@ export function InputArea({ onSend, isLoading, onStop, onOpenLiveVoice, onImageG
       };
       reader.readAsDataURL(file);
     } else {
-      // Read text-based files as text content
       reader.onload = () => {
         setAttachment({
           kind: 'file',
-          data: (reader.result as string).slice(0, 8000), // Cap at 8k chars
+          data: (reader.result as string).slice(0, 8000),
           name: file.name,
           mimeType: file.type || 'text/plain',
         });
@@ -90,33 +95,33 @@ export function InputArea({ onSend, isLoading, onStop, onOpenLiveVoice, onImageG
   };
 
   return (
-    <div className="w-full max-w-2xl mx-auto px-2 pb-1">
+    <div className="w-full max-w-3xl mx-auto px-2 pb-1">
       {/* Attachment Preview Card */}
       {attachment && (
-        <div className="mb-1 p-1 px-2 bg-zinc-900 border border-zinc-700 rounded-lg flex items-center justify-between gap-2 text-xs text-slate-200">
+        <div className="mb-1 p-1 px-2.5 bg-[#202022] border border-[#38383b] rounded-lg flex items-center justify-between gap-2 text-xs text-slate-200">
           {attachment.kind === 'image' ? (
             <div className="flex items-center gap-1.5 truncate">
               <img src={attachment.data} alt={attachment.name} className="w-6 h-6 rounded object-cover shrink-0" />
-              <span className="truncate text-[11px]">{attachment.name}</span>
+              <span className="truncate text-[11px] text-white">{attachment.name}</span>
             </div>
           ) : (
             <div className="flex items-center gap-1.5 truncate">
-              <FileText size={13} className="text-purple-400 shrink-0" />
-              <span className="truncate text-[11px]">{attachment.name}</span>
+              <FileText size={13} className="text-[#3f86ff] shrink-0" />
+              <span className="truncate text-[11px] text-white">{attachment.name}</span>
             </div>
           )}
           <button
             type="button"
             onClick={() => setAttachment(null)}
-            className="p-0.5 hover:bg-zinc-800 rounded text-slate-400 hover:text-white transition-colors shrink-0"
+            className="p-0.5 hover:bg-[#38383b] rounded text-slate-400 hover:text-white transition-colors shrink-0"
           >
-            <X size={11} />
+            <X size={12} />
           </button>
         </div>
       )}
 
       {/* Mobile-friendly composer with a larger touch target and readable text */}
-      <div className="relative flex items-center w-full min-h-[54px] bg-[#202022] border border-[#38383b] focus-within:border-[#454547] rounded-full transition-all px-2.5 py-2 gap-1.5">
+      <div className="relative flex items-center w-full min-h-[52px] bg-[#202022] border border-[#38383b] focus-within:border-[#454547] rounded-full transition-all px-2.5 py-1.5 gap-1.5 shadow-sm">
         <input
           type="file"
           ref={fileInputRef}
@@ -125,27 +130,27 @@ export function InputArea({ onSend, isLoading, onStop, onOpenLiveVoice, onImageG
           className="hidden"
         />
 
-        {/* Plus (+) Button */}
+        {/* Attachment (+) Button */}
         <button
           type="button"
           onClick={() => fileInputRef.current?.click()}
-          className="w-10 h-10 rounded-full bg-[#252527] hover:bg-[#38383b] text-white flex items-center justify-center shrink-0 transition-colors cursor-pointer"
+          className="w-9 h-9 sm:w-10 sm:h-10 rounded-full bg-[#252527] hover:bg-[#38383b] text-white flex items-center justify-center shrink-0 transition-colors cursor-pointer"
           title="Attach image or file"
         >
-          <Plus size={21} />
+          <Plus size={19} />
         </button>
 
-        {/* Image Generation Mode Toggle */}
+        {/* Image Mode Button */}
         <button
           type="button"
           onClick={() => setImageMode(!imageMode)}
           className={clsx(
-            "w-10 h-10 rounded-full flex items-center justify-center shrink-0 transition-all cursor-pointer",
+            "w-9 h-9 sm:w-10 sm:h-10 rounded-full flex items-center justify-center shrink-0 transition-all cursor-pointer",
             imageMode ? "bg-[#3f86ff] text-white" : "bg-[#252527] hover:bg-[#38383b] text-white"
           )}
-          title={imageMode ? "Image mode ON" : "Toggle image generation"}
+          title={imageMode ? "Image mode ON" : "Generate image"}
         >
-          <ImageIcon size={19} />
+          <ImageIcon size={17} />
         </button>
 
         {/* Text Input Field */}
@@ -154,13 +159,13 @@ export function InputArea({ onSend, isLoading, onStop, onOpenLiveVoice, onImageG
           value={text}
           onChange={(e) => setText(e.target.value)}
           onKeyDown={handleKeyDown}
-          placeholder={imageMode ? "Describe an image to generate…" : "Message VOID AI"}
+          placeholder={imageMode ? "Describe an image to generate…" : "Message..."}
           rows={1}
           autoCapitalize="sentences"
           autoCorrect="on"
           spellCheck={true}
           className={clsx(
-            "flex-1 min-h-[40px] max-h-[110px] bg-transparent text-white placeholder:text-[#8d8d91] border-0 focus:ring-0 resize-none py-2 px-1 outline-none text-base sm:text-sm leading-snug",
+            "flex-1 min-h-[38px] max-h-[110px] bg-transparent text-white placeholder:text-[#8d8d91] border-0 focus:ring-0 resize-none py-2 px-1 outline-none text-base sm:text-sm leading-snug font-sans",
             imageMode && "placeholder:text-[#3f86ff]"
           )}
         />
@@ -170,8 +175,8 @@ export function InputArea({ onSend, isLoading, onStop, onOpenLiveVoice, onImageG
           <button
             type="button"
             onClick={onStop}
-            className="w-10 h-10 bg-[#3f86ff] hover:opacity-90 text-white rounded-full transition-all flex items-center justify-center shrink-0 cursor-pointer"
-            title="Stop generating"
+            className="w-9 h-9 sm:w-10 sm:h-10 bg-rose-600 hover:bg-rose-500 text-white rounded-full transition-all flex items-center justify-center shrink-0 cursor-pointer shadow-md"
+            title="Stop generation"
           >
             <Square size={13} fill="currentColor" />
           </button>
@@ -179,19 +184,19 @@ export function InputArea({ onSend, isLoading, onStop, onOpenLiveVoice, onImageG
           <button
             type="button"
             onClick={handleSend}
-            className="w-10 h-10 bg-[#3f86ff] hover:opacity-90 text-white rounded-full transition-all flex items-center justify-center shrink-0 cursor-pointer active:scale-95"
+            className="w-9 h-9 sm:w-10 sm:h-10 bg-[#3f86ff] hover:opacity-90 text-white rounded-full transition-all flex items-center justify-center shrink-0 cursor-pointer active:scale-95 shadow-md"
             title="Send message"
           >
-            <Send size={16} fill="currentColor" />
+            <Send size={15} fill="currentColor" />
           </button>
         ) : (
           <button
             type="button"
             onClick={onOpenLiveVoice}
-            className="w-10 h-10 bg-[#252527] hover:bg-[#38383b] text-white rounded-full transition-all flex items-center justify-center shrink-0 cursor-pointer"
+            className="w-9 h-9 sm:w-10 sm:h-10 bg-[#252527] hover:bg-[#38383b] text-white rounded-full transition-all flex items-center justify-center shrink-0 cursor-pointer"
             title="Live voice mode"
           >
-            <AudioLines size={17} />
+            <AudioLines size={16} />
           </button>
         )}
       </div>

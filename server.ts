@@ -10,6 +10,7 @@ import {
   executeBazaarLinkWithRotation 
 } from "./src/server/createApp.js";
 import { telegramBot } from "./src/telegram/bot.js";
+import { buildUnifiedBrainPrompt } from "./src/server/agent/brainPrompt.js";
 
 async function startServer() {
   const app = createApp();
@@ -39,21 +40,21 @@ async function startServer() {
 
     const { groqKeys, cohereKeys, bazaarLinkKeys } = await getSystemKeys();
     const { userTier, brainSettings } = await fetchUserAndTierSettings(userId);
-    const maxTokens = (userTier === 'vip' || userTier === 'god_mode' ? brainSettings.vipMaxTokens
+    const maxTokens = ((userTier as string) === 'vip' || (userTier as string) === 'god_mode' ? brainSettings.vipMaxTokens
       : userTier === 'premium' ? brainSettings.premiumMaxTokens
       : userTier === 'pro' ? brainSettings.proMaxTokens
       : brainSettings.freeMaxTokens) || 2048;
 
-    const tierPrompt = (userTier === 'vip' || userTier === 'god_mode' ? brainSettings.vipPrompt
-      : userTier === 'premium' ? brainSettings.premiumPrompt
-      : userTier === 'pro' ? brainSettings.proPrompt
-      : brainSettings.freePrompt) || "";
-
-    // Abide strictly by the exact website AI Brain prompt and tier rules
-    const masterPrompt = [
-      brainSettings.globalPrompt,
-      tierPrompt
-    ].filter(Boolean).map(s => s.trim()).join("\n\n") || "You are VOID AI, an elite AI assistant.";
+    // Use unified brain prompt across all integrations
+    const masterPrompt = buildUnifiedBrainPrompt({
+      tier: userTier,
+      brainSettings,
+      runtimeContext: {
+        hasGithubToken: false,
+        hasTerminal: false,
+        hasFirebase: true
+      }
+    });
 
     const messages = [...history, { role: "user", text: userPrompt }];
 

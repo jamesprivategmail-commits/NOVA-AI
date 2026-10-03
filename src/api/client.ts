@@ -1,4 +1,5 @@
 import type { ChatAttachment } from '../frontend/components/InputArea';
+import type { TerminalToolEvent } from '../models/types';
 
 export interface GitHubContextPayload {
   owner?: string;
@@ -7,6 +8,7 @@ export interface GitHubContextPayload {
   user?: string;
   activeFile?: string;
   fileTreeSnippet?: string;
+  codingMode?: boolean;
 }
 
 export async function sendMessageToGroq(
@@ -34,7 +36,7 @@ export async function sendMessageToGroq(
         body: payload,
         signal
       });
-      // If Vercel rewrote /api to root or if 404 encountered, retry /chat
+      // If 404, retry /chat or /api
       if (response.status === 404) {
         response = await fetch("/chat", {
           method: "POST",
@@ -44,6 +46,16 @@ export async function sendMessageToGroq(
           body: payload,
           signal
         });
+        if (response.status === 404) {
+          response = await fetch("/api", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: payload,
+            signal
+          });
+        }
       }
     } catch (fetchErr: any) {
       if (fetchErr.name === 'AbortError') throw fetchErr;
@@ -60,6 +72,11 @@ export async function sendMessageToGroq(
       } catch (_) {
         throw fetchErr;
       }
+    }
+
+    const contentType = response.headers.get("content-type") || "";
+    if (contentType.includes("text/html")) {
+      throw new Error("⚡ **VOID AI Server Notice:** Backend API returned HTML webpage instead of streaming SSE data. Please ensure the backend server is running and /api/chat is not routed to index.html.");
     }
 
     if (!response.ok) {
@@ -79,7 +96,7 @@ export async function sendMessageToGroq(
       }
 
       if (errText.includes("<!DOCTYPE") || errText.includes("<html") || response.status === 404) {
-        errText = "⚡ **VOID AI Server Notice:** Backend API route unreachable. If running on Vercel, ensure you set `GROQ_API_KEY` in Vercel Project Settings → Environment Variables and redeploy.";
+        errText = "⚡ **VOID AI Server Notice:** Backend API route unreachable. If running on Vercel, ensure you set GROQ_API_KEY or COHERE_API_KEY in Vercel Project Settings → Environment Variables and redeploy.";
       }
       throw new Error(errText);
     }
@@ -135,4 +152,91 @@ export async function sendMessageToGemini(
   systemPrompt: string = ''
 ) {
   return sendMessageToGroq(messages, systemPrompt, onChunk, signal);
+}
+
+/**
+ * Execute real terminal command via backend runner with live SSE streaming
+ */
+export async function runTerminalCommand(
+  command: string,
+  onChunk?: (chunk: string, event: TerminalToolEvent) => void,
+  signal?: AbortSignal
+): Promise<TerminalToolEvent> {
+  const response = await fetch('/api/terminal/run', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ command, stream: true }),
+    signal,
+  });
+
+  if (!response.ok) {
+    const errText = await response.text();
+    throw new Error(`Terminal error (${response.status}): ${errText}`);
+  }
+
+  if (!response.body) {
+    throw new Error('No response stream received from terminal service');
+  }
+
+  const reader = response.body.getReader();
+  const decoder = new TextDecoder();
+  let buffer = '';
+  let finalEvent: TerminalToolEvent = {
+    id: 'term-' + Date.now(),
+    type: 'tool',
+    tool: 'terminal',
+    status: 'running',
+    command,
+    output: '',
+    startedAt: Date.now(),
+  };
+
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+
+    buffer += decoder.decode(value, { stream: true });
+    const parts = buffer.split('\n\n');
+    buffer = parts.pop() || '';
+
+    for (const part of parts) {
+      if (part.startsWith('data: ')) {
+        const dataStr = part.slice(6);
+        if (dataStr === '[DONE]') {
+          return finalEvent;
+        }
+        try {
+          const parsed = JSON.parse(dataStr);
+          if (parsed.type === 'start') {
+            finalEvent.id = parsed.id;
+          } else if (parsed.type === 'chunk' && parsed.event) {
+            finalEvent = parsed.event;
+            if (onChunk) onChunk(parsed.chunk, parsed.event);
+          } else if (parsed.type === 'done' && parsed.event) {
+            finalEvent = parsed.event;
+          }
+        } catch (_) {}
+      }
+    }
+  }
+
+  return finalEvent;
+}
+
+/**
+ * Stop/cancel a running terminal command
+ */
+export async function stopTerminalCommand(id: string): Promise<boolean> {
+  try {
+    const res = await fetch('/api/terminal/stop', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id }),
+    });
+    const data = await res.json();
+    return Boolean(data.success);
+  } catch (err) {
+    console.error('Failed to stop terminal command:', err);
+    return false;
+  }
 }

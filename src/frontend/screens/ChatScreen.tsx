@@ -13,8 +13,18 @@ import { LiveVoiceModal } from '../components/LiveVoiceModal';
 import { TelegramModal } from './TelegramModal';
 import { ApiKeyModal } from '../components/ApiKeyModal';
 import { GitHubModal } from '../components/GitHubModal';
-import { getStoredGitHubUser, getStoredActiveRepo, ActiveRepoState, GitHubUser } from '../utils/github';
-import { Chat, Message, UserProfile, BroadcastMessage, AIBrainSettings } from '../../models/types';
+import { 
+  getStoredGitHubUser, 
+  getStoredActiveRepo, 
+  getStoredGitHubCodingMode, 
+  setStoredGitHubCodingMode, 
+  getStoredGitHubToken,
+  fetchRepoTree,
+  ActiveRepoState, 
+  GitHubUser 
+} from '../utils/github';
+import { terminalManager } from '../utils/terminalManager';
+import { Chat, Message, UserProfile, BroadcastMessage, AIBrainSettings, AgentState } from '../../models/types';
 import {
   createChat,
   getUserChats,
@@ -35,7 +45,7 @@ import {
 } from '../../database/db';
 import { sendMessageToGroq } from '../../api/client';
 import { memoryManager } from '../../memory/context';
-import { Menu, Shield, Crown, Mail, ArrowDown, Sparkles, Code, Target, Binary, Zap, Bot, Mic, ChevronDown, Send, Radio, X, Trash2, Terminal, Flame, Eye, Lock, ShieldAlert } from 'lucide-react';
+import { Menu, Shield, Crown, Mail, ArrowDown, Sparkles, Code, Target, Binary, Zap, Bot, Mic, ChevronDown, Send, Radio, X, Trash2, Terminal, Flame, Eye, Lock, ShieldAlert, GitBranch, MessageSquare, FolderCode, Check, Loader2 } from 'lucide-react';
 import { getAuth, signOut } from 'firebase/auth';
 import { clsx } from 'clsx';
 
@@ -53,13 +63,26 @@ export function ChatScreen({ userId }: ChatScreenProps) {
   const [streamingMessage, setStreamingMessage] = useState<string>('');
   const [profile, setProfile] = useState<UserProfile | null>(null);
 
-  // AI Model Selection state
-  const [selectedProvider, setSelectedProvider] = useState<'groq' | 'cohere' | 'bazaarlink'>('groq');
-  const [selectedModel, setSelectedModel] = useState<string>('auto');
+  // AI Model Selection state (Persisted, managed in Settings)
+  const [selectedProvider, setSelectedProvider] = useState<'groq' | 'cohere' | 'bazaarlink'>(() => {
+    return (localStorage.getItem('void_ai_selected_provider') as any) || 'groq';
+  });
+  const [selectedModel, setSelectedModel] = useState<string>(() => {
+    return localStorage.getItem('void_ai_selected_model') || 'auto';
+  });
+  const [showModelDropdown, setShowModelDropdown] = useState(false);
+
+  const handleSelectProviderModel = (provider: 'groq' | 'cohere' | 'bazaarlink', model: string) => {
+    setSelectedProvider(provider);
+    setSelectedModel(model);
+    localStorage.setItem('void_ai_selected_provider', provider);
+    localStorage.setItem('void_ai_selected_model', model);
+  };
 
   // Modals state
   const [showAdminPanel, setShowAdminPanel] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
+  const [settingsInitialView, setSettingsInitialView] = useState<'main' | 'integrations-github'>('main');
   const [showSupport, setShowSupport] = useState(false);
   const [showSubscription, setShowSubscription] = useState(false);
   const [showCampaignGenerator, setShowCampaignGenerator] = useState(false);
@@ -69,8 +92,34 @@ export function ChatScreen({ userId }: ChatScreenProps) {
   const [showGitHubModal, setShowGitHubModal] = useState(false);
   const [activeRepo, setActiveRepo] = useState<ActiveRepoState | null>(() => getStoredActiveRepo());
   const [gitHubUser, setGitHubUser] = useState<GitHubUser | null>(() => getStoredGitHubUser());
+  const [codingMode, setCodingMode] = useState<boolean>(() => getStoredGitHubCodingMode());
+  const [repoTreeSnippet, setRepoTreeSnippet] = useState<string>('');
 
-  // Broadcasts state
+  useEffect(() => {
+    const handleSync = () => {
+      setActiveRepo(getStoredActiveRepo());
+      setGitHubUser(getStoredGitHubUser());
+      setCodingMode(getStoredGitHubCodingMode());
+    };
+    window.addEventListener('void_ai_github_state_change', handleSync);
+    return () => window.removeEventListener('void_ai_github_state_change', handleSync);
+  }, []);
+
+  useEffect(() => {
+    const token = getStoredGitHubToken();
+    if (token && activeRepo) {
+      fetchRepoTree(token, activeRepo.owner, activeRepo.repo, activeRepo.branch)
+        .then(res => {
+          const blobs = (res.tree || []).filter(item => item.type === 'blob');
+          const paths = blobs.map(b => b.path).slice(0, 45);
+          setRepoTreeSnippet(paths.join('\n'));
+        })
+        .catch(() => {});
+    } else {
+      setRepoTreeSnippet('');
+    }
+  }, [activeRepo?.owner, activeRepo?.repo, activeRepo?.branch]);
+
   const [broadcasts, setBroadcasts] = useState<BroadcastMessage[]>([]);
   const [dismissedBroadcastIds, setDismissedBroadcastIds] = useState<string[]>([]);
   const [brainSettings, setBrainSettings] = useState<AIBrainSettings | null>(null);
@@ -378,6 +427,16 @@ export function ChatScreen({ userId }: ChatScreenProps) {
     setIsLoading(true);
     setStreamingMessage('');
 
+    // If user asked to execute a command (e.g. "Run nmap", "$ nmap", "nmap ...")
+    const cleanCmd = text.trim();
+    const runMatch = cleanCmd.match(/^(?:run\s+|\$\s*)([a-zA-Z0-9_\-\.\/]+(?:\s+.*)?)$/i);
+    const isDirectCmd = /^(?:nmap|ping|curl|npm|git|node|python|ls|cat|cargo|docker|netstat)\b/i.test(cleanCmd);
+    const commandToExecute = runMatch ? runMatch[1].trim() : (isDirectCmd ? cleanCmd : null);
+
+    if (commandToExecute) {
+      terminalManager.executeCommand(commandToExecute).catch(() => {});
+    }
+
     abortControllerRef.current = new AbortController();
 
     try {
@@ -397,17 +456,22 @@ export function ChatScreen({ userId }: ChatScreenProps) {
         branch: activeRepo.branch,
         user: gitHubUser?.login || undefined,
         activeFile: activeRepo.activeFile || undefined,
+        codingMode: codingMode,
+        fileTreeSnippet: repoTreeSnippet || undefined,
       } : undefined;
 
+      let pendingUpdate = false;
       await sendMessageToGroq(
         context,
         systemPrompt,
         (chunk) => {
           fullResponse += chunk;
-          const now = Date.now();
-          if (now - lastStreamUpdate > 35) {
-            lastStreamUpdate = now;
-            setStreamingMessage(fullResponse);
+          if (!pendingUpdate) {
+            pendingUpdate = true;
+            requestAnimationFrame(() => {
+              setStreamingMessage(fullResponse);
+              pendingUpdate = false;
+            });
           }
         },
         abortControllerRef.current.signal,
@@ -430,9 +494,18 @@ export function ChatScreen({ userId }: ChatScreenProps) {
         console.log('Stream aborted by user');
       } else {
         console.error('Failed to get response', error);
-        const errNotice = `⚡ **VOID AI Connection Notice:** Unable to reach AI server temporarily. Please re-send your message or select another model from the header bar.`;
-        const modelMsg = await saveMessage(activeChatId, 'model', errNotice);
-        setMessages([...currentMessages, modelMsg]);
+        // Only append error notice if no response has been received yet
+        if (!fullResponse.trim()) {
+          const rawMsg = error?.message || '';
+          let errNotice = rawMsg;
+          if (!errNotice || errNotice.includes('[object Object]')) {
+            errNotice = `⚡ **VOID AI Connection Notice:** Unable to reach AI server temporarily. Please re-send your message or select another model from Settings.`;
+          } else if (!errNotice.startsWith('⚡')) {
+            errNotice = `⚡ **VOID AI Notice:** ${errNotice}`;
+          }
+          const modelMsg = await saveMessage(activeChatId, 'model', errNotice);
+          setMessages([...currentMessages, modelMsg]);
+        }
         setStreamingMessage('');
       }
     } finally {
@@ -447,16 +520,8 @@ export function ChatScreen({ userId }: ChatScreenProps) {
 
   return (
     <div className="flex h-screen h-[100dvh] w-full bg-transparent text-white overflow-hidden relative overscroll-none select-none">
-      {/* Demonic background glow — subtle red ambient lighting */}
-      <div className="fixed inset-0 pointer-events-none z-0" style={{
-        backgroundImage: `
-          linear-gradient(rgba(0, 0, 0, 0.25), rgba(0, 0, 0, 0.42)),
-          radial-gradient(ellipse at 50% 0%, rgba(140, 15, 15, 0.25) 0%, transparent 55%),
-          radial-gradient(ellipse at 100% 100%, rgba(90, 8, 8, 0.18) 0%, transparent 50%),
-          radial-gradient(ellipse at 0% 70%, rgba(70, 5, 5, 0.15) 0%, transparent 45%)
-        `,
-        backgroundAttachment: 'fixed',
-      }} />
+      {/* Crystal-clear starry void background enhancement — sharp & high-contrast */}
+      <div className="fixed inset-0 pointer-events-none z-0 bg-gradient-to-b from-black/25 via-transparent to-black/45" />
       {/* Mobile Backdrop Overlay when Sidebar is expanded */}
       {isSidebarOpen && (
         <div
@@ -528,95 +593,34 @@ export function ChatScreen({ userId }: ChatScreenProps) {
           </div>
         )}
 
-        {/* Compact responsive header: keep every control inside the mobile viewport */}
-        <header className="min-h-14 px-2 sm:px-3 py-2 sm:py-1 sticky top-0 z-20 bg-black/65 backdrop-blur-md border-b border-[#38383b] flex items-center justify-between gap-1.5 select-none w-full min-w-0">
-          <div className="flex items-center gap-1.5 min-w-0 flex-1">
+        {/* Compact responsive header: clean, lightning-fast, and minimal */}
+        <header className="min-h-13 px-3 py-2 sticky top-0 z-20 bg-black/75 backdrop-blur-md border-b border-[#38383b]/70 flex items-center justify-between gap-2 select-none w-full min-w-0">
+          <div className="flex items-center gap-2.5 min-w-0">
             <button
               onClick={() => setIsSidebarOpen(!isSidebarOpen)}
-              className="w-10 h-10 sm:w-11 sm:h-11 rounded-full bg-[#202022] hover:bg-[#252527] text-white flex items-center justify-center transition-colors cursor-pointer shrink-0"
+              className="w-9 h-9 sm:w-10 sm:h-10 rounded-full bg-[#202022] hover:bg-[#252527] text-white flex items-center justify-center transition-colors cursor-pointer shrink-0"
               title="Toggle sidebar"
             >
-              <Menu size={21} />
+              <Menu size={19} />
             </button>
-
-            <div className="relative min-w-0 max-w-[110px] sm:max-w-[125px]">
-              <select
-                value={`${selectedProvider}:${selectedModel}`}
-                onChange={(e) => {
-                  const [prov, mod] = e.target.value.split(':');
-                  setSelectedProvider(prov as 'groq' | 'cohere' | 'bazaarlink');
-                  setSelectedModel(mod || 'auto');
-                }}
-                className="w-full h-7 bg-[#202022] border border-[#38383b] hover:border-[#454547] text-white text-[11px] font-medium py-0 pl-2.5 pr-6 rounded-full focus:outline-none cursor-pointer appearance-none truncate transition-all shadow-sm"
-                title="Select AI Engine"
-              >
-                <option value="groq:auto">Groq AI</option>
-                <option value="cohere:auto">Cohere AI</option>
-                <option value="bazaarlink:auto">BazaarLink AI</option>
-                <optgroup label="Groq Models">
-                  <option value="groq:llama-3.3-70b-versatile">Groq: Llama 3.3 70B</option>
-                  <option value="groq:llama-3.1-8b-instant">Groq: Llama 3.1 8B</option>
-                  <option value="groq:mixtral-8x7b-32768">Groq: Mixtral 8x7B</option>
-                  <option value="groq:deepseek-r1-distill-llama-70b">Groq: DeepSeek R1 70B</option>
-                </optgroup>
-                <optgroup label="Cohere Models">
-                  <option value="cohere:command-r-plus-08-2024">Cohere: Command R+</option>
-                  <option value="cohere:command-r-08-2024">Cohere: Command R</option>
-                </optgroup>
-                <optgroup label="BazaarLink Models">
-                  <option value="bazaarlink:bazaarlink-fast">BazaarLink: Fast AI</option>
-                  <option value="bazaarlink:bazaarlink-pro">BazaarLink: Pro AI</option>
-                  <option value="bazaarlink:llama-3.3-70b">BazaarLink: Llama 3.3 70B</option>
-                  <option value="bazaarlink:deepseek-r1">BazaarLink: DeepSeek R1</option>
-                </optgroup>
-              </select>
-              <ChevronDown size={11} className="pointer-events-none absolute right-2 top-2 text-[#8d8d91]" />
-            </div>
           </div>
 
-          <div className="flex items-center gap-1.5 shrink-0">
-            <button
-              onClick={() => setShowGitHubModal(true)}
-              className={clsx(
-                "h-10 px-2.5 sm:px-3 rounded-full border text-xs font-medium flex items-center gap-1.5 transition-all cursor-pointer shrink-0",
-                activeRepo
-                  ? "bg-[#161B22] border-[#3f86ff]/70 text-white hover:border-[#3f86ff]"
-                  : gitHubUser
-                    ? "bg-[#202022] hover:bg-[#252527] border-[#38383b] text-white"
-                    : "bg-[#202022] hover:bg-[#252527] border-[#38383b] text-[#8d8d91] hover:text-white"
-              )}
-              title="GitHub Workspace (Direct Code & Repositories)"
-            >
-              <svg className="w-3.5 h-3.5 fill-current shrink-0" viewBox="0 0 24 24">
-                <path fillRule="evenodd" clipRule="evenodd" d="M12 2C6.477 2 2 6.484 2 12.017c0 4.425 2.865 8.18 6.839 9.504.5.092.682-.217.682-.483 0-.237-.008-.868-.013-1.703-2.782.605-3.369-1.343-3.369-1.343-.454-1.158-1.11-1.466-1.11-1.466-.908-.62.069-.608.069-.608 1.003.07 1.53 1.032 1.53 1.032.892 1.53 2.341 1.088 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.113-4.555-4.951 0-1.093.39-1.988 1.029-2.688-.103-.253-.446-1.272.098-2.65 0 0 .84-.27 2.75 1.026A9.564 9.564 0 0112 6.844c.85.004 1.705.115 2.504.337 1.909-1.296 2.747-1.027 2.747-1.027.546 1.379.202 2.398.1 2.651.64.7 1.028 1.595 1.028 2.688 0 3.848-2.339 4.695-4.566 4.943.359.309.678.92.678 1.855 0 1.338-.012 2.419-.012 2.747 0 .268.18.58.688.482A10.019 10.019 0 0022 12.017C22 6.484 17.522 2 12 2z" />
-              </svg>
-              {activeRepo ? (
-                <span className="flex items-center gap-1 font-mono text-[11px] max-w-[120px] truncate">
-                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 shrink-0" />
-                  <span className="truncate">{activeRepo.repo}</span>
-                </span>
-              ) : gitHubUser ? (
-                <span className="hidden sm:inline text-xs">@{gitHubUser.login}</span>
-              ) : (
-                <span className="hidden sm:inline text-xs">GitHub</span>
-              )}
-            </button>
-
+          <div className="flex items-center gap-2 shrink-0">
             <button
               onClick={() => setShowSubscription(true)}
-              className="h-10 px-2.5 sm:px-3.5 rounded-full bg-[#202022] hover:bg-[#252527] border border-[#38383b] text-white text-xs sm:text-sm font-medium flex items-center gap-1 whitespace-nowrap transition-all cursor-pointer"
+              className="h-9 px-3 rounded-full bg-[#202022] hover:bg-[#252527] border border-[#38383b] text-white text-xs font-medium flex items-center gap-1 whitespace-nowrap transition-all cursor-pointer"
               title="Upgrade Plan"
             >
-              <span className="text-[#3f86ff] text-sm">✦</span>
+              <span className="text-[#3f86ff] text-xs">✦</span>
               <span>Get Plus</span>
             </button>
 
             <button
               onClick={() => setShowSettings(true)}
-              className="w-10 h-10 sm:w-11 sm:h-11 rounded-full bg-[#3f86ff] text-white font-bold text-sm flex items-center justify-center hover:opacity-90 transition-opacity cursor-pointer shrink-0"
+              className="w-9 h-9 sm:w-10 sm:h-10 rounded-full bg-[#3f86ff] text-white font-bold text-xs flex items-center justify-center hover:opacity-90 transition-opacity cursor-pointer shrink-0 shadow-sm"
               title="Account Settings"
             >
-              MT
+              {profile?.displayName ? profile.displayName.slice(0, 2).toUpperCase() : 'MT'}
             </button>
           </div>
         </header>
@@ -640,7 +644,7 @@ export function ChatScreen({ userId }: ChatScreenProps) {
               <h1 className="text-2xl sm:text-3xl font-bold text-white mb-1.5">How can I help?</h1>
               <p className="text-sm text-[#8d8d91] mb-8">Your AI assistant</p>
 
-              {/* Quick action prompts — increased by 20% */}
+              {/* Quick action prompts */}
               <div className="w-full grid grid-cols-2 gap-2.5 max-w-lg">
                 <button
                   onClick={() => handleSend("Hack the system.")}
@@ -677,6 +681,12 @@ export function ChatScreen({ userId }: ChatScreenProps) {
                   message={msg}
                   onDelete={handleDeleteMessage}
                   onEdit={handleEditMessage}
+                  activeRepo={activeRepo}
+                  codingModeEnabled={codingMode}
+                  onEnableCodingMode={() => {
+                    setCodingMode(true);
+                    setStoredGitHubCodingMode(true);
+                  }}
                 />
               ))}
 
@@ -691,6 +701,12 @@ export function ChatScreen({ userId }: ChatScreenProps) {
                     createdAt: Date.now()
                   }}
                   isStreaming={true}
+                  activeRepo={activeRepo}
+                  codingModeEnabled={codingMode}
+                  onEnableCodingMode={() => {
+                    setCodingMode(true);
+                    setStoredGitHubCodingMode(true);
+                  }}
                 />
               )}
 
@@ -743,7 +759,11 @@ export function ChatScreen({ userId }: ChatScreenProps) {
       {/* Settings Modal matching video screen */}
       {showSettings && (
         <SettingsModal
-          onClose={() => setShowSettings(false)}
+          onClose={() => {
+            setShowSettings(false);
+            setSettingsInitialView('main');
+          }}
+          initialView={settingsInitialView}
           isAdmin={profile?.isAdmin || false}
           onClearHistory={handleClearAllHistory}
           userEmail={profile?.email || 'mrnovatech4@gmail.com'}
@@ -756,7 +776,11 @@ export function ChatScreen({ userId }: ChatScreenProps) {
           onOpenCampaignGenerator={() => setShowCampaignGenerator(true)}
           onOpenLiveVoice={() => setShowLiveVoice(true)}
           onOpenTelegram={() => setShowTelegramModal(true)}
+          onOpenGitHubWorkspace={() => setShowGitHubModal(true)}
           walletBalance={profile?.walletBalance || 0}
+          selectedProvider={selectedProvider}
+          selectedModel={selectedModel}
+          onSelectProviderModel={handleSelectProviderModel}
         />
       )}
 

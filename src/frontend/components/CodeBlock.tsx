@@ -3,6 +3,9 @@ import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
 import { vscDarkPlus } from 'react-syntax-highlighter/dist/esm/styles/prism';
 import { Copy, Check, Download, Terminal, ChevronDown, ChevronUp, GitCommit, ExternalLink, RefreshCw, Upload } from 'lucide-react';
 import { getStoredGitHubToken, getStoredActiveRepo, commitFile } from '../utils/github';
+import { TerminalToolComponent } from './tools/TerminalToolComponent';
+import { terminalManager } from '../utils/terminalManager';
+import { TerminalToolEvent } from '../../models/types';
 
 interface CodeBlockProps {
   language: string;
@@ -12,6 +15,38 @@ interface CodeBlockProps {
 const COLLAPSE_THRESHOLD = 14;
 
 export function CodeBlock({ language, value }: CodeBlockProps) {
+  // If this code block contains internal tool: "terminal" or terminal command output, render real TerminalToolComponent
+  const isTerminalBlock = 
+    language === 'terminal' || 
+    language === 'sh' || 
+    language === 'bash' || 
+    value.includes('tool: "terminal"') || 
+    value.includes("tool: 'terminal'") || 
+    (value.trim().startsWith('$') && !value.includes('npm install --save'));
+
+  if (isTerminalBlock) {
+    const sanitized = value.replace(/tool:\s*["']?terminal["']?\s*/gi, '').trim();
+    const lines = sanitized.split('\n');
+    const firstLine = lines[0]?.trim() || '';
+    const cmd = firstLine.startsWith('$') ? firstLine.replace(/^\$\s*/, '') : firstLine;
+    const out = lines.slice(1).join('\n').trim();
+    const isErr = out.toLowerCase().includes('error:') || out.toLowerCase().includes('failed');
+    const evt: TerminalToolEvent = {
+      id: 'term-' + Date.now(),
+      type: 'tool',
+      tool: 'terminal',
+      status: isErr ? 'failed' : 'completed',
+      command: cmd || 'command',
+      output: out,
+      startedAt: Date.now() - 2000,
+      completedAt: Date.now(),
+      durationMs: 2000,
+      exitCode: isErr ? 1 : 0
+    };
+    terminalManager.registerToolEvent(evt);
+    return <TerminalToolComponent event={evt} />;
+  }
+
   const [copied, setCopied] = useState(false);
   const [downloaded, setDownloaded] = useState(false);
   const [expanded, setExpanded] = useState(false);

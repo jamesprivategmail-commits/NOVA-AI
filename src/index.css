@@ -20,14 +20,15 @@
   }
 
   body {
-    /* Dark anime wallpaper with a readable dark veil for text and controls. */
+    /* Crisp monochrome starry cosmos wallpaper with sharp clarity and readable dark veil */
     background-image:
-      linear-gradient(rgba(0, 0, 0, 0.80), rgba(0, 0, 0, 0.90)),
+      linear-gradient(rgba(5, 5, 8, 0.40), rgba(0, 0, 0, 0.62)),
       url('/void-wallpaper.jpg');
     background-size: cover;
     background-position: center;
     background-attachment: fixed;
     background-repeat: no-repeat;
+    image-rendering: -webkit-optimize-contrast;
   }
 
   #root {

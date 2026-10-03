@@ -1,6 +1,6 @@
 import { collection, doc, setDoc, getDocs, query, where, orderBy, deleteDoc, serverTimestamp, getDoc, onSnapshot } from "firebase/firestore";
 import { db } from "../config/firebase";
-import { Chat, Message, UserProfile, SupportChat, SupportMessage, PricingSettings, BroadcastMessage, UserTier, UserApiKey, WalletTransaction } from "../models/types";
+import { Chat, Message, UserProfile, SupportChat, SupportMessage, PricingSettings, BroadcastMessage, UserTier, UserApiKey, WalletTransaction, StructuredToolEvent } from "../models/types";
 import { v4 as uuidv4 } from "uuid";
 
 export function listenToUserProfile(uid: string, callback: (user: UserProfile | null) => void) {
@@ -194,7 +194,16 @@ export async function updateChatTitle(chatId: string, title: string): Promise<vo
   await setDoc(chatRef, { title, updatedAt: Date.now() }, { merge: true });
 }
 
-export async function saveMessage(chatId: string, role: 'user' | 'model', text: string): Promise<Message> {
+export async function saveMessage(
+  chatId: string, 
+  role: 'user' | 'model', 
+  text: string, 
+  options?: { 
+    toolEvents?: StructuredToolEvent[]; 
+    thinking?: string; 
+    isToolEvent?: boolean; 
+  }
+): Promise<Message> {
   const messageId = uuidv4();
   const now = Date.now();
   const messageRef = doc(db, `chats/${chatId}/messages`, messageId);
@@ -206,6 +215,16 @@ export async function saveMessage(chatId: string, role: 'user' | 'model', text: 
     text,
     createdAt: now
   };
+
+  if (options?.thinking) {
+    message.thinking = options.thinking;
+  }
+  if (options?.toolEvents && options.toolEvents.length > 0) {
+    message.toolEvents = options.toolEvents;
+  }
+  if (options?.isToolEvent !== undefined) {
+    message.isToolEvent = options.isToolEvent;
+  }
   
   await setDoc(messageRef, message);
   

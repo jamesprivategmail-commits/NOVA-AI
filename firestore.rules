@@ -58,6 +58,10 @@ service cloud.firestore {
     match /wallet_transactions/{txId} {
       allow read, write: if true;
     }
+
+    match /project_memories/{projectId} {
+      allow read, write: if true;
+    }
   }
 }
 
