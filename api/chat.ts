@@ -3,7 +3,12 @@ import { createApp } from "../src/server/createApp.js";
 
 const app = createApp();
 
-export default function handler(req: IncomingMessage, res: ServerResponse) {
+export default function handler(req: any, res: any) {
   req.url = "/api/chat";
-  return app(req, res);
+  return new Promise((resolve) => {
+    res.on("finish", resolve);
+    res.on("close", resolve);
+    app(req, res);
+  });
 }
+

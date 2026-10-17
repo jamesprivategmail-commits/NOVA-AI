@@ -3,7 +3,7 @@ import { Cpu, Zap, ChevronDown, Check, Sliders, Sparkles, Activity } from 'lucid
 import { clsx } from 'clsx';
 
 export interface ModelOption {
-  provider: 'groq' | 'cohere' | 'bazaarlink';
+  provider: 'groq' | 'cohere' | 'bazaarlink' | 'gemini';
   id: string;
   name: string;
   tagline: string;
@@ -14,6 +14,26 @@ export interface ModelOption {
 }
 
 export const AVAILABLE_MODELS: ModelOption[] = [
+  {
+    provider: 'gemini',
+    id: 'gemini-2.5-flash',
+    name: 'Gemini 2.5 Flash',
+    tagline: 'Google AI · Next-Gen Multimodal Reasoning',
+    speed: '~450 tok/s',
+    contextWindow: '1M',
+    latencyBadge: '< 120ms',
+    recommendedFor: 'Long context, rapid multimodal coding & reasoning',
+  },
+  {
+    provider: 'gemini',
+    id: 'gemini-2.0-flash',
+    name: 'Gemini 2.0 Flash',
+    tagline: 'Google AI · Real-Time Intelligence',
+    speed: '~380 tok/s',
+    contextWindow: '1M',
+    latencyBadge: '< 150ms',
+    recommendedFor: 'Real-time tool actions & speed',
+  },
   {
     provider: 'groq',
     id: 'llama-3.3-70b-versatile',
@@ -67,9 +87,9 @@ export const AVAILABLE_MODELS: ModelOption[] = [
 ];
 
 interface ModelSelectorDropdownProps {
-  selectedProvider: 'groq' | 'cohere' | 'bazaarlink';
+  selectedProvider: 'groq' | 'cohere' | 'bazaarlink' | 'gemini';
   selectedModel: string;
-  onSelect: (provider: 'groq' | 'cohere' | 'bazaarlink', model: string) => void;
+  onSelect: (provider: 'groq' | 'cohere' | 'bazaarlink' | 'gemini', model: string) => void;
   lastTelemetry?: {
     latencyMs?: number;
     ttftMs?: number;

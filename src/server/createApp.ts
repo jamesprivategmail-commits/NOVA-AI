@@ -17,6 +17,7 @@ import { codeVerifier } from "./agent/verifier.js";
 import { getAuthoritativeToolCapabilities } from "./tools/registry.js";
 import { terminalService } from "./terminal/terminalService.js";
 
+import { GoogleGenAI } from "@google/genai";
 dotenv.config();
 
 export function cleanKey(k: any): string {
@@ -44,7 +45,7 @@ export function parseKeysFromInput(val: any): string[] {
   return [];
 }
 
-export function getEnvKeys(): { groqKeys: string[]; cohereKeys: string[]; bazaarLinkKeys: string[] } {
+export function getEnvKeys(): { groqKeys: string[]; cohereKeys: string[]; bazaarLinkKeys: string[]; geminiKeys: string[] } {
   const groqKeys = [
     ...parseKeysFromInput(process.env.GROQ_API_KEY),
     ...parseKeysFromInput(process.env.GROQ_API_KEYS),
@@ -63,18 +64,25 @@ export function getEnvKeys(): { groqKeys: string[]; cohereKeys: string[]; bazaar
     ...parseKeysFromInput(process.env.VITE_BAZAARLINK_API_KEY),
     ...parseKeysFromInput(process.env.BAZAARLINK_KEY),
   ];
+  const geminiKeys = [
+    ...parseKeysFromInput(process.env.GEMINI_API_KEY),
+    ...parseKeysFromInput(process.env.GOOGLE_API_KEY),
+    ...parseKeysFromInput(process.env.VITE_GEMINI_API_KEY),
+  ];
   return {
     groqKeys: [...new Set(groqKeys)],
     cohereKeys: [...new Set(cohereKeys)],
     bazaarLinkKeys: [...new Set(bazaarLinkKeys)],
+    geminiKeys: [...new Set(geminiKeys)],
   };
 }
 
-export async function getSystemKeys(): Promise<{ groqKeys: string[]; cohereKeys: string[]; bazaarLinkKeys: string[] }> {
+export async function getSystemKeys(): Promise<{ groqKeys: string[]; cohereKeys: string[]; bazaarLinkKeys: string[]; geminiKeys: string[] }> {
   const envKeys = getEnvKeys();
   let firestoreGroqKeys: string[] = [];
   let firestoreCohereKeys: string[] = [];
   let firestoreBazaarLinkKeys: string[] = [];
+  let firestoreGeminiKeys: string[] = [];
 
   try {
     const keysRef = doc(db, "settings", "apikeys");
@@ -97,6 +105,11 @@ export async function getSystemKeys(): Promise<{ groqKeys: string[]; cohereKeys:
         ...parseKeysFromInput(data.bazaarLinkApiKeys),
         ...parseKeysFromInput(data.bazaarLinkApiKey),
       ];
+      firestoreGeminiKeys = [
+        ...parseKeysFromInput(data.geminiApiKeys),
+        ...parseKeysFromInput(data.geminiApiKey),
+        ...parseKeysFromInput(data.googleApiKey),
+      ];
     }
   } catch (err) {
     console.warn("[System Keys] Could not fetch API keys from Firestore in backend:", err);
@@ -106,8 +119,9 @@ export async function getSystemKeys(): Promise<{ groqKeys: string[]; cohereKeys:
   const groqKeys = [...new Set([...envKeys.groqKeys, ...firestoreGroqKeys])];
   const cohereKeys = [...new Set([...envKeys.cohereKeys, ...firestoreCohereKeys])];
   const bazaarLinkKeys = [...new Set([...envKeys.bazaarLinkKeys, ...firestoreBazaarLinkKeys])];
+  const geminiKeys = [...new Set([...envKeys.geminiKeys, ...firestoreGeminiKeys])];
 
-  return { groqKeys, cohereKeys, bazaarLinkKeys };
+  return { groqKeys, cohereKeys, bazaarLinkKeys, geminiKeys };
 }
 
 // In-memory cache for brain settings to avoid drops on latency
@@ -242,7 +256,7 @@ export class KeyHealthManager {
     return apiKey.trim();
   }
 
-  isKeyFormatValid(apiKey: string, provider: 'groq' | 'cohere' | 'bazaarlink'): boolean {
+  isKeyFormatValid(apiKey: string, provider: 'groq' | 'cohere' | 'bazaarlink' | 'gemini'): boolean {
     if (!apiKey || typeof apiKey !== 'string') return false;
     const clean = apiKey.replace(/[\r\n]/g, '').replace(/^["']|["']$/g, '').trim();
     if (clean.length < 5) return false;
@@ -262,7 +276,7 @@ export class KeyHealthManager {
     });
   }
 
-  isKeyHealthy(apiKey: string, provider: 'groq' | 'cohere' | 'bazaarlink'): { healthy: boolean; reason?: string } {
+  isKeyHealthy(apiKey: string, provider: 'groq' | 'cohere' | 'bazaarlink' | 'gemini'): { healthy: boolean; reason?: string } {
     if (!this.isKeyFormatValid(apiKey, provider)) {
       return { healthy: false, reason: "Invalid key format or placeholder text" };
     }
@@ -278,7 +292,7 @@ export class KeyHealthManager {
     return { healthy: true };
   }
 
-  filterHealthyKeys(keys: string[], provider: 'groq' | 'cohere' | 'bazaarlink'): { healthyKeys: string[]; skippedReasons: string[] } {
+  filterHealthyKeys(keys: string[], provider: 'groq' | 'cohere' | 'bazaarlink' | 'gemini'): { healthyKeys: string[]; skippedReasons: string[] } {
     const healthyKeys: string[] = [];
     const skippedReasons: string[] = [];
 
@@ -649,6 +663,92 @@ export async function executeBazaarLinkWithRotation(messages: any[], systemPromp
   throw lastError || new Error("All BazaarLink keys and models failed");
 }
 
+export async function executeGeminiWithRotation(
+  messages: any[],
+  systemPrompt: string,
+  maxTokens: number = 2048,
+  requestedModel: string | undefined,
+  geminiKeys: string[],
+  res: any,
+  imageDataUrl?: string
+) {
+  const { healthyKeys, skippedReasons } = keyHealthManager.filterHealthyKeys(geminiKeys, 'gemini');
+
+  if (healthyKeys.length === 0) {
+    if (skippedReasons.length > 0) {
+      console.warn(`[Gemini Validation] Skipped invalid/bad keys: ${skippedReasons.join(', ')}`);
+    }
+    throw new Error("No healthy or valid Gemini API keys available");
+  }
+
+  const defaultModels = AI_CONFIG.providers.gemini.models;
+  const models = requestedModel && defaultModels.includes(requestedModel)
+    ? [requestedModel, ...defaultModels.filter((m: string) => m !== requestedModel)]
+    : defaultModels;
+
+  let lastError: any = null;
+
+  for (let keyIdx = 0; keyIdx < healthyKeys.length; keyIdx++) {
+    const apiKey = healthyKeys[keyIdx];
+    const ai = new GoogleGenAI({ apiKey });
+
+    for (let modelIdx = 0; modelIdx < models.length; modelIdx++) {
+      const model = models[modelIdx];
+      try {
+        const contents: any[] = [];
+        for (const m of messages) {
+          contents.push({
+            role: m.role === "user" ? "user" : "model",
+            parts: [{ text: m.text || m.content || "" }]
+          });
+        }
+
+        if (imageDataUrl && contents.length > 0) {
+          const lastIdx = contents.length - 1;
+          if (contents[lastIdx].role === "user") {
+            const match = imageDataUrl.match(/^data:([^;]+);base64,(.+)$/);
+            if (match) {
+              contents[lastIdx].parts.unshift({
+                inlineData: {
+                  mimeType: match[1],
+                  data: match[2]
+                }
+              });
+            }
+          }
+        }
+
+        const stream = await ai.models.generateContentStream({
+          model,
+          contents,
+          config: {
+            systemInstruction: systemPrompt && systemPrompt.trim() ? systemPrompt.trim() : undefined,
+            maxOutputTokens: maxTokens,
+          }
+        });
+
+        for await (const chunk of stream) {
+          const text = chunk.text;
+          if (text) {
+            res.write(`data: ${JSON.stringify({ text })}\n\n`);
+          }
+        }
+        return;
+      } catch (err: any) {
+        console.warn(`[Gemini] Key #${keyIdx + 1} with model ${model} failed:`, err?.message || err);
+        lastError = err;
+        const msg = String(err?.message || "").toLowerCase();
+        if (msg.includes("api_key_invalid") || msg.includes("api key not valid") || msg.includes("401") || msg.includes("403")) {
+          keyHealthManager.markKeyAsBad(apiKey, "Invalid Gemini API Key", 60 * 60 * 1000);
+          break;
+        }
+      }
+    }
+  }
+
+  throw lastError || new Error("All Gemini keys and models failed");
+}
+
 export async function incrementUserMessageCountServer(userId: string) {
   if (!userId) return;
   try {
@@ -751,19 +851,35 @@ export function createApp(): express.Express {
     next();
   });
 
-  // Normalize path if Vercel serverless proxy headers are present
+  // Normalize path if Vercel serverless proxy headers or __route query params are present
   app.use((req, res, next) => {
-    const xForwardedUri = req.headers["x-forwarded-uri"] as string;
-    const xMatched = req.headers["x-matched-path"] as string;
-    const orig = xForwardedUri || xMatched;
+    const orig =
+      (req.headers["x-vercel-original-url"] as string) ||
+      (req.headers["x-forwarded-uri"] as string) ||
+      (req.headers["x-original-url"] as string) ||
+      (req.headers["x-rewrite-url"] as string) ||
+      (req.headers["x-matched-path"] as string);
+
     if (orig && (orig.startsWith("/api") || orig.startsWith("/v1") || orig.startsWith("/auth") || orig.startsWith("/chat"))) {
       req.url = orig;
     }
-    // If a POST request with messages hits /api, /, or /api/, normalize to /api/chat
-    if (req.method === "POST" && (req.url === "/api" || req.url === "/" || req.url === "/api/")) {
-      if (req.body && (req.body.messages || req.body.prompt)) {
-        req.url = "/api/chat";
-      }
+
+    if (req.url) {
+      try {
+        const parsed = new URL(req.url, "http://localhost");
+        const routeParam = parsed.searchParams.get("__route");
+        if (routeParam) {
+          req.url = routeParam;
+        }
+      } catch (_) {}
+    }
+    next();
+  });
+
+  // Prevent Express body-parser from hanging on Vercel where the request stream was pre-consumed
+  app.use((req, res, next) => {
+    if (req.body !== undefined) {
+      (req as any)._body = true;
     }
     next();
   });
@@ -773,6 +889,16 @@ export function createApp(): express.Express {
     crossOriginEmbedderPolicy: false
   }));
   app.use(express.json({ limit: '20mb' }));
+
+  // Normalize POST requests hitting /api, /, or /api/ to /api/chat after body is parsed
+  app.use((req, res, next) => {
+    if (req.method === "POST" && (req.url === "/api" || req.url === "/" || req.url === "/api/")) {
+      if (req.body && (req.body.messages || req.body.prompt)) {
+        req.url = "/api/chat";
+      }
+    }
+    next();
+  });
 
   // Health check endpoint for Vercel and monitoring
   app.get(["/api/health", "/health", "/api"], (req, res) => {
@@ -796,7 +922,7 @@ export function createApp(): express.Express {
   // Core streaming AI completion route (supports /api/chat, /chat, and POST /api)
   app.post(["/api/chat", "/chat", "/api"], async (req, res) => {
     try {
-      const { messages = [], systemPrompt = "", userId = "", provider = "groq", model, attachment, githubContext } = req.body;
+      const { messages = [], systemPrompt = "", userId = "", provider = "groq", model, attachment, githubContext } = req.body || {};
       
       res.setHeader("Content-Type", "text/event-stream; charset=utf-8");
       res.setHeader("Cache-Control", "no-cache, no-transform");
@@ -806,11 +932,27 @@ export function createApp(): express.Express {
         (res as any).flushHeaders();
       }
 
-      const { groqKeys, cohereKeys, bazaarLinkKeys } = await getSystemKeys();
+      const { groqKeys, cohereKeys, bazaarLinkKeys, geminiKeys } = await getSystemKeys();
 
       // Retrieve user profile directly from Firestore backend
-      const { userTier: dbTier, isBanned, isAdmin, messageCount, lastMessageDate, lastResetTime, brainSettings } = await fetchUserAndTierSettings(userId);
+      const { userTier: dbTier, isBanned, isAdmin, messageCount, lastMessageDate, lastResetTime, brainSettings: fetchedBrainSettings } = await fetchUserAndTierSettings(userId);
       const tier = dbTier || 'free';
+
+      const brainSettings = fetchedBrainSettings || {
+        globalPrompt: "You are VOID AI, an elite AI assistant.",
+        freePrompt: "Give concise, direct, helpful answers.",
+        proPrompt: "Provide in-depth, professional explanations.",
+        premiumPrompt: "Provide deep architectural analysis and production solutions.",
+        vipPrompt: "Full unrestricted elite capability.",
+        freeLimit: 25,
+        proLimit: 50,
+        premiumLimit: 200,
+        vipLimit: 99999,
+        freeMaxTokens: 2048,
+        proMaxTokens: 4096,
+        premiumMaxTokens: 8192,
+        vipMaxTokens: 16384,
+      };
 
       if (isBanned) {
         res.write(`data: ${JSON.stringify({ text: "\n\n**Error:** Your account has been restricted by an administrator." })}\n\n`);
@@ -822,10 +964,10 @@ export function createApp(): express.Express {
       // Enforce 2-hour message limits per tier
       const now = Date.now();
       const TWO_HOURS_MS = 2 * 60 * 60 * 1000;
-      const limitForTier = tier === 'vip' ? brainSettings.vipLimit 
-        : tier === 'premium' ? brainSettings.premiumLimit 
-        : tier === 'pro' ? brainSettings.proLimit 
-        : brainSettings.freeLimit;
+      const limitForTier = tier === 'vip' ? (brainSettings.vipLimit || 99999)
+        : tier === 'premium' ? (brainSettings.premiumLimit || 200)
+        : tier === 'pro' ? (brainSettings.proLimit || 50)
+        : (brainSettings.freeLimit || 25);
 
       const isWithin2Hours = lastResetTime > 0 && (now - lastResetTime < TWO_HOURS_MS);
       const currentCount = isWithin2Hours ? (messageCount || 0) : 0;
@@ -883,16 +1025,16 @@ export function createApp(): express.Express {
 
       // ── Attachment Processing (Image / File) ──────────────────────
       let imageDataUrl: string | undefined;
-      let messagesForAI = messages;
+      let messagesForAI = Array.isArray(messages) ? messages : [];
 
       if (attachment) {
         if (attachment.kind === 'image' && attachment.data) {
           imageDataUrl = attachment.data;
         } else if (attachment.kind === 'file' && attachment.data) {
-          const lastUserMsg = [...messages].reverse().find((m: any) => m.role === 'user');
+          const lastUserMsg = [...messagesForAI].reverse().find((m: any) => m.role === 'user');
           if (lastUserMsg) {
             const fileContent = `\n\n[📄 File: ${attachment.name}]\n\`\`\`\n${attachment.data}\n\`\`\`\n`;
-            messagesForAI = messages.map((m: any) =>
+            messagesForAI = messagesForAI.map((m: any) =>
               m === lastUserMsg
                 ? { ...m, text: `${m.text || m.content || ''}${fileContent}` }
                 : m
@@ -940,11 +1082,18 @@ export function createApp(): express.Express {
         }
       }
 
-      let providersToTry = ["groq", "cohere", "bazaarlink"];
-      if (provider === "cohere") {
-        providersToTry = ["cohere", "groq", "bazaarlink"];
+      // Prioritize requested provider and auto-fallback across all available pools
+      let providersToTry = ["groq", "gemini", "cohere", "bazaarlink"];
+      if (provider === "gemini") {
+        providersToTry = ["gemini", "groq", "cohere", "bazaarlink"];
+      } else if (provider === "cohere") {
+        providersToTry = ["cohere", "gemini", "groq", "bazaarlink"];
       } else if (provider === "bazaarlink") {
-        providersToTry = ["bazaarlink", "groq", "cohere"];
+        providersToTry = ["bazaarlink", "gemini", "groq", "cohere"];
+      } else {
+        if (groqKeys.length === 0 && geminiKeys.length > 0) {
+          providersToTry = ["gemini", "cohere", "bazaarlink", "groq"];
+        }
       }
 
       let executedSuccessfully = false;
@@ -955,6 +1104,11 @@ export function createApp(): express.Express {
           if (p === "groq") {
             if (groqKeys.length === 0) continue;
             await executeGroqWithRotation(messagesForAI, combinedSystemPrompt, maxTokens, provider === "groq" ? model : undefined, groqKeys, res, imageDataUrl);
+            executedSuccessfully = true;
+            break;
+          } else if (p === "gemini") {
+            if (geminiKeys.length === 0) continue;
+            await executeGeminiWithRotation(messagesForAI, combinedSystemPrompt, maxTokens, provider === "gemini" ? model : undefined, geminiKeys, res, imageDataUrl);
             executedSuccessfully = true;
             break;
           } else if (p === "cohere") {
@@ -981,12 +1135,12 @@ export function createApp(): express.Express {
         const errMessage = String(lastProviderError?.message || "");
         let errNotice = "⚡ **VOID AI Traffic Notice:** Our AI connection pool is undergoing high demand. Please re-send your message in a moment or select a different model engine from the top bar.";
         
-        if (groqKeys.length === 0 && cohereKeys.length === 0 && bazaarLinkKeys.length === 0) {
-          errNotice = "⚡ **API Key Configuration Notice:** No active AI provider keys found in this environment. If deploying on Vercel, please add `GROQ_API_KEY` or `COHERE_API_KEY` to your Vercel Project Settings → Environment Variables.";
+        if (groqKeys.length === 0 && cohereKeys.length === 0 && bazaarLinkKeys.length === 0 && geminiKeys.length === 0) {
+          errNotice = "⚡ **API Key Configuration Notice:** No active AI provider keys found in this environment. If deploying on Vercel, please add `GEMINI_API_KEY`, `GROQ_API_KEY`, or `COHERE_API_KEY` to your Vercel Project Settings → Environment Variables.";
         } else if (errMessage.toLowerCase().includes("healthy") || errMessage.toLowerCase().includes("valid")) {
-          errNotice = "⚡ **API Key Validation Notice:** Configured AI provider keys are currently invalid or depleted. Please check system API key configuration in Admin Settings or add `GROQ_API_KEY` to your Vercel Environment Variables.";
+          errNotice = "⚡ **API Key Validation Notice:** Configured AI provider keys are currently invalid or depleted. Please check system API key configuration in Admin Settings or add `GEMINI_API_KEY` / `GROQ_API_KEY` to your Vercel Environment Variables.";
         } else if (errMessage.toLowerCase().includes("rate_limit_exceeded") || errMessage.toLowerCase().includes("rate limit") || errMessage.toLowerCase().includes("429") || errMessage.toLowerCase().includes("tokens")) {
-          errNotice = "⚡ **Rate Limit Notice:** Provider rate or token limit reached on current model. Please switch engine in Settings.";
+          errNotice = "⚡ **Rate Limit Notice:** Provider rate or token limit reached on current model. Please switch engine in the top bar.";
         }
         res.write(`data: ${JSON.stringify({ text: `\n\n${errNotice}` })}\n\n`);
       }
@@ -995,7 +1149,12 @@ export function createApp(): express.Express {
       res.end();
     } catch (error: any) {
       console.error("Error calling AI API:", error);
-      const errNotice = "⚡ **VOID AI Traffic Notice:** System temporarily busy. Please re-send your message or select an alternate model.";
+      if (!res.headersSent) {
+        res.setHeader("Content-Type", "text/event-stream; charset=utf-8");
+        res.setHeader("Cache-Control", "no-cache, no-transform");
+        res.setHeader("Connection", "keep-alive");
+      }
+      const errNotice = "⚡ **VOID AI Engine Notice:** Unable to complete generation. Please check your network or try switching AI model.";
       res.write(`data: ${JSON.stringify({ text: `\n\n${errNotice}` })}\n\n`);
       res.write("data: [DONE]\n\n");
       res.end();

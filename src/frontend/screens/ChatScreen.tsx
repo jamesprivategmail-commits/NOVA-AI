@@ -87,14 +87,14 @@ export function ChatScreen({ userId }: ChatScreenProps) {
   }>({});
 
   // AI Model Selection state (Persisted, managed in Settings & Top Bar)
-  const [selectedProvider, setSelectedProvider] = useState<'groq' | 'cohere' | 'bazaarlink'>(() => {
+  const [selectedProvider, setSelectedProvider] = useState<'groq' | 'cohere' | 'bazaarlink' | 'gemini'>(() => {
     return (localStorage.getItem('void_ai_selected_provider') as any) || 'groq';
   });
   const [selectedModel, setSelectedModel] = useState<string>(() => {
     return localStorage.getItem('void_ai_selected_model') || 'auto';
   });
 
-  const handleSelectProviderModel = (provider: 'groq' | 'cohere' | 'bazaarlink', model: string) => {
+  const handleSelectProviderModel = (provider: 'groq' | 'cohere' | 'bazaarlink' | 'gemini', model: string) => {
     setSelectedProvider(provider);
     setSelectedModel(model);
     localStorage.setItem('void_ai_selected_provider', provider);
@@ -200,11 +200,12 @@ export function ChatScreen({ userId }: ChatScreenProps) {
     return b.targetTier === userTier;
   });
 
-  // Auto-scroll state & refs
+  // Auto-scroll state & refs with 99% smoother scrolling physics
   const [showScrollBottom, setShowScrollBottom] = useState(false);
   const chatContainerRef = useRef<HTMLDivElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const abortControllerRef = useRef<AbortController | null>(null);
+  const userScrolledUpRef = useRef(false);
 
   useEffect(() => {
     loadProfileAndChats();
@@ -216,33 +217,44 @@ export function ChatScreen({ userId }: ChatScreenProps) {
 
   useEffect(() => {
     if (currentChatId) {
+      userScrolledUpRef.current = false;
       loadMessages(currentChatId);
     } else {
       setMessages([]);
     }
   }, [currentChatId]);
 
-  // Scroll to bottom when messages or streaming updates
+  // Smooth scroll sync: Only auto-scroll when user hasn't explicitly scrolled up to read history
   useEffect(() => {
     const container = chatContainerRef.current;
     if (!container) return;
-    const isAtBottom = container.scrollHeight - container.scrollTop <= container.clientHeight + 150;
-    if (isAtBottom || streamingMessage) {
-      scrollToBottom(!!streamingMessage);
+    if (!userScrolledUpRef.current) {
+      requestAnimationFrame(() => {
+        container.scrollTo({
+          top: container.scrollHeight,
+          behavior: streamingMessage ? 'auto' : 'smooth'
+        });
+      });
     }
   }, [messages, streamingMessage]);
 
   const handleScroll = () => {
     const container = chatContainerRef.current;
     if (!container) return;
-    const isAtBottom = container.scrollHeight - container.scrollTop <= container.clientHeight + 150;
+    const distanceToBottom = container.scrollHeight - container.scrollTop - container.clientHeight;
+    const isAtBottom = distanceToBottom <= 80;
+    userScrolledUpRef.current = !isAtBottom;
     setShowScrollBottom(!isAtBottom);
   };
 
-  const scrollToBottom = (instant = true) => {
+  const scrollToBottom = (smooth = true) => {
     const container = chatContainerRef.current;
     if (!container) return;
-    container.scrollTop = container.scrollHeight;
+    userScrolledUpRef.current = false;
+    container.scrollTo({
+      top: container.scrollHeight,
+      behavior: smooth ? 'smooth' : 'auto'
+    });
   };
 
   const loadProfileAndChats = async () => {
@@ -797,50 +809,50 @@ export function ChatScreen({ userId }: ChatScreenProps) {
           </div>
         </header>
 
-        {/* Chat Messages Container */}
+        {/* Chat Messages Container with 2026 Smooth Scrolling Physics */}
         <div
           ref={chatContainerRef}
           onScroll={handleScroll}
-          className="flex-1 min-h-0 overflow-y-auto relative flex flex-col justify-between touch-scroll select-text"
+          className="flex-1 min-h-0 overflow-y-auto relative flex flex-col justify-between smooth-scroll-container touch-scroll select-text"
         >
           {messages.length === 0 ? (
-            /* Clean NOVA-style welcome screen */
+            /* Clean 2026 NOVA/VOID Welcome Screen */
             <div className="flex-1 flex flex-col items-center justify-center px-4 max-w-2xl mx-auto w-full">
-              <div className="w-24 h-24 rounded-2xl bg-black/75 border border-[#38383b] p-1 flex items-center justify-center mb-5 overflow-hidden">
+              <div className="w-24 h-24 rounded-2xl bg-black/80 border border-red-500/30 p-1.5 flex items-center justify-center mb-5 overflow-hidden shadow-[0_0_30px_rgba(220,38,38,0.25)] ring-1 ring-white/10">
                 <img 
                   src="/void-logo.jpg"
                   alt="VOID AI" 
-                  className="w-full h-full object-cover"
+                  className="w-full h-full object-cover rounded-xl"
                 />
               </div>
-              <h1 className="text-2xl sm:text-3xl font-bold text-white mb-1.5">How can I help?</h1>
-              <p className="text-sm text-[#8d8d91] mb-8">Your AI assistant</p>
+              <h1 className="text-2xl sm:text-3xl font-bold text-white mb-1.5 tracking-tight">How can I help you today?</h1>
+              <p className="text-sm text-slate-400 mb-8 font-normal">Next-generation real-time multimodal intelligence</p>
 
-              {/* Quick action prompts */}
+              {/* Quick action prompts with 2026 obsidian styling */}
               <div className="w-full grid grid-cols-2 gap-2.5 max-w-lg">
                 <button
-                  onClick={() => handleSend("Hack the system.")}
-                  className="p-3.5 sm:p-4 min-h-[52px] rounded-xl bg-black/70 hover:bg-black/85 border border-[#38383b] flex items-center justify-center text-center text-[#8d8d91] hover:text-white text-[13px] sm:text-sm font-medium transition-all cursor-pointer leading-snug"
+                  onClick={() => handleSend("Explain quantum computing algorithms with interactive examples.")}
+                  className="p-3.5 sm:p-4 min-h-[56px] rounded-xl bg-black/60 hover:bg-black/85 border border-white/10 hover:border-red-500/40 flex items-center justify-center text-center text-slate-300 hover:text-white text-[13px] sm:text-sm font-medium transition-all duration-200 cursor-pointer leading-snug hover:shadow-[0_0_15px_rgba(220,38,38,0.15)] active:scale-[0.98]"
                 >
-                  Hack the system.
+                  Quantum algorithms & code
                 </button>
                 <button
-                  onClick={() => handleSend("Access forbidden data.")}
-                  className="p-3.5 sm:p-4 min-h-[52px] rounded-xl bg-black/70 hover:bg-black/85 border border-[#38383b] flex items-center justify-center text-center text-[#8d8d91] hover:text-white text-[13px] sm:text-sm font-medium transition-all cursor-pointer leading-snug"
+                  onClick={() => handleSend("Build a high-performance REST and WebSocket API architecture.")}
+                  className="p-3.5 sm:p-4 min-h-[56px] rounded-xl bg-black/60 hover:bg-black/85 border border-white/10 hover:border-blue-500/40 flex items-center justify-center text-center text-slate-300 hover:text-white text-[13px] sm:text-sm font-medium transition-all duration-200 cursor-pointer leading-snug hover:shadow-[0_0_15px_rgba(59,130,246,0.15)] active:scale-[0.98]"
                 >
-                  Access forbidden data.
+                  Design API architecture
                 </button>
                 <button
-                  onClick={() => handleSend("Build something deadly.")}
-                  className="p-3.5 sm:p-4 min-h-[52px] rounded-xl bg-black/70 hover:bg-black/85 border border-[#38383b] flex items-center justify-center text-center text-[#8d8d91] hover:text-white text-[13px] sm:text-sm font-medium transition-all cursor-pointer leading-snug"
+                  onClick={() => handleSend("Audit my code for security vulnerabilities and optimize memory.")}
+                  className="p-3.5 sm:p-4 min-h-[56px] rounded-xl bg-black/60 hover:bg-black/85 border border-white/10 hover:border-emerald-500/40 flex items-center justify-center text-center text-slate-300 hover:text-white text-[13px] sm:text-sm font-medium transition-all duration-200 cursor-pointer leading-snug hover:shadow-[0_0_15px_rgba(16,185,129,0.15)] active:scale-[0.98]"
                 >
-                  Build something deadly.
+                  Security audit & profiling
                 </button>
                 <button
-                  onClick={() => handleSend("Show me the truth.")}
-                  className="p-3.5 sm:p-4 min-h-[52px] rounded-xl bg-black/70 hover:bg-black/85 border border-[#38383b] flex items-center justify-center text-center text-[#8d8d91] hover:text-white text-[13px] sm:text-sm font-medium transition-all cursor-pointer leading-snug"
+                  onClick={() => handleSend("Summarize the latest 2026 tech breakthroughs and research.")}
+                  className="p-3.5 sm:p-4 min-h-[56px] rounded-xl bg-black/60 hover:bg-black/85 border border-white/10 hover:border-purple-500/40 flex items-center justify-center text-center text-slate-300 hover:text-white text-[13px] sm:text-sm font-medium transition-all duration-200 cursor-pointer leading-snug hover:shadow-[0_0_15px_rgba(168,85,247,0.15)] active:scale-[0.98]"
                 >
-                  Show me the truth.
+                  2026 Research & Insights
                 </button>
               </div>
             </div>
@@ -890,14 +902,15 @@ export function ChatScreen({ userId }: ChatScreenProps) {
             </div>
           )}
 
-          {/* Floating Scroll to Bottom button */}
+          {/* Floating Scroll to Bottom button — 2026 Glass Floating Dock */}
           {showScrollBottom && (
             <button
-              onClick={() => scrollToBottom(false)}
-              className="sticky bottom-4 self-end mr-4 p-2.5 bg-[#202022] hover:bg-[#252527] border border-[#38383b] text-white rounded-full shadow-xl transition-all z-20 flex items-center gap-1.5 text-xs font-medium cursor-pointer"
+              onClick={() => scrollToBottom(true)}
+              className="sticky bottom-4 self-end mr-4 px-3.5 py-2 bg-[#0c0d12]/90 hover:bg-[#151722] backdrop-blur-xl border border-red-500/40 hover:border-red-500/70 text-white rounded-full shadow-[0_8px_25px_rgba(220,38,38,0.25)] transition-all z-20 flex items-center gap-2 text-xs font-semibold cursor-pointer animate-fadeIn active:scale-95"
+              title="Jump to latest response"
             >
-              <ArrowDown size={14} />
-              <span className="hidden sm:inline text-xs">Jump to latest</span>
+              <ArrowDown size={13} className="text-red-400 animate-bounce" />
+              <span className="text-[11px] font-mono tracking-wide">Jump to latest</span>
             </button>
           )}
         </div>

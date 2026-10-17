@@ -23,6 +23,13 @@ export const AI_CONFIG = {
         "llama-3.3-70b",
         "deepseek-r1"
       ]
+    },
+    gemini: {
+      models: [
+        "gemini-2.5-flash",
+        "gemini-2.0-flash",
+        "gemini-1.5-flash"
+      ]
     }
   },
   systemPrompt: "You are VOID AI, an elite AI assistant.",

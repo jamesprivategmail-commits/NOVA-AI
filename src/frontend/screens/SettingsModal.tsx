@@ -41,9 +41,9 @@ interface SettingsModalProps {
   onOpenGitHubWorkspace?: () => void;
   initialView?: 'main' | 'integrations-github' | 'project-memory';
   walletBalance?: number;
-  selectedProvider?: 'groq' | 'cohere' | 'bazaarlink';
+  selectedProvider?: 'groq' | 'cohere' | 'bazaarlink' | 'gemini';
   selectedModel?: string;
-  onSelectProviderModel?: (provider: 'groq' | 'cohere' | 'bazaarlink', model: string) => void;
+  onSelectProviderModel?: (provider: 'groq' | 'cohere' | 'bazaarlink' | 'gemini', model: string) => void;
 }
 
 export function SettingsModal({ 

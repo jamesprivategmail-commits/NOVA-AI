@@ -25,7 +25,7 @@ export async function sendMessageToGroq(
   signal?: AbortSignal,
   userId?: string,
   userTier?: string,
-  provider: 'groq' | 'cohere' | 'bazaarlink' = 'groq',
+  provider: 'groq' | 'cohere' | 'bazaarlink' | 'gemini' = 'groq',
   model?: string,
   attachment?: ChatAttachment,
   githubContext?: GitHubContextPayload
@@ -47,26 +47,29 @@ export async function sendMessageToGroq(
         body: payload,
         signal
       });
-      // If 404, retry /chat or /api
-      if (response.status === 404) {
-        response = await fetch("/chat", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: payload,
-          signal
-        });
-        if (response.status === 404) {
-          response = await fetch("/api", {
+      // If 404 or 500, retry on fallback routes
+      if (response.status === 404 || response.status === 500) {
+        try {
+          const fallbackRes = await fetch("/chat", {
             method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-            },
+            headers: { "Content-Type": "application/json" },
             body: payload,
             signal
           });
-        }
+          if (fallbackRes.ok) {
+            response = fallbackRes;
+          } else {
+            const apiRes = await fetch("/api", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: payload,
+              signal
+            });
+            if (apiRes.ok) {
+              response = apiRes;
+            }
+          }
+        } catch (_) {}
       }
     } catch (fetchErr: any) {
       if (fetchErr.name === 'AbortError') throw fetchErr;
