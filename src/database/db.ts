@@ -225,6 +225,24 @@ export async function saveMessage(
   if (options?.isToolEvent !== undefined) {
     message.isToolEvent = options.isToolEvent;
   }
+  if (options && 'latencyMs' in options && (options as any).latencyMs) {
+    message.latencyMs = (options as any).latencyMs;
+  }
+  if (options && 'ttftMs' in options && (options as any).ttftMs) {
+    message.ttftMs = (options as any).ttftMs;
+  }
+  if (options && 'tokensPerSec' in options && (options as any).tokensPerSec) {
+    message.tokensPerSec = (options as any).tokensPerSec;
+  }
+  if (options && 'totalTokens' in options && (options as any).totalTokens) {
+    message.totalTokens = (options as any).totalTokens;
+  }
+  if (options && 'modelUsed' in options && (options as any).modelUsed) {
+    message.modelUsed = (options as any).modelUsed;
+  }
+  if (options && 'providerUsed' in options && (options as any).providerUsed) {
+    message.providerUsed = (options as any).providerUsed;
+  }
   
   await setDoc(messageRef, message);
   
@@ -233,6 +251,26 @@ export async function saveMessage(
   await setDoc(chatRef, { updatedAt: now }, { merge: true });
   
   return message;
+}
+
+export async function togglePinChat(chatId: string, isPinned: boolean): Promise<void> {
+  const chatRef = doc(db, "chats", chatId);
+  await setDoc(chatRef, { isPinned, updatedAt: Date.now() }, { merge: true });
+}
+
+export async function updateChatFolder(chatId: string, folder: string): Promise<void> {
+  const chatRef = doc(db, "chats", chatId);
+  await setDoc(chatRef, { folder, updatedAt: Date.now() }, { merge: true });
+}
+
+export async function updateChatCustomSystemPrompt(chatId: string, customSystemPrompt: string): Promise<void> {
+  const chatRef = doc(db, "chats", chatId);
+  await setDoc(chatRef, { customSystemPrompt, updatedAt: Date.now() }, { merge: true });
+}
+
+export async function toggleStarMessage(chatId: string, messageId: string, isStarred: boolean): Promise<void> {
+  const msgRef = doc(db, `chats/${chatId}/messages`, messageId);
+  await setDoc(msgRef, { isStarred }, { merge: true });
 }
 
 export async function getChatMessages(chatId: string): Promise<Message[]> {

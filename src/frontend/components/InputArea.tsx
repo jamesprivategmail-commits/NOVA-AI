@@ -1,5 +1,5 @@
 import React, { useState, useRef, useLayoutEffect } from 'react';
-import { Send, Square, X, Image as ImageIcon, FileText, Plus, AudioLines } from 'lucide-react';
+import { Send, Square, X, Image as ImageIcon, FileText, Plus, AudioLines, Mic, MicOff } from 'lucide-react';
 import { clsx } from 'clsx';
 
 export interface ChatAttachment {
@@ -27,8 +27,48 @@ export function InputArea({
   const [text, setText] = useState('');
   const [attachment, setAttachment] = useState<ChatAttachment | null>(null);
   const [imageMode, setImageMode] = useState(false);
+  const [isDictating, setIsDictating] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const recognitionRef = useRef<any>(null);
+
+  const handleToggleDictation = () => {
+    const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+    if (!SpeechRecognition) {
+      onOpenLiveVoice();
+      return;
+    }
+    if (isDictating) {
+      if (recognitionRef.current) {
+        recognitionRef.current.stop();
+      }
+      setIsDictating(false);
+      return;
+    }
+    try {
+      const recognition = new SpeechRecognition();
+      recognition.continuous = false;
+      recognition.interimResults = false;
+      recognition.lang = 'en-US';
+      recognition.onresult = (event: any) => {
+        let transcript = '';
+        for (let i = event.resultIndex; i < event.results.length; i++) {
+          transcript += event.results[i][0].transcript;
+        }
+        if (transcript) {
+          setText(prev => (prev ? `${prev.trim()} ${transcript.trim()}` : transcript.trim()));
+        }
+      };
+      recognition.onerror = () => setIsDictating(false);
+      recognition.onend = () => setIsDictating(false);
+      recognition.start();
+      recognitionRef.current = recognition;
+      setIsDictating(true);
+    } catch (_) {
+      setIsDictating(false);
+      onOpenLiveVoice();
+    }
+  };
 
   useLayoutEffect(() => {
     const textarea = textareaRef.current;
@@ -170,6 +210,19 @@ export function InputArea({
           )}
         />
 
+        {/* Push-to-Talk Speech Dictation */}
+        <button
+          type="button"
+          onClick={handleToggleDictation}
+          className={clsx(
+            "w-9 h-9 sm:w-10 sm:h-10 rounded-full flex items-center justify-center shrink-0 transition-all cursor-pointer",
+            isDictating ? "bg-rose-600 text-white animate-pulse" : "bg-[#252527] hover:bg-[#38383b] text-white"
+          )}
+          title={isDictating ? "Listening... click to stop" : "Voice dictation (speech-to-text)"}
+        >
+          {isDictating ? <MicOff size={16} /> : <Mic size={16} />}
+        </button>
+
         {/* Send / Stop / Live Voice */}
         {isLoading ? (
           <button
@@ -194,7 +247,7 @@ export function InputArea({
             type="button"
             onClick={onOpenLiveVoice}
             className="w-9 h-9 sm:w-10 sm:h-10 bg-[#252527] hover:bg-[#38383b] text-white rounded-full transition-all flex items-center justify-center shrink-0 cursor-pointer"
-            title="Live voice mode"
+            title="Live voice conversation mode"
           >
             <AudioLines size={16} />
           </button>

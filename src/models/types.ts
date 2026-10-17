@@ -100,6 +100,10 @@ export interface Chat {
   title: string;
   createdAt: number;
   updatedAt: number;
+  isPinned?: boolean;
+  folder?: string;
+  tags?: string[];
+  customSystemPrompt?: string;
 }
 
 export type ToolEventType = 'terminal' | 'editor' | 'github' | 'git' | 'browser' | 'tests' | 'build';
@@ -200,6 +204,25 @@ export interface Message {
   thinking?: string;
   toolEvents?: StructuredToolEvent[];
   isToolEvent?: boolean;
+  latencyMs?: number;
+  ttftMs?: number;
+  tokensPerSec?: number;
+  totalTokens?: number;
+  modelUsed?: string;
+  providerUsed?: string;
+  isStarred?: boolean;
+}
+
+export interface ExecutionGraphStep {
+  id: string;
+  phase: 'intent' | 'scan' | 'edit' | 'verify' | 'commit';
+  name: string;
+  status: 'pending' | 'running' | 'completed' | 'failed' | 'skipped';
+  startedAt?: number;
+  completedAt?: number;
+  durationMs?: number;
+  detail?: string;
+  substeps?: string[];
 }
 
 export interface SupportMessage {

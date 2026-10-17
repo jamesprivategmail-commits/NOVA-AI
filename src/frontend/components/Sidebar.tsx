@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { 
-  Plus, Search, X, Edit2, Trash2, Settings, User
+  Plus, Search, X, Edit2, Trash2, Settings, User, Pin, PinOff, Download, Folder, Tag
 } from 'lucide-react';
 import { Chat } from '../../models/types';
 import { clsx } from 'clsx';
@@ -16,6 +16,8 @@ interface SidebarProps {
   onOpenSettings: () => void;
   onOpenGitHub?: () => void;
   onLogout?: () => void;
+  onTogglePinChat?: (id: string, isPinned: boolean) => void;
+  onExportChat?: (id: string) => void;
   isOpen: boolean;
   userEmail?: string;
   userName?: string;
@@ -42,16 +44,29 @@ export function Sidebar({
   onRenameChat,
   onOpenSettings,
   onOpenGitHub,
+  onTogglePinChat,
+  onExportChat,
   isOpen,
   userEmail = 'mrnovatech4@gmail.com',
   userName = 'Mr nova tech'
 }: SidebarProps) {
   const [searchQuery, setSearchQuery] = useState('');
   const [isSearching, setIsSearching] = useState(false);
+  const [activeFolder, setActiveFolder] = useState<string>('all');
 
-  const filteredChats = chats.filter(chat =>
-    chat.title.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  const filteredChats = chats
+    .filter(chat => {
+      const matchesSearch = chat.title.toLowerCase().includes(searchQuery.toLowerCase());
+      if (!matchesSearch) return false;
+      if (activeFolder === 'all') return true;
+      if (activeFolder === 'pinned') return !!chat.isPinned;
+      return chat.folder?.toLowerCase() === activeFolder;
+    })
+    .sort((a, b) => {
+      if (a.isPinned && !b.isPinned) return -1;
+      if (!a.isPinned && b.isPinned) return 1;
+      return (b.updatedAt || 0) - (a.updatedAt || 0);
+    });
 
   return (
     <aside
@@ -140,10 +155,33 @@ export function Sidebar({
         )}
       </div>
 
+      {/* Folder & Tag Filter Segmented Control */}
+      <div className="px-2.5 py-1.5 flex items-center gap-1 border-b border-[#2d303b] text-[11px] overflow-x-auto">
+        {[
+          { id: 'all', label: 'All' },
+          { id: 'pinned', label: 'Pinned' },
+          { id: 'work', label: 'Work' },
+          { id: 'dev', label: 'Dev' },
+        ].map(tab => (
+          <button
+            key={tab.id}
+            onClick={() => setActiveFolder(tab.id)}
+            className={clsx(
+              "px-2 py-1 rounded-md transition-colors cursor-pointer shrink-0 font-medium",
+              activeFolder === tab.id
+                ? "bg-[#252837] text-white"
+                : "text-slate-400 hover:text-white"
+            )}
+          >
+            {tab.label}
+          </button>
+        ))}
+      </div>
+
       {/* Recents Section Header */}
-      <div className="px-3 pt-3 pb-1.5 flex items-center justify-between">
+      <div className="px-3 pt-2.5 pb-1 flex items-center justify-between">
         <span className="text-[10px] font-medium text-[#8d8d91] uppercase tracking-wide">
-          Recent
+          {activeFolder === 'pinned' ? 'Pinned Chats' : 'Conversations'}
         </span>
         {chats.length > 0 && onClearAllHistory && (
           <button
@@ -164,7 +202,7 @@ export function Sidebar({
       <div className="flex-1 overflow-y-auto px-2 space-y-1">
         {filteredChats.length === 0 ? (
           <div className="p-4 text-center text-[11px] text-[#8d8d91]">
-            {searchQuery ? 'No matching conversations' : 'No recent chats'}
+            {searchQuery ? 'No matching conversations' : 'No chats in this folder'}
           </div>
         ) : (
           filteredChats.map((chat) => (
@@ -172,15 +210,44 @@ export function Sidebar({
               key={chat.id}
               onClick={() => onSelectChat(chat.id)}
               className={clsx(
-                "group relative flex items-center justify-between px-2.5 py-2.5 rounded-lg cursor-pointer transition-all text-xs font-medium",
+                "group relative flex items-center justify-between px-2.5 py-2 rounded-lg cursor-pointer transition-all text-xs font-medium",
                 currentChatId === chat.id
                   ? "bg-[#252527] text-white"
                   : "hover:bg-[#202022] text-[#8d8d91] hover:text-white"
               )}
             >
-              <span className="truncate pr-4 flex-1 text-xs leading-tight">{chat.title || 'Untitled Chat'}</span>
+              <div className="flex items-center gap-1.5 truncate pr-3 flex-1">
+                {chat.isPinned && (
+                  <Pin size={11} className="text-amber-400 shrink-0 fill-amber-400 rotate-45" />
+                )}
+                <span className="truncate text-xs leading-tight">{chat.title || 'Untitled Chat'}</span>
+              </div>
 
-              <div className="absolute right-1.5 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity bg-[#252527] px-1 py-0.5 rounded">
+              <div className="absolute right-1.5 flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity bg-[#252527] px-1 py-0.5 rounded shadow-sm">
+                {onTogglePinChat && (
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onTogglePinChat(chat.id, !chat.isPinned);
+                    }}
+                    className="p-1 text-[#8d8d91] hover:text-amber-400 cursor-pointer"
+                    title={chat.isPinned ? "Unpin chat" : "Pin chat to top"}
+                  >
+                    <Pin size={12} className={chat.isPinned ? "fill-amber-400" : ""} />
+                  </button>
+                )}
+                {onExportChat && (
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onExportChat(chat.id);
+                    }}
+                    className="p-1 text-[#8d8d91] hover:text-blue-400 cursor-pointer"
+                    title="Export chat as Markdown"
+                  >
+                    <Download size={12} />
+                  </button>
+                )}
                 <button
                   onClick={(e) => {
                     e.stopPropagation();
@@ -192,7 +259,7 @@ export function Sidebar({
                   className="p-1 text-[#8d8d91] hover:text-white cursor-pointer"
                   title="Rename"
                 >
-                  <Edit2 size={13} />
+                  <Edit2 size={12} />
                 </button>
                 <button
                   onClick={(e) => {
@@ -204,7 +271,7 @@ export function Sidebar({
                   className="p-1 text-[#8d8d91] hover:text-rose-400 cursor-pointer"
                   title="Delete"
                 >
-                  <Trash2 size={13} />
+                  <Trash2 size={12} />
                 </button>
               </div>
             </div>

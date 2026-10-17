@@ -3,7 +3,7 @@ import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import remarkMath from 'remark-math';
 import rehypeKatex from 'rehype-katex';
-import { Bot, User, Copy, Check, Trash2, Edit2, ExternalLink, ThumbsUp, ThumbsDown, Sparkles, Image as ImageIcon, AlertCircle } from 'lucide-react';
+import { Bot, User, Copy, Check, Trash2, Edit2, ExternalLink, ThumbsUp, ThumbsDown, Sparkles, Image as ImageIcon, AlertCircle, Volume2, VolumeX, Star, Zap, Activity } from 'lucide-react';
 import { Message, StructuredToolEvent, TerminalToolEvent } from '../../models/types';
 import { CodeBlock } from './CodeBlock';
 import { CodingActivityPanel, parseCodingActivity } from './CodingActivityPanel';
@@ -21,6 +21,7 @@ interface MessageBubbleProps {
   isStreaming?: boolean;
   onDelete?: (id: string) => void;
   onEdit?: (id: string, text: string) => void;
+  onToggleStar?: (id: string) => void;
   activeRepo?: ActiveRepoState | null;
   codingModeEnabled?: boolean;
   onEnableCodingMode?: () => void;
@@ -31,6 +32,7 @@ export const MessageBubble = React.memo(function MessageBubble({
   isStreaming = false,
   onDelete,
   onEdit,
+  onToggleStar: propOnToggleStar,
   activeRepo: propActiveRepo,
   codingModeEnabled: propCodingModeEnabled,
   onEnableCodingMode
@@ -44,6 +46,29 @@ export const MessageBubble = React.memo(function MessageBubble({
 
   const activeRepo = propActiveRepo !== undefined ? propActiveRepo : getStoredActiveRepo();
   const codingModeEnabled = propCodingModeEnabled !== undefined ? propCodingModeEnabled : getStoredGitHubCodingMode();
+  const [isSpeaking, setIsSpeaking] = useState(false);
+
+  const handleSpeak = () => {
+    if (typeof window === 'undefined' || !('speechSynthesis' in window)) {
+      alert('Speech synthesis is not supported in this browser.');
+      return;
+    }
+    if (isSpeaking) {
+      window.speechSynthesis.cancel();
+      setIsSpeaking(false);
+      return;
+    }
+    window.speechSynthesis.cancel();
+    const cleanSpeech = cleanDisplayText
+      .replace(/```[\s\S]*?```/g, 'Code block omitted.')
+      .replace(/\[.*?\]\(.*?\)/g, '')
+      .replace(/[#*_`]/g, '');
+    const utterance = new SpeechSynthesisUtterance(cleanSpeech.slice(0, 1800));
+    utterance.onend = () => setIsSpeaking(false);
+    utterance.onerror = () => setIsSpeaking(false);
+    setIsSpeaking(true);
+    window.speechSynthesis.speak(utterance);
+  };
 
   const handleCopy = () => {
     navigator.clipboard.writeText(message.text);
@@ -354,6 +379,19 @@ export const MessageBubble = React.memo(function MessageBubble({
             </div>
           )}
 
+          {/* Real-time Telemetry Metrics Strip (2026 Zero-Pill metadata) */}
+          {!isUser && (message.tokensPerSec || message.latencyMs || message.modelUsed) && (
+            <div className="pt-2 pb-0.5 flex items-center gap-2 text-[10px] text-slate-500 font-mono tabular-nums">
+              {message.modelUsed && <span>{message.modelUsed}</span>}
+              {message.modelUsed && (message.tokensPerSec || message.latencyMs) && <span aria-hidden="true">·</span>}
+              {message.tokensPerSec && <span>{Math.round(message.tokensPerSec)} tok/s</span>}
+              {message.tokensPerSec && message.ttftMs && <span aria-hidden="true">·</span>}
+              {message.ttftMs && <span>TTFT {message.ttftMs}ms</span>}
+              {(message.tokensPerSec || message.ttftMs) && message.latencyMs && <span aria-hidden="true">·</span>}
+              {message.latencyMs && <span>{message.latencyMs}ms total</span>}
+            </div>
+          )}
+
           {/* Action Toolbar */}
           {!isEditing && message.id !== 'temp' && (
             <div className={clsx(
@@ -362,7 +400,7 @@ export const MessageBubble = React.memo(function MessageBubble({
             )}>
               <button
                 onClick={handleCopy}
-                className="p-1.5 text-[#8d8d91] hover:text-white hover:bg-[#252527] rounded-md transition-colors flex items-center gap-1 text-xs"
+                className="p-1.5 text-[#8d8d91] hover:text-white hover:bg-[#252527] rounded-md transition-colors flex items-center gap-1 text-xs cursor-pointer"
                 title="Copy text"
               >
                 {copied ? (
@@ -381,9 +419,21 @@ export const MessageBubble = React.memo(function MessageBubble({
               {!isUser && (
                 <>
                   <button
+                    onClick={handleSpeak}
+                    className={clsx(
+                      "p-1.5 rounded-md transition-colors text-xs flex items-center gap-1 cursor-pointer",
+                      isSpeaking ? "text-blue-400 bg-blue-950/40" : "text-[#8d8d91] hover:text-white hover:bg-[#252527]"
+                    )}
+                    title={isSpeaking ? "Stop speech readout" : "Read message aloud"}
+                  >
+                    {isSpeaking ? <VolumeX size={14} /> : <Volume2 size={14} />}
+                    <span className="text-[11px] hidden sm:inline">{isSpeaking ? 'Stop' : 'Read'}</span>
+                  </button>
+
+                  <button
                     onClick={() => setLiked(liked === true ? null : true)}
                     className={clsx(
-                      "p-1.5 rounded-md transition-colors text-xs flex items-center gap-1",
+                      "p-1.5 rounded-md transition-colors text-xs flex items-center gap-1 cursor-pointer",
                       liked === true ? "text-emerald-400 bg-emerald-950/40" : "text-[#8d8d91] hover:text-white hover:bg-[#252527]"
                     )}
                     title="Good response"
@@ -393,7 +443,7 @@ export const MessageBubble = React.memo(function MessageBubble({
                   <button
                     onClick={() => setLiked(liked === false ? null : false)}
                     className={clsx(
-                      "p-1.5 rounded-md transition-colors text-xs flex items-center gap-1",
+                      "p-1.5 rounded-md transition-colors text-xs flex items-center gap-1 cursor-pointer",
                       liked === false ? "text-rose-400 bg-rose-950/40" : "text-[#8d8d91] hover:text-white hover:bg-[#252527]"
                     )}
                     title="Poor response"
@@ -403,10 +453,26 @@ export const MessageBubble = React.memo(function MessageBubble({
                 </>
               )}
 
+              {/* Star / Favorite Message */}
+              <button
+                onClick={() => {
+                  if (propOnToggleStar) {
+                    propOnToggleStar(message.id);
+                  }
+                }}
+                className={clsx(
+                  "p-1.5 rounded-md transition-colors text-xs flex items-center gap-1 cursor-pointer",
+                  message.isStarred ? "text-amber-400" : "text-[#8d8d91] hover:text-white hover:bg-[#252527]"
+                )}
+                title={message.isStarred ? "Unstar message" : "Star message"}
+              >
+                <Star size={14} className={message.isStarred ? "fill-amber-400" : ""} />
+              </button>
+
               {isUser && onEdit && (
                 <button
                   onClick={() => setIsEditing(true)}
-                  className="p-1.5 text-[#8d8d91] hover:text-white hover:bg-[#252527] rounded-md transition-colors flex items-center gap-1 text-xs"
+                  className="p-1.5 text-[#8d8d91] hover:text-white hover:bg-[#252527] rounded-md transition-colors flex items-center gap-1 text-xs cursor-pointer"
                   title="Edit message"
                 >
                   <Edit2 size={14} />
@@ -417,7 +483,7 @@ export const MessageBubble = React.memo(function MessageBubble({
               {onDelete && (
                 <button
                   onClick={() => onDelete(message.id)}
-                  className="p-1.5 text-[#8d8d91] hover:text-rose-400 hover:bg-[#252527] rounded-md transition-colors"
+                  className="p-1.5 text-[#8d8d91] hover:text-rose-400 hover:bg-[#252527] rounded-md transition-colors cursor-pointer"
                   title="Delete message"
                 >
                   <Trash2 size={14} />

@@ -11,6 +11,13 @@ export interface GitHubContextPayload {
   codingMode?: boolean;
 }
 
+export interface ChatTelemetryResult {
+  ttftMs: number;
+  latencyMs: number;
+  tokensPerSec: number;
+  totalTokens: number;
+}
+
 export async function sendMessageToGroq(
   messages: { role: string; text: string }[], 
   systemPrompt: string = '',
@@ -22,7 +29,11 @@ export async function sendMessageToGroq(
   model?: string,
   attachment?: ChatAttachment,
   githubContext?: GitHubContextPayload
-) {
+): Promise<ChatTelemetryResult> {
+  const startTime = performance.now();
+  let firstTokenTime: number | null = null;
+  let accumulatedChars = 0;
+  let chunkCount = 0;
   try {
     const payload = JSON.stringify({ messages, systemPrompt, userId, userTier, provider, model, attachment, githubContext });
 
@@ -123,11 +134,26 @@ export async function sendMessageToGroq(
         if (part.startsWith("data: ")) {
           const dataStr = part.slice(6);
           if (dataStr === "[DONE]") {
-            return;
+            const totalDurationMs = Math.max(1, Math.round(performance.now() - startTime));
+            const ttftMs = Math.round(firstTokenTime ? firstTokenTime - startTime : totalDurationMs);
+            const totalTokens = Math.max(1, Math.round(accumulatedChars / 3.8));
+            const durationSec = totalDurationMs / 1000;
+            const tokensPerSec = Math.round((totalTokens / durationSec) * 10) / 10;
+            return {
+              ttftMs,
+              latencyMs: totalDurationMs,
+              tokensPerSec,
+              totalTokens,
+            };
           }
           try {
             const data = JSON.parse(dataStr);
             if (data.text) {
+              if (firstTokenTime === null) {
+                firstTokenTime = performance.now();
+              }
+              accumulatedChars += data.text.length;
+              chunkCount++;
               onChunk(data.text);
             }
           } catch (e) {
@@ -136,6 +162,18 @@ export async function sendMessageToGroq(
         }
       }
     }
+
+    const totalDurationMs = Math.max(1, Math.round(performance.now() - startTime));
+    const ttftMs = Math.round(firstTokenTime ? firstTokenTime - startTime : totalDurationMs);
+    const totalTokens = Math.max(1, Math.round(accumulatedChars / 3.8));
+    const durationSec = totalDurationMs / 1000;
+    const tokensPerSec = Math.round((totalTokens / durationSec) * 10) / 10;
+    return {
+      ttftMs,
+      latencyMs: totalDurationMs,
+      tokensPerSec,
+      totalTokens,
+    };
   } catch (error: any) {
     console.error("Error in sendMessageToGroq:", error);
     throw error;

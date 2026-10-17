@@ -243,6 +243,23 @@ export function CodeBlock({ language, value }: CodeBlockProps) {
           )}
 
           <button
+            onClick={() => {
+              window.dispatchEvent(new CustomEvent('void_ai_open_workspace_file', {
+                detail: {
+                  content: cleanCode,
+                  path: targetPath || `workspace/snippet.${detectedLang === 'typescript' ? 'ts' : detectedLang === 'python' ? 'py' : detectedLang === 'javascript' ? 'js' : 'ts'}`,
+                  tab: 'editor'
+                }
+              }));
+            }}
+            className="flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-[#21262D] hover:bg-[#30363D] text-slate-300 hover:text-white transition-colors text-[10px] font-medium border border-[#30363D] cursor-pointer"
+            title="Open snippet in interactive Workspace Editor"
+          >
+            <ExternalLink size={10} className="text-emerald-400" />
+            <span className="hidden sm:inline">Workspace</span>
+          </button>
+
+          <button
             onClick={handleDownload}
             className="flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-[#21262D] hover:bg-[#30363D] text-white transition-colors text-[10px] font-medium border border-[#30363D] cursor-pointer"
             title="Download file"

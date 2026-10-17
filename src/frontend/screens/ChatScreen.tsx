@@ -41,11 +41,18 @@ import {
   sendSupportMessage,
   getAIBrainSettings,
   listenToAIBrainSettings,
-  listenToBroadcasts
+  listenToBroadcasts,
+  togglePinChat,
+  toggleStarMessage
 } from '../../database/db';
 import { sendMessageToGroq } from '../../api/client';
 import { memoryManager } from '../../memory/context';
-import { Menu, Shield, Crown, Mail, ArrowDown, Sparkles, Code, Target, Binary, Zap, Bot, Mic, ChevronDown, Send, Radio, X, Trash2, Terminal, Flame, Eye, Lock, ShieldAlert, GitBranch, MessageSquare, FolderCode, Check, Loader2 } from 'lucide-react';
+import { CommandPalette } from '../components/CommandPalette';
+import { ModelSelectorDropdown } from '../components/ModelSelectorDropdown';
+import { CodeWorkspaceDrawer, WorkspaceTab } from '../components/workspace/CodeWorkspaceDrawer';
+import { PromptStudioModal } from '../components/workspace/PromptStudioModal';
+import { offlineCache } from '../utils/offlineQueue';
+import { Menu, Shield, Crown, Mail, ArrowDown, Sparkles, Code, Code2, Target, Binary, Zap, Bot, Mic, ChevronDown, Send, Radio, X, Trash2, Terminal, Flame, Eye, Lock, ShieldAlert, GitBranch, MessageSquare, FolderCode, Check, Loader2, Command, Sliders, ExternalLink } from 'lucide-react';
 import { getAuth, signOut } from 'firebase/auth';
 import { clsx } from 'clsx';
 
@@ -55,7 +62,7 @@ interface ChatScreenProps {
 }
 
 export function ChatScreen({ userId }: ChatScreenProps) {
-  const [chats, setChats] = useState<Chat[]>([]);
+  const [chats, setChats] = useState<Chat[]>(() => offlineCache.loadChats());
   const [currentChatId, setCurrentChatId] = useState<string | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
   const [isSidebarOpen, setIsSidebarOpen] = useState(() => typeof window !== 'undefined' ? window.innerWidth >= 768 : true);
@@ -63,14 +70,29 @@ export function ChatScreen({ userId }: ChatScreenProps) {
   const [streamingMessage, setStreamingMessage] = useState<string>('');
   const [profile, setProfile] = useState<UserProfile | null>(null);
 
-  // AI Model Selection state (Persisted, managed in Settings)
+  // 2026 Core State: Command Bar, Workspace, Prompt Studio & Telemetry
+  const [showCommandPalette, setShowCommandPalette] = useState(false);
+  const [showWorkspace, setShowWorkspace] = useState(false);
+  const [workspaceTab, setWorkspaceTab] = useState<WorkspaceTab>('editor');
+  const [workspaceFileContent, setWorkspaceFileContent] = useState<string>('// VOID AI Scratchpad & AST Editor\n\nexport function main() {\n  return { status: "operational", timestamp: Date.now() };\n}\n');
+  const [workspaceFilePath, setWorkspaceFilePath] = useState<string>('src/workspace.ts');
+  const [showPromptStudio, setShowPromptStudio] = useState(false);
+  const [customSystemPrompt, setCustomSystemPrompt] = useState<string>(() => {
+    return localStorage.getItem('void_ai_system_prompt') || '';
+  });
+  const [lastTelemetry, setLastTelemetry] = useState<{
+    latencyMs?: number;
+    ttftMs?: number;
+    tokensPerSec?: number;
+  }>({});
+
+  // AI Model Selection state (Persisted, managed in Settings & Top Bar)
   const [selectedProvider, setSelectedProvider] = useState<'groq' | 'cohere' | 'bazaarlink'>(() => {
     return (localStorage.getItem('void_ai_selected_provider') as any) || 'groq';
   });
   const [selectedModel, setSelectedModel] = useState<string>(() => {
     return localStorage.getItem('void_ai_selected_model') || 'auto';
   });
-  const [showModelDropdown, setShowModelDropdown] = useState(false);
 
   const handleSelectProviderModel = (provider: 'groq' | 'cohere' | 'bazaarlink', model: string) => {
     setSelectedProvider(provider);
@@ -78,6 +100,40 @@ export function ChatScreen({ userId }: ChatScreenProps) {
     localStorage.setItem('void_ai_selected_provider', provider);
     localStorage.setItem('void_ai_selected_model', model);
   };
+
+  // Keyboard Shortcuts (⌘K for command palette, ⌘E for editor, ⌘T for terminal)
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {
+        e.preventDefault();
+        setShowCommandPalette(prev => !prev);
+      } else if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'e') {
+        e.preventDefault();
+        setWorkspaceTab('editor');
+        setShowWorkspace(prev => !prev);
+      } else if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 't') {
+        e.preventDefault();
+        setWorkspaceTab('terminal');
+        setShowWorkspace(prev => !prev);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, []);
+
+  // Custom Event Listener to load snippets directly into workspace
+  useEffect(() => {
+    const handleOpenWorkspaceFile = (e: any) => {
+      if (e.detail) {
+        if (e.detail.content) setWorkspaceFileContent(e.detail.content);
+        if (e.detail.path) setWorkspaceFilePath(e.detail.path);
+        if (e.detail.tab) setWorkspaceTab(e.detail.tab);
+        setShowWorkspace(true);
+      }
+    };
+    window.addEventListener('void_ai_open_workspace_file', handleOpenWorkspaceFile);
+    return () => window.removeEventListener('void_ai_open_workspace_file', handleOpenWorkspaceFile);
+  }, []);
 
   // Modals state
   const [showAdminPanel, setShowAdminPanel] = useState(false);
@@ -199,19 +255,63 @@ export function ChatScreen({ userId }: ChatScreenProps) {
 
     const userChats = await getUserChats(userId);
     setChats(userChats);
+    offlineCache.saveChats(userChats);
     if (userChats.length > 0 && !currentChatId) {
       setCurrentChatId(userChats[0].id);
     }
   };
 
   const loadMessages = async (chatId: string) => {
+    const cached = offlineCache.loadMessages(chatId);
+    if (cached.length > 0 && messages.length === 0) {
+      setMessages(cached);
+    }
     const chatMsgs = await getChatMessages(chatId);
     setMessages(chatMsgs);
+    offlineCache.saveMessages(chatId, chatMsgs);
+  };
+
+  const handleTogglePin = async (chatId: string, isPinned: boolean) => {
+    await togglePinChat(chatId, isPinned);
+    setChats(prev => {
+      const updated = prev.map(c => c.id === chatId ? { ...c, isPinned } : c);
+      offlineCache.saveChats(updated);
+      return updated;
+    });
+  };
+
+  const handleToggleStar = async (msgId: string) => {
+    if (!currentChatId) return;
+    const msg = messages.find(m => m.id === msgId);
+    const newStarred = !msg?.isStarred;
+    await toggleStarMessage(currentChatId, msgId, newStarred);
+    setMessages(prev => prev.map(m => m.id === msgId ? { ...m, isStarred: newStarred } : m));
+  };
+
+  const handleExportChat = (chatIdToExport?: string) => {
+    const targetChatId = chatIdToExport || currentChatId;
+    if (!targetChatId) return;
+    const chatObj = chats.find(c => c.id === targetChatId);
+    const title = chatObj?.title || 'VOID_AI_Transcript';
+    let md = `# ${title}\n\n*Exported from VOID AI on ${new Date().toLocaleString()}*\n\n---\n\n`;
+    for (const msg of messages) {
+      const sender = msg.role === 'user' ? '👤 User' : '🤖 VOID AI';
+      md += `### ${sender} (${new Date(msg.createdAt).toLocaleTimeString()})\n\n${msg.text}\n\n---\n\n`;
+    }
+    const blob = new Blob([md], { type: 'text/markdown' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `${title.replace(/[^a-zA-Z0-9_-]/g, '_')}.md`;
+    a.click();
+    URL.revokeObjectURL(url);
   };
 
   const handleNewChat = async () => {
     const chat = await createChat(userId);
-    setChats([chat, ...chats]);
+    const updatedChats = [chat, ...chats];
+    setChats(updatedChats);
+    offlineCache.saveChats(updatedChats);
     setCurrentChatId(chat.id);
   };
 
@@ -219,6 +319,7 @@ export function ChatScreen({ userId }: ChatScreenProps) {
     await deleteChat(id);
     const updatedChats = chats.filter((c) => c.id !== id);
     setChats(updatedChats);
+    offlineCache.saveChats(updatedChats);
     if (currentChatId === id) {
       setCurrentChatId(updatedChats.length > 0 ? updatedChats[0].id : null);
     }
@@ -438,13 +539,13 @@ export function ChatScreen({ userId }: ChatScreenProps) {
     }
 
     abortControllerRef.current = new AbortController();
+    let fullResponse = '';
 
     try {
       const updatedProfile = await incrementMessageCount(userId);
       setProfile(updatedProfile);
 
       const context = memoryManager.buildContext(currentMessages);
-      let fullResponse = '';
       let lastStreamUpdate = 0;
 
       const systemPrompt = '';
@@ -461,9 +562,9 @@ export function ChatScreen({ userId }: ChatScreenProps) {
       } : undefined;
 
       let pendingUpdate = false;
-      await sendMessageToGroq(
+      const telemetry = await sendMessageToGroq(
         context,
-        systemPrompt,
+        customSystemPrompt || '',
         (chunk) => {
           fullResponse += chunk;
           if (!pendingUpdate) {
@@ -483,10 +584,23 @@ export function ChatScreen({ userId }: ChatScreenProps) {
         githubContext
       );
 
-      // Save complete model message
+      if (telemetry) {
+        setLastTelemetry(telemetry);
+      }
+
+      // Save complete model message with telemetry
       if (fullResponse.trim()) {
-        const modelMsg = await saveMessage(activeChatId, 'model', fullResponse);
-        setMessages([...currentMessages, modelMsg]);
+        const modelMsg = await saveMessage(activeChatId, 'model', fullResponse, {
+          latencyMs: telemetry?.latencyMs,
+          ttftMs: telemetry?.ttftMs,
+          tokensPerSec: telemetry?.tokensPerSec,
+          totalTokens: telemetry?.totalTokens,
+          modelUsed: selectedModel,
+          providerUsed: selectedProvider,
+        } as any);
+        const updatedMsgs = [...currentMessages, modelMsg];
+        setMessages(updatedMsgs);
+        offlineCache.saveMessages(activeChatId, updatedMsgs);
       }
       setStreamingMessage('');
     } catch (error: any) {
@@ -555,6 +669,8 @@ export function ChatScreen({ userId }: ChatScreenProps) {
         onOpenLiveVoice={() => setShowLiveVoice(true)}
         onOpenApiKeys={() => setShowApiKeyModal(true)}
         onOpenTelegram={() => setShowTelegramModal(true)}
+        onTogglePinChat={handleTogglePin}
+        onExportChat={handleExportChat}
         onLogout={handleLogout}
         isOpen={isSidebarOpen}
         isAdmin={profile?.isAdmin || false}
@@ -562,25 +678,23 @@ export function ChatScreen({ userId }: ChatScreenProps) {
         walletBalance={profile?.walletBalance || 0}
       />
 
-      {/* Clean solid background — no heavy images or gradients for speed */}
-
       {/* Main Chat Workspace */}
       <div className="flex-1 flex flex-col h-full min-h-0 relative min-w-0 bg-transparent z-10 overflow-hidden">
         {/* Broadcast System Banner Notice */}
         {activeBroadcast && (
-          <div className="bg-[#202022] border-b border-[#38383b] p-2 px-3 flex items-center justify-between text-xs text-white z-30">
+          <div className="bg-[#191b24] border-b border-[#292d3b] p-2 px-3 flex items-center justify-between text-xs text-white z-30">
             <div className="flex items-center gap-2 min-w-0">
-              <div className="p-1 bg-[#3f86ff] rounded-lg text-white font-bold shrink-0">
+              <div className="p-1 bg-blue-600 rounded-lg text-white font-bold shrink-0">
                 <Radio size={12} />
               </div>
               <div className="min-w-0">
                 <div className="font-bold text-white flex items-center gap-1.5 text-xs">
                   <span>{activeBroadcast.title}</span>
-                  <span className="text-[9px] uppercase font-mono px-1 py-0.2 rounded bg-[#252527] border border-[#38383b] text-[#8d8d91] font-bold">
-                    Official Broadcast
+                  <span className="text-[9px] uppercase font-mono text-slate-400">
+                    · Official Broadcast
                   </span>
                 </div>
-                <p className="text-slate-300 truncate font-sans text-[10px]">{activeBroadcast.message}</p>
+                <p className="text-slate-300 truncate text-[10px]">{activeBroadcast.message}</p>
               </div>
             </div>
             <button
@@ -593,31 +707,89 @@ export function ChatScreen({ userId }: ChatScreenProps) {
           </div>
         )}
 
-        {/* Compact responsive header: clean, lightning-fast, and minimal */}
-        <header className="min-h-13 px-3 py-2 sticky top-0 z-20 bg-black/75 backdrop-blur-md border-b border-[#38383b]/70 flex items-center justify-between gap-2 select-none w-full min-w-0">
-          <div className="flex items-center gap-2.5 min-w-0">
+        {/* 2026 Top Bar Contract — Zone 1: Brand | Zone 2: Engine & Preset | Zone 3: Actions */}
+        <header className="h-14 px-3 sm:px-4 sticky top-0 z-20 bg-[#0d0e13]/90 backdrop-blur-md border-b border-[#232634] flex items-center justify-between gap-4 select-none w-full min-w-0">
+          {/* Zone 1: Sidebar Toggle + Brand wordmark */}
+          <div className="flex items-center gap-2.5 shrink-0">
             <button
               onClick={() => setIsSidebarOpen(!isSidebarOpen)}
-              className="w-9 h-9 sm:w-10 sm:h-10 rounded-full bg-[#202022] hover:bg-[#252527] text-white flex items-center justify-center transition-colors cursor-pointer shrink-0"
+              className="w-9 h-9 rounded-lg bg-[#181a22] hover:bg-[#202330] border border-[#2a2d3d] text-slate-300 hover:text-white flex items-center justify-center transition-colors cursor-pointer shrink-0"
               title="Toggle sidebar"
             >
-              <Menu size={19} />
+              <Menu size={17} />
+            </button>
+
+            <div className="flex items-center gap-2">
+              <span className="font-bold text-sm tracking-tight text-white whitespace-nowrap">
+                VOID AI
+              </span>
+              <span className="hidden sm:inline text-[10px] font-mono text-slate-500">
+                · 2026
+              </span>
+            </div>
+          </div>
+
+          {/* Zone 2: Engine Selector & Persona Preset */}
+          <div className="flex items-center gap-2 min-w-0">
+            <ModelSelectorDropdown
+              selectedProvider={selectedProvider}
+              selectedModel={selectedModel}
+              onSelect={handleSelectProviderModel}
+              lastTelemetry={lastTelemetry}
+            />
+
+            <button
+              onClick={() => setShowPromptStudio(true)}
+              className="h-9 px-2.5 rounded-lg bg-[#14151a] hover:bg-[#1a1c23] border border-[#262833] text-slate-300 hover:text-white text-xs font-medium hidden md:flex items-center gap-1.5 transition-colors cursor-pointer shrink-0"
+              title="Prompt Engineering Studio & Custom System Directives"
+            >
+              <Sliders size={13} className="text-amber-400" />
+              <span>Persona</span>
             </button>
           </div>
 
+          {/* Zone 3: Command Bar, Interactive Workspace, Plus & Profile */}
           <div className="flex items-center gap-2 shrink-0">
+            {/* Global Command Bar Button (⌘K) */}
+            <button
+              onClick={() => setShowCommandPalette(true)}
+              className="h-9 px-2.5 sm:px-3 rounded-lg bg-[#14151a] hover:bg-[#1f222e] border border-[#262833] hover:border-[#383d4f] text-slate-300 hover:text-white text-xs font-medium flex items-center gap-2 transition-all cursor-pointer"
+              title="Global Command Palette (Press ⌘K or Ctrl+K)"
+            >
+              <Command size={13} className="text-blue-400" />
+              <span className="hidden lg:inline text-xs">Commands</span>
+              <kbd className="hidden sm:inline-block px-1.5 py-0.5 text-[10px] font-mono text-slate-400 bg-[#1e2029] border border-[#2d303e] rounded">
+                ⌘K
+              </kbd>
+            </button>
+
+            {/* Split Code Workspace Drawer Trigger */}
+            <button
+              onClick={() => setShowWorkspace(!showWorkspace)}
+              className={clsx(
+                "h-9 px-2.5 sm:px-3 rounded-lg border text-xs font-medium flex items-center gap-1.5 transition-all cursor-pointer",
+                showWorkspace
+                  ? "bg-blue-600 border-blue-500 text-white shadow-sm"
+                  : "bg-[#14151a] hover:bg-[#1f222e] border-[#262833] text-slate-300 hover:text-white"
+              )}
+              title="Toggle Interactive Code Workspace & Sandbox Terminal (⌘E)"
+            >
+              <Code2 size={14} className={showWorkspace ? "text-white" : "text-emerald-400"} />
+              <span className="hidden sm:inline">Workspace</span>
+            </button>
+
             <button
               onClick={() => setShowSubscription(true)}
-              className="h-9 px-3 rounded-full bg-[#202022] hover:bg-[#252527] border border-[#38383b] text-white text-xs font-medium flex items-center gap-1 whitespace-nowrap transition-all cursor-pointer"
+              className="h-9 px-3 rounded-lg bg-[#181a24] hover:bg-[#202330] border border-[#2d3040] text-white text-xs font-medium hidden sm:flex items-center gap-1 whitespace-nowrap transition-all cursor-pointer"
               title="Upgrade Plan"
             >
-              <span className="text-[#3f86ff] text-xs">✦</span>
-              <span>Get Plus</span>
+              <span className="text-blue-400 text-xs">✦</span>
+              <span>Plus</span>
             </button>
 
             <button
               onClick={() => setShowSettings(true)}
-              className="w-9 h-9 sm:w-10 sm:h-10 rounded-full bg-[#3f86ff] text-white font-bold text-xs flex items-center justify-center hover:opacity-90 transition-opacity cursor-pointer shrink-0 shadow-sm"
+              className="w-9 h-9 rounded-lg bg-blue-600 text-white font-bold text-xs flex items-center justify-center hover:bg-blue-500 transition-colors cursor-pointer shrink-0 shadow-sm"
               title="Account Settings"
             >
               {profile?.displayName ? profile.displayName.slice(0, 2).toUpperCase() : 'MT'}
@@ -681,6 +853,7 @@ export function ChatScreen({ userId }: ChatScreenProps) {
                   message={msg}
                   onDelete={handleDeleteMessage}
                   onEdit={handleEditMessage}
+                  onToggleStar={handleToggleStar}
                   activeRepo={activeRepo}
                   codingModeEnabled={codingMode}
                   onEnableCodingMode={() => {
@@ -851,6 +1024,77 @@ export function ChatScreen({ userId }: ChatScreenProps) {
         onRepoChanged={(newRepo) => {
           setActiveRepo(newRepo);
           setGitHubUser(getStoredGitHubUser());
+        }}
+      />
+
+      {/* 2026 Global Command Palette (⌘K) */}
+      <CommandPalette
+        isOpen={showCommandPalette}
+        onClose={() => setShowCommandPalette(false)}
+        chats={chats}
+        onSelectChat={(id) => {
+          setCurrentChatId(id);
+          setShowCommandPalette(false);
+        }}
+        onNewChat={() => {
+          handleNewChat();
+          setShowCommandPalette(false);
+        }}
+        onClearHistory={handleClearAllHistory}
+        onOpenSettings={() => {
+          setShowSettings(true);
+          setShowCommandPalette(false);
+        }}
+        onOpenWorkspace={(tab) => {
+          if (tab) setWorkspaceTab(tab as WorkspaceTab);
+          setShowWorkspace(true);
+          setShowCommandPalette(false);
+        }}
+        onSelectModel={(provider, model) => {
+          handleSelectProviderModel(provider, model);
+        }}
+        onOpenPromptStudio={() => {
+          setShowPromptStudio(true);
+          setShowCommandPalette(false);
+        }}
+        onOpenLiveVoice={() => {
+          setShowLiveVoice(true);
+          setShowCommandPalette(false);
+        }}
+        onExportCurrentChat={handleExportChat}
+        onToggleCodingMode={() => {
+          const next = !codingMode;
+          setCodingMode(next);
+          setStoredGitHubCodingMode(next);
+        }}
+        codingModeEnabled={codingMode}
+      />
+
+      {/* In-App Interactive Code Workspace & Sandbox Terminal Drawer */}
+      <CodeWorkspaceDrawer
+        isOpen={showWorkspace}
+        onClose={() => setShowWorkspace(false)}
+        activeRepo={activeRepo}
+        activeFileContent={workspaceFileContent}
+        activeFilePath={workspaceFilePath}
+        initialTab={workspaceTab}
+        onSaveFile={async (path, content) => {
+          setWorkspaceFileContent(content);
+          setWorkspaceFilePath(path);
+        }}
+        onExecutePrompt={(promptText) => {
+          handleSend(promptText);
+        }}
+      />
+
+      {/* Prompt Engineering Studio Modal */}
+      <PromptStudioModal
+        isOpen={showPromptStudio}
+        onClose={() => setShowPromptStudio(false)}
+        currentPrompt={customSystemPrompt}
+        onSavePrompt={(newPrompt) => {
+          setCustomSystemPrompt(newPrompt);
+          localStorage.setItem('void_ai_system_prompt', newPrompt);
         }}
       />
     </div>
