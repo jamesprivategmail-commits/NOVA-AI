@@ -51,6 +51,9 @@ import { CommandPalette } from '../components/CommandPalette';
 import { ModelSelectorDropdown } from '../components/ModelSelectorDropdown';
 import { CodeWorkspaceDrawer, WorkspaceTab } from '../components/workspace/CodeWorkspaceDrawer';
 import { PromptStudioModal } from '../components/workspace/PromptStudioModal';
+import { LiveHtmlPreviewModal } from '../components/workspace/LiveHtmlPreviewModal';
+import { ZipInspectorModal } from '../components/workspace/ZipInspectorModal';
+import { ParsedZipResult } from '../utils/zipParser';
 import { offlineCache } from '../utils/offlineQueue';
 import { Menu, Shield, Crown, Mail, ArrowDown, Sparkles, Code, Code2, Target, Binary, Zap, Bot, Mic, ChevronDown, Send, Radio, X, Trash2, Terminal, Flame, Eye, Lock, ShieldAlert, GitBranch, MessageSquare, FolderCode, Check, Loader2, Command, Sliders, ExternalLink } from 'lucide-react';
 import { getAuth, signOut } from 'firebase/auth';
@@ -133,6 +136,32 @@ export function ChatScreen({ userId }: ChatScreenProps) {
     };
     window.addEventListener('void_ai_open_workspace_file', handleOpenWorkspaceFile);
     return () => window.removeEventListener('void_ai_open_workspace_file', handleOpenWorkspaceFile);
+  }, []);
+
+  // 2026 Interactive HTML Sandbox & ZIP Inspector modals
+  const [previewHtmlData, setPreviewHtmlData] = useState<{ html: string; title: string } | null>(null);
+  const [inspectZipData, setInspectZipData] = useState<ParsedZipResult | null>(null);
+
+  useEffect(() => {
+    const handlePreviewHtml = (e: any) => {
+      if (e.detail?.html) {
+        setPreviewHtmlData({
+          html: e.detail.html,
+          title: e.detail.title || 'Live HTML Sandbox'
+        });
+      }
+    };
+    const handleInspectZip = (e: any) => {
+      if (e.detail?.zipData) {
+        setInspectZipData(e.detail.zipData);
+      }
+    };
+    window.addEventListener('void_ai_preview_html', handlePreviewHtml);
+    window.addEventListener('void_ai_inspect_zip', handleInspectZip);
+    return () => {
+      window.removeEventListener('void_ai_preview_html', handlePreviewHtml);
+      window.removeEventListener('void_ai_inspect_zip', handleInspectZip);
+    };
   }, []);
 
   // Modals state
@@ -500,6 +529,8 @@ export function ChatScreen({ userId }: ChatScreenProps) {
     if (attachment) {
       if (attachment.kind === 'image') {
         displayText = `![${attachment.name}](${attachment.data})\n\n${text}`.trim();
+      } else if (attachment.kind === 'zip') {
+        displayText = `📦 **ZIP Archive: \`${attachment.name}\`** (${attachment.zipStats?.fileCount || 0} files unpacked · ${((attachment.zipStats?.totalSize || 0) / 1024).toFixed(1)} KB)\n\n${text}`.trim();
       } else {
         displayText = `📎 **${attachment.name}**\n\n${text}`.trim();
       }
@@ -1110,6 +1141,36 @@ export function ChatScreen({ userId }: ChatScreenProps) {
           localStorage.setItem('void_ai_system_prompt', newPrompt);
         }}
       />
+
+      {/* 2026 Interactive Live HTML Sandbox Modal */}
+      {previewHtmlData && (
+        <LiveHtmlPreviewModal
+          initialHtml={previewHtmlData.html}
+          title={previewHtmlData.title}
+          onClose={() => setPreviewHtmlData(null)}
+        />
+      )}
+
+      {/* 2026 Full ZIP Archive Inspector & Code Explorer */}
+      {inspectZipData && (
+        <ZipInspectorModal
+          zipData={inspectZipData}
+          onClose={() => setInspectZipData(null)}
+          onOpenInHtmlPreview={(html, title) => {
+            setInspectZipData(null);
+            setPreviewHtmlData({ html, title });
+          }}
+          onSendToChat={(prompt) => {
+            setInspectZipData(null);
+            handleSend(prompt);
+          }}
+          onOpenInWorkspace={(path, content) => {
+            setWorkspaceFilePath(path);
+            setWorkspaceFileContent(content);
+            setShowWorkspace(true);
+          }}
+        />
+      )}
     </div>
   );
 }

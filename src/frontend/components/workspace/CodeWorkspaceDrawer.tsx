@@ -2,8 +2,10 @@ import React, { useState, useEffect } from 'react';
 import { 
   X, Code2, Terminal as TerminalIcon, GitBranch, Cpu, Sparkles, 
   Play, Download, Copy, Check, FileText, Folder, RefreshCw, 
-  Plus, Trash2, ArrowUpRight, Search, ShieldCheck, AlertCircle, Maximize2, Minimize2
+  Plus, Trash2, ArrowUpRight, Search, ShieldCheck, AlertCircle, Maximize2, Minimize2,
+  Archive, FileCode, Upload, Globe
 } from 'lucide-react';
+import JSZip from 'jszip';
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
 import { vscDarkPlus } from 'react-syntax-highlighter/dist/esm/styles/prism';
 import { ActiveRepoState } from '../../utils/github';
@@ -116,6 +118,24 @@ export function CodeWorkspaceDrawer({
     a.download = filePath.split('/').pop() || 'workspace-file.txt';
     a.click();
     URL.revokeObjectURL(url);
+  };
+
+  // Handle Export Workspace File as ZIP Archive
+  const handleDownloadZip = async () => {
+    try {
+      const zip = new JSZip();
+      zip.file(filePath || 'index.html', fileContent);
+      const blob = await zip.generateAsync({ type: 'blob' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      const baseName = (filePath.split('/').pop() || 'project').replace(/\.[^.]+$/, '');
+      a.download = `${baseName}_bundle.zip`;
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch (err: any) {
+      alert(`Could not create zip archive: ${err?.message || 'Failed'}`);
+    }
   };
 
   // Run Terminal Command
@@ -308,6 +328,19 @@ export function CodeWorkspaceDrawer({
           <Cpu size={13} className="text-indigo-400" />
           <span>Memory & Tokens</span>
         </button>
+
+        <button
+          onClick={() => setActiveTab('files')}
+          className={clsx(
+            "px-3 py-2 font-medium rounded-t-lg transition-colors flex items-center gap-1.5 cursor-pointer whitespace-nowrap",
+            activeTab === 'files'
+              ? "bg-[#181a24] text-white border-t-2 border-blue-500"
+              : "text-slate-400 hover:text-slate-200 hover:bg-[#161821]"
+          )}
+        >
+          <Archive size={13} className="text-amber-400" />
+          <span>Files & ZIP Bundle</span>
+        </button>
       </div>
 
       {/* Main Workspace Body */}
@@ -329,6 +362,33 @@ export function CodeWorkspaceDrawer({
               </div>
 
               <div className="flex items-center gap-1.5 shrink-0">
+                {(filePath.toLowerCase().endsWith('.html') || filePath.toLowerCase().endsWith('.htm') || fileContent.toLowerCase().includes('<!doctype html') || fileContent.toLowerCase().includes('<html')) && (
+                  <button
+                    onClick={() => {
+                      window.dispatchEvent(new CustomEvent('void_ai_preview_html', {
+                        detail: {
+                          html: fileContent,
+                          title: filePath || 'Live HTML Sandbox'
+                        }
+                      }));
+                    }}
+                    className="px-2.5 py-1 text-emerald-300 hover:text-white bg-emerald-600/20 hover:bg-emerald-600/30 border border-emerald-500/40 rounded-lg transition-colors flex items-center gap-1 text-[11px] font-semibold cursor-pointer shadow-sm"
+                    title="Run live interactive HTML sandbox"
+                  >
+                    <Play size={11} fill="currentColor" />
+                    <span>Live Preview</span>
+                  </button>
+                )}
+
+                <button
+                  onClick={handleDownloadZip}
+                  className="px-2.5 py-1 text-amber-300 hover:text-white bg-amber-600/20 hover:bg-amber-600/30 border border-amber-500/40 rounded-lg transition-colors flex items-center gap-1 text-[11px] font-semibold cursor-pointer"
+                  title="Export file inside a ZIP archive bundle"
+                >
+                  <Archive size={11} />
+                  <span>Export ZIP</span>
+                </button>
+
                 <button
                   onClick={handleCopy}
                   className="px-2.5 py-1 text-slate-300 hover:text-white bg-[#202330] hover:bg-[#282d3e] rounded-lg transition-colors flex items-center gap-1 text-[11px] cursor-pointer"
@@ -720,6 +780,156 @@ export function CodeWorkspaceDrawer({
                   className="px-3 py-2 bg-[#202330] hover:bg-[#282d3e] text-white rounded-lg text-xs font-medium cursor-pointer"
                 >
                   Add Fact
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* TAB 7: FILES & ZIP BUNDLE MANAGER */}
+        {activeTab === 'files' && (
+          <div className="space-y-4 text-xs font-sans">
+            <div className="p-3 bg-[#151720] border border-[#262938] rounded-xl flex items-center justify-between gap-3">
+              <div>
+                <h4 className="font-bold text-white mb-0.5 flex items-center gap-2">
+                  <Archive size={14} className="text-amber-400" />
+                  Workspace Project & ZIP Archive Manager
+                </h4>
+                <p className="text-slate-400 text-[11px]">
+                  Inspect, manage, and bundle workspace files into downloadable ZIP packages or live HTML sandboxes.
+                </p>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={handleDownloadZip}
+                  className="px-3 py-1.5 bg-amber-600/20 hover:bg-amber-600/30 border border-amber-500/40 text-amber-300 rounded-lg text-xs font-bold flex items-center gap-1.5 transition-colors cursor-pointer"
+                >
+                  <Download size={13} />
+                  <span>Download Project as ZIP</span>
+                </button>
+              </div>
+            </div>
+
+            {/* Active Workspace File Card */}
+            <div className="p-4 bg-[#14161f] border border-[#242735] rounded-xl space-y-3">
+              <div className="flex items-center justify-between">
+                <span className="font-semibold text-slate-200 text-xs flex items-center gap-2">
+                  <FileCode size={14} className="text-blue-400" />
+                  Active File: <code className="text-blue-300 font-mono text-[11px] bg-blue-950/40 px-2 py-0.5 rounded border border-blue-500/30">{filePath}</code>
+                </span>
+                <span className="text-[10px] text-slate-500 font-mono">
+                  {fileContent.length} bytes · {fileContent.split('\n').length} lines
+                </span>
+              </div>
+
+              <div className="flex flex-wrap gap-2 pt-1">
+                {(filePath.toLowerCase().endsWith('.html') || fileContent.toLowerCase().includes('<html')) && (
+                  <button
+                    onClick={() => {
+                      window.dispatchEvent(new CustomEvent('void_ai_preview_html', {
+                        detail: { html: fileContent, title: filePath }
+                      }));
+                    }}
+                    className="px-2.5 py-1 bg-emerald-600/20 hover:bg-emerald-600/30 border border-emerald-500/40 text-emerald-300 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-colors cursor-pointer"
+                  >
+                    <Play size={11} fill="currentColor" />
+                    <span>Launch in HTML Sandbox</span>
+                  </button>
+                )}
+
+                <button
+                  onClick={() => setActiveTab('editor')}
+                  className="px-2.5 py-1 bg-white/5 hover:bg-white/10 border border-white/10 text-slate-200 rounded-lg text-xs font-medium flex items-center gap-1.5 transition-colors cursor-pointer"
+                >
+                  <Code2 size={12} />
+                  <span>Open in Code Editor</span>
+                </button>
+
+                {onExecutePrompt && (
+                  <button
+                    onClick={() => {
+                      onExecutePrompt(`Please analyze and review the architecture of this file (\`${filePath}\`):\n\n\`\`\`\n${fileContent}\n\`\`\``);
+                      onClose();
+                    }}
+                    className="px-2.5 py-1 bg-indigo-600/20 hover:bg-indigo-600/30 border border-indigo-500/40 text-indigo-300 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-colors cursor-pointer"
+                  >
+                    <Sparkles size={12} />
+                    <span>Ask AI About This Code</span>
+                  </button>
+                )}
+              </div>
+            </div>
+
+            {/* Quick Template Generators */}
+            <div className="p-4 bg-[#14161f] border border-[#242735] rounded-xl space-y-3">
+              <span className="font-semibold text-slate-200 text-xs block">
+                Load Quick Project Starter Templates
+              </span>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                <button
+                  onClick={() => {
+                    setFilePath('index.html');
+                    setFileContent(`<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>VOID AI Interactive Canvas</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-slate-950 text-white min-h-screen flex flex-col items-center justify-center p-6">
+  <div class="max-w-md w-full bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-2xl text-center space-y-4">
+    <div class="w-12 h-12 bg-blue-600 rounded-xl mx-auto flex items-center justify-center font-bold text-xl">⚡</div>
+    <h1 class="text-xl font-bold">Interactive HTML Sandbox</h1>
+    <p class="text-sm text-slate-400">Created with VOID AI. Modify code in real-time or export as a downloadable ZIP package.</p>
+    <button onclick="alert('VOID AI Sandbox Live!')" class="w-full py-2 bg-blue-600 hover:bg-blue-500 font-semibold rounded-xl transition-all">Click Me</button>
+  </div>
+</body>
+</html>`);
+                    setActiveTab('editor');
+                  }}
+                  className="p-3 bg-[#0e1017] hover:bg-[#161824] border border-white/5 hover:border-blue-500/30 rounded-xl text-left transition-all cursor-pointer group"
+                >
+                  <div className="font-bold text-white group-hover:text-blue-400 text-xs flex items-center gap-1.5">
+                    <Globe size={13} className="text-emerald-400" />
+                    <span>Tailwind HTML5 App Starter</span>
+                  </div>
+                  <p className="text-[10px] text-slate-400 mt-1">Ready-to-run responsive single-page template with instant live sandbox execution.</p>
+                </button>
+
+                <button
+                  onClick={() => {
+                    setFilePath('app.ts');
+                    setFileContent(`// VOID AI TypeScript Micro-Service Architecture
+export interface UserSession {
+  id: string;
+  role: 'developer' | 'architect' | 'admin';
+  active: boolean;
+}
+
+export class ServicePipeline {
+  private sessions: Map<string, UserSession> = new Map();
+
+  register(session: UserSession): boolean {
+    this.sessions.set(session.id, session);
+    console.log("[Pipeline] Registered session:", session.id);
+    return true;
+  }
+}
+
+const pipeline = new ServicePipeline();
+pipeline.register({ id: 'sess-001', role: 'architect', active: true });
+`);
+                    setActiveTab('editor');
+                  }}
+                  className="p-3 bg-[#0e1017] hover:bg-[#161824] border border-white/5 hover:border-blue-500/30 rounded-xl text-left transition-all cursor-pointer group"
+                >
+                  <div className="font-bold text-white group-hover:text-blue-400 text-xs flex items-center gap-1.5">
+                    <Code2 size={13} className="text-blue-400" />
+                    <span>TypeScript Microservice Module</span>
+                  </div>
+                  <p className="text-[10px] text-slate-400 mt-1">Structured TypeScript class pipeline with session tracking and type safety.</p>
                 </button>
               </div>
             </div>

@@ -1030,10 +1030,13 @@ export function createApp(): express.Express {
       if (attachment) {
         if (attachment.kind === 'image' && attachment.data) {
           imageDataUrl = attachment.data;
-        } else if (attachment.kind === 'file' && attachment.data) {
+        } else if ((attachment.kind === 'file' || attachment.kind === 'zip') && attachment.data) {
           const lastUserMsg = [...messagesForAI].reverse().find((m: any) => m.role === 'user');
           if (lastUserMsg) {
-            const fileContent = `\n\n[📄 File: ${attachment.name}]\n\`\`\`\n${attachment.data}\n\`\`\`\n`;
+            const isZip = attachment.kind === 'zip';
+            const fileContent = isZip 
+              ? `\n\n[📦 Extracted ZIP Archive: ${attachment.name}]\n${attachment.data}\n`
+              : `\n\n[📄 File: ${attachment.name}]\n\`\`\`\n${attachment.data}\n\`\`\`\n`;
             messagesForAI = messagesForAI.map((m: any) =>
               m === lastUserMsg
                 ? { ...m, text: `${m.text || m.content || ''}${fileContent}` }

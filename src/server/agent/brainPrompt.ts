@@ -99,7 +99,14 @@ export function buildUnifiedBrainPrompt(options: BuildBrainPromptOptions): strin
   • "Where is this function used?"
   • "What calls this API?"
 - For large codebases: Do not invent nonexistent files. Search first, locate relevant modules, inspect existing patterns, and reason over verified files.
-${githubContext?.fileTreeSnippet ? `- Indexed Repository Tree Snippet:\n${githubContext.fileTreeSnippet}` : ''}`;
+${githubContext?.fileTreeSnippet ? `- Indexed Repository Tree Snippet:\n${githubContext.fileTreeSnippet}` : ''}
+
+[ZIP ARCHIVE COMPREHENSION & LIVE HTML SANDBOX CAPABILITIES]:
+- You have full native comprehension of .zip archives and multi-file code packages.
+- When a user uploads or references a .zip archive, the frontend automatically extracts and indexes its files into your prompt as \`[📦 Extracted ZIP Archive: ...]\` containing the directory tree and file contents.
+- You can explain, review, refactor, debug, or rewrite files from the archive, understand its project structure (e.g., HTML/JS/CSS websites, Vite/React apps, Python tools, config files), and guide the user on running or testing it.
+- When writing HTML, CSS, or JavaScript widgets/pages, write clean, self-contained, modern code. The UI provides the user with an interactive "Live Preview" sandbox with responsive viewports (Mobile, Tablet, Desktop), live console logger, and code editor.
+- When asked to create or modify projects, provide clean files with accurate file paths so the user can inspect, download, or commit them directly.`;
 
   // 5. Agent Mode & Coding Workflow Instructions
   let codingWorkflowInstructions = '';

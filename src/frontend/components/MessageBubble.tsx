@@ -3,7 +3,7 @@ import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import remarkMath from 'remark-math';
 import rehypeKatex from 'rehype-katex';
-import { Bot, User, Copy, Check, Trash2, Edit2, ExternalLink, ThumbsUp, ThumbsDown, Sparkles, Image as ImageIcon, AlertCircle, Volume2, VolumeX, Star, Zap, Activity } from 'lucide-react';
+import { Bot, User, Copy, Check, Trash2, Edit2, ExternalLink, ThumbsUp, ThumbsDown, Sparkles, Image as ImageIcon, AlertCircle, Volume2, VolumeX, Star, Zap, Activity, GitBranch } from 'lucide-react';
 import { Message, StructuredToolEvent, TerminalToolEvent } from '../../models/types';
 import { CodeBlock } from './CodeBlock';
 import { CodingActivityPanel, parseCodingActivity } from './CodingActivityPanel';
@@ -467,6 +467,20 @@ export const MessageBubble = React.memo(function MessageBubble({
                 title={message.isStarred ? "Unstar message" : "Star message"}
               >
                 <Star size={14} className={message.isStarred ? "fill-amber-400" : ""} />
+              </button>
+
+              {/* Branch / Fork Chat from this point */}
+              <button
+                onClick={() => {
+                  window.dispatchEvent(new CustomEvent('void_ai_fork_chat', {
+                    detail: { messageId: message.id }
+                  }));
+                }}
+                className="p-1.5 text-[#8d8d91] hover:text-cyan-400 hover:bg-[#252527] rounded-md transition-colors flex items-center gap-1 text-xs cursor-pointer"
+                title="Branch conversation into a new thread from this message"
+              >
+                <GitBranch size={13} />
+                <span className="text-[10px] hidden md:inline">Branch</span>
               </button>
 
               {isUser && onEdit && (

@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
 import { vscDarkPlus } from 'react-syntax-highlighter/dist/esm/styles/prism';
-import { Copy, Check, Download, Terminal, ChevronDown, ChevronUp, GitCommit, ExternalLink, RefreshCw, Upload } from 'lucide-react';
+import { Copy, Check, Download, Terminal, ChevronDown, ChevronUp, GitCommit, ExternalLink, RefreshCw, Upload, Play } from 'lucide-react';
 import { getStoredGitHubToken, getStoredActiveRepo, commitFile } from '../utils/github';
 import { TerminalToolComponent } from './tools/TerminalToolComponent';
 import { terminalManager } from '../utils/terminalManager';
@@ -53,6 +53,7 @@ export function CodeBlock({ language, value }: CodeBlockProps) {
   const [isCommitting, setIsCommitting] = useState(false);
   const [commitSuccessUrl, setCommitSuccessUrl] = useState<string | null>(null);
   const [commitError, setCommitError] = useState<string | null>(null);
+  const activeRepo = getStoredActiveRepo();
 
   // Check if this is a dedicated github-commit block
   const isGitHubCommitBlock = language === 'github-commit' || value.includes('---CONTENT---');
@@ -155,7 +156,14 @@ export function CodeBlock({ language, value }: CodeBlockProps) {
     }
   };
 
-  const activeRepo = getStoredActiveRepo();
+  const isHtmlCompatible = 
+    detectedLang === 'html' || 
+    detectedLang === 'htm' || 
+    detectedLang === 'svg' || 
+    detectedLang === 'xml' ||
+    cleanCode.toLowerCase().includes('<!doctype html') ||
+    cleanCode.toLowerCase().includes('<html') ||
+    (cleanCode.includes('<div') && cleanCode.includes('</div>'));
 
   return (
     <div className={`my-2.5 rounded-xl border ${isGitHubCommitBlock ? 'border-[#3f86ff]/40 bg-[#161B22] shadow-lg shadow-[#3f86ff]/5' : 'border-[#30363D] bg-[#161B22]'} overflow-hidden shadow-md w-full`}>
@@ -224,6 +232,25 @@ export function CodeBlock({ language, value }: CodeBlockProps) {
         </div>
 
         <div className="flex items-center gap-1 shrink-0">
+          {/* Live HTML Preview button */}
+          {isHtmlCompatible && (
+            <button
+              onClick={() => {
+                window.dispatchEvent(new CustomEvent('void_ai_preview_html', {
+                  detail: {
+                    html: cleanCode,
+                    title: targetPath || 'HTML Preview Sandbox'
+                  }
+                }));
+              }}
+              className="flex items-center gap-1 px-2 py-0.5 rounded-md bg-emerald-600/20 hover:bg-emerald-600/30 text-emerald-300 hover:text-white transition-colors text-[10px] font-bold border border-emerald-500/40 cursor-pointer shadow-sm"
+              title="Preview and interact with this HTML code live in an interactive sandbox"
+            >
+              <Play size={10} fill="currentColor" />
+              <span>Preview Live</span>
+            </button>
+          )}
+
           {!isGitHubCommitBlock && (
             <button
               onClick={handleDirectCommit}
