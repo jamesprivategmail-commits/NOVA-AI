@@ -203,12 +203,14 @@ export async function sendMessageToGemini(
 export async function runTerminalCommand(
   command: string,
   onChunk?: (chunk: string, event: TerminalToolEvent) => void,
-  signal?: AbortSignal
+  signal?: AbortSignal,
+  userId?: string,
+  cwd?: string
 ): Promise<TerminalToolEvent> {
   const response = await fetch('/api/terminal/run', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ command, stream: true }),
+    body: JSON.stringify({ command, stream: true, userId, cwd }),
     signal,
   });
 
@@ -283,3 +285,82 @@ export async function stopTerminalCommand(id: string): Promise<boolean> {
     return false;
   }
 }
+
+/**
+ * Workspace file and process management client APIs
+ */
+export async function fetchWorkspaceFiles(userId?: string, path?: string): Promise<{ files: any[]; rootDir: string }> {
+  const url = `/api/workspace/files?userId=${encodeURIComponent(userId || 'workspace-default')}&path=${encodeURIComponent(path || '')}`;
+  const res = await fetch(url);
+  if (!res.ok) throw new Error('Failed to fetch workspace files');
+  return res.json();
+}
+
+export async function readWorkspaceFile(path: string, userId?: string): Promise<string> {
+  const res = await fetch('/api/workspace/file/read', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ userId: userId || 'workspace-default', path }),
+  });
+  if (!res.ok) throw new Error('Failed to read file');
+  const data = await res.json();
+  return data.content;
+}
+
+export async function writeWorkspaceFile(path: string, content: string, userId?: string): Promise<void> {
+  const res = await fetch('/api/workspace/file/write', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ userId: userId || 'workspace-default', path, content }),
+  });
+  if (!res.ok) throw new Error('Failed to write file');
+}
+
+export async function deleteWorkspaceFile(path: string, userId?: string): Promise<boolean> {
+  const res = await fetch('/api/workspace/file/delete', {
+    method: 'DELETE',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ userId: userId || 'workspace-default', path }),
+  });
+  if (!res.ok) throw new Error('Failed to delete file');
+  const data = await res.json();
+  return data.success;
+}
+
+export async function fetchProcesses(userId?: string): Promise<any[]> {
+  const url = `/api/processes${userId ? `?userId=${encodeURIComponent(userId)}` : ''}`;
+  const res = await fetch(url);
+  if (!res.ok) return [];
+  const data = await res.json();
+  return data.processes || [];
+}
+
+export async function startBackgroundProcess(options: { command: string; name?: string; port?: number; userId?: string }): Promise<any> {
+  const res = await fetch('/api/processes/start', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(options),
+  });
+  if (!res.ok) throw new Error('Failed to start process');
+  const data = await res.json();
+  return data.process;
+}
+
+export async function stopBackgroundProcess(id: string): Promise<boolean> {
+  const res = await fetch('/api/processes/stop', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ id }),
+  });
+  if (!res.ok) return false;
+  const data = await res.json();
+  return Boolean(data.success);
+}
+
+export async function fetchProcessLogs(id: string): Promise<string[]> {
+  const res = await fetch(`/api/processes/${id}/logs`);
+  if (!res.ok) return [];
+  const data = await res.json();
+  return data.logs || [];
+}
+

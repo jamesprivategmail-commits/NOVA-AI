@@ -1,11 +1,12 @@
 import { spawn, ChildProcess } from 'child_process';
 import { v4 as uuidv4 } from 'uuid';
 import { TerminalToolEvent } from '../../models/types';
+import { workspaceService } from '../workspace/workspaceService';
 
 interface RunningTask {
   id: string;
   command: string;
-  process: ChildProcess;
+  process?: ChildProcess;
   startedAt: number;
   output: string;
   status: 'running' | 'completed' | 'failed' | 'cancelled';
@@ -20,12 +21,15 @@ class TerminalService {
   private completedTasks = new Map<string, RunningTask>();
 
   /**
-   * Run a terminal command with live output streaming and lifecycle tracking
+   * Run a terminal command with live output streaming and lifecycle tracking.
+   * Runs in the user workspace directory or remote Linux execution sandbox if configured.
    */
   public runCommand(
     command: string,
     options: {
+      userId?: string;
       cwd?: string;
+      env?: Record<string, string>;
       onChunk?: (chunk: string, currentEvent: TerminalToolEvent) => void;
       timeoutMs?: number;
     } = {}
@@ -36,24 +40,11 @@ class TerminalService {
   } {
     const id = uuidv4();
     const startedAt = Date.now();
-    const cwd = options.cwd || process.cwd();
-
-    // Spawn shell process
-    const child = spawn('sh', ['-c', command], {
-      cwd,
-      env: {
-        ...process.env,
-        PAGER: 'cat',
-        CI: 'true',
-        TERM: 'xterm-256color',
-        FORCE_COLOR: '0',
-      },
-    });
+    const cwd = options.cwd || workspaceService.getWorkspaceDir(options.userId);
 
     const task: RunningTask = {
       id,
       command,
-      process: child,
       startedAt,
       output: '',
       status: 'running',
@@ -74,27 +65,83 @@ class TerminalService {
       completedAt: task.completedAt,
       durationMs: task.durationMs,
       exitCode: task.exitCode,
-      pid: child.pid,
+      pid: task.process?.pid,
     });
 
-    const promise = new Promise<TerminalToolEvent>((resolve) => {
+    const appendOutput = (data: Buffer | string) => {
+      const text = data.toString();
+      task.output += text;
+      const currentEvent = makeEvent();
+      task.listeners.forEach((fn) => {
+        try {
+          fn(text, currentEvent);
+        } catch (_) {}
+      });
+    };
+
+    // Check if remote sandbox execution service is configured (for Vercel or isolated clusters)
+    const sandboxUrl = process.env.SANDBOX_API_URL || process.env.EXECUTION_SERVICE_URL;
+
+    const promise = new Promise<TerminalToolEvent>(async (resolve) => {
+      if (sandboxUrl) {
+        try {
+          const res = await fetch(`${sandboxUrl.replace(/\/+$/, '')}/execute`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              ...(process.env.SANDBOX_API_KEY ? { 'Authorization': `Bearer ${process.env.SANDBOX_API_KEY}` } : {}),
+            },
+            body: JSON.stringify({
+              command,
+              cwd,
+              userId: options.userId,
+              env: options.env,
+              timeoutMs: options.timeoutMs || 120000,
+            }),
+          });
+
+          if (!res.ok) {
+            const errText = await res.text().catch(() => '');
+            throw new Error(`Remote sandbox error (${res.status}): ${errText}`);
+          }
+
+          const data = await res.json();
+          task.output = data.output || data.stdout || '';
+          if (data.stderr) task.output += `\n${data.stderr}`;
+          task.exitCode = data.exitCode ?? 0;
+          task.status = task.exitCode === 0 ? 'completed' : 'failed';
+          task.completedAt = Date.now();
+          task.durationMs = task.completedAt - task.startedAt;
+
+          this.activeTasks.delete(id);
+          this.completedTasks.set(id, task);
+          return resolve(makeEvent());
+        } catch (remoteErr: any) {
+          console.warn('[Terminal] Remote sandbox failed, falling back to local Linux shell:', remoteErr.message);
+        }
+      }
+
+      // Local Linux bash/sh execution
+      const child = spawn('sh', ['-c', command], {
+        cwd,
+        env: {
+          ...process.env,
+          ...(options.env || {}),
+          PAGER: 'cat',
+          CI: 'true',
+          TERM: 'xterm-256color',
+          FORCE_COLOR: '0',
+        },
+      });
+
+      task.process = child;
+
       let timeoutTimer: NodeJS.Timeout | null = null;
       if (options.timeoutMs && options.timeoutMs > 0) {
         timeoutTimer = setTimeout(() => {
           this.stopCommand(id);
         }, options.timeoutMs);
       }
-
-      const appendOutput = (data: Buffer | string) => {
-        const text = data.toString();
-        task.output += text;
-        const currentEvent = makeEvent();
-        task.listeners.forEach((fn) => {
-          try {
-            fn(text, currentEvent);
-          } catch (_) {}
-        });
-      };
 
       child.stdout?.on('data', appendOutput);
       child.stderr?.on('data', appendOutput);
@@ -118,7 +165,7 @@ class TerminalService {
         task.exitCode = code ?? (signal ? 130 : 0);
 
         if (task.status === 'running') {
-          task.status = (code === 0) ? 'completed' : 'failed';
+          task.status = code === 0 ? 'completed' : 'failed';
         }
         if (signal === 'SIGTERM' || signal === 'SIGINT') {
           task.status = 'cancelled';
@@ -155,20 +202,23 @@ class TerminalService {
     task.completedAt = Date.now();
     task.durationMs = task.completedAt - task.startedAt;
 
-    try {
-      task.process.kill('SIGTERM');
-      // Force kill after 1.5s if not exited
-      setTimeout(() => {
-        try {
-          if (!task.process.killed) {
-            task.process.kill('SIGKILL');
-          }
-        } catch (_) {}
-      }, 1500);
-      return true;
-    } catch (e) {
-      return false;
+    if (task.process) {
+      try {
+        task.process.kill('SIGTERM');
+        // Force kill after 1.5s if not exited
+        setTimeout(() => {
+          try {
+            if (task.process && !task.process.killed) {
+              task.process.kill('SIGKILL');
+            }
+          } catch (_) {}
+        }, 1500);
+        return true;
+      } catch (e) {
+        return false;
+      }
     }
+    return true;
   }
 
   /**
@@ -188,7 +238,7 @@ class TerminalService {
       completedAt: task.completedAt,
       durationMs: task.durationMs,
       exitCode: task.exitCode,
-      pid: task.process.pid,
+      pid: task.process?.pid,
     };
   }
 }

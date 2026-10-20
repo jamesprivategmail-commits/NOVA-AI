@@ -3,16 +3,29 @@ import {
   X, Code2, Terminal as TerminalIcon, GitBranch, Cpu, Sparkles, 
   Play, Download, Copy, Check, FileText, Folder, RefreshCw, 
   Plus, Trash2, ArrowUpRight, Search, ShieldCheck, AlertCircle, Maximize2, Minimize2,
-  Archive, FileCode, Upload, Globe
+  Archive, FileCode, Upload, Globe, Activity, Eye, Monitor, Tablet, Smartphone, Square
 } from 'lucide-react';
 import JSZip from 'jszip';
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
 import { vscDarkPlus } from 'react-syntax-highlighter/dist/esm/styles/prism';
 import { ActiveRepoState } from '../../utils/github';
 import { terminalManager } from '../../utils/terminalManager';
+import { 
+  fetchWorkspaceFiles, 
+  readWorkspaceFile, 
+  writeWorkspaceFile, 
+  deleteWorkspaceFile, 
+  fetchProcesses, 
+  startBackgroundProcess, 
+  stopBackgroundProcess, 
+  fetchProcessLogs, 
+  runTerminalCommand, 
+  stopTerminalCommand 
+} from '../../api/client';
+import { WorkspaceFileInfo, ManagedProcess } from '../../../models/types';
 import { clsx } from 'clsx';
 
-export type WorkspaceTab = 'editor' | 'terminal' | 'rungraph' | 'git' | 'playground' | 'memory' | 'files';
+export type WorkspaceTab = 'editor' | 'terminal' | 'files' | 'processes' | 'preview' | 'rungraph' | 'git' | 'playground' | 'memory';
 
 interface CodeWorkspaceDrawerProps {
   isOpen: boolean;
@@ -46,10 +59,32 @@ export function CodeWorkspaceDrawer({
   // Terminal state
   const [terminalInput, setTerminalInput] = useState('');
   const [terminalLogs, setTerminalLogs] = useState<string[]>([
-    'VOID Sandbox Terminal initialized [v2.4-2026].',
-    'Type commands like `npm test`, `git status`, `ls -la`, or evaluate logic.',
+    'NOVA Linux Autonomous Sandbox Terminal initialized [2026 Core].',
+    'Real Linux shell active. Commands execute directly inside your persistent workspace (/workspaces).',
   ]);
   const [isTerminalRunning, setIsTerminalRunning] = useState(false);
+  const [activeTerminalTaskId, setActiveTerminalTaskId] = useState<string | null>(null);
+
+  // Persistent Workspace Files state
+  const [workspaceFiles, setWorkspaceFiles] = useState<WorkspaceFileInfo[]>([]);
+  const [isLoadingFiles, setIsLoadingFiles] = useState(false);
+  const [newFileName, setNewFileName] = useState('');
+  const [showNewFileInput, setShowNewFileInput] = useState(false);
+
+  // Background Processes & Daemon Jobs state
+  const [managedProcesses, setManagedProcesses] = useState<ManagedProcess[]>([]);
+  const [isLoadingProcesses, setIsLoadingProcesses] = useState(false);
+  const [newProcessCmd, setNewProcessCmd] = useState('');
+  const [newProcessName, setNewProcessName] = useState('');
+  const [newProcessPort, setNewProcessPort] = useState('');
+  const [selectedProcLogs, setSelectedProcLogs] = useState<string[]>([]);
+  const [selectedProcId, setSelectedProcId] = useState<string | null>(null);
+
+  // Real Web Preview state
+  const [previewPort, setPreviewPort] = useState<number>(5173);
+  const [customPortInput, setCustomPortInput] = useState('5173');
+  const [previewDevice, setPreviewDevice] = useState<'desktop' | 'tablet' | 'mobile'>('desktop');
+  const [previewKey, setPreviewKey] = useState(0);
 
   // Playground state
   const [playgroundCode, setPlaygroundCode] = useState('const numbers = [1, 2, 3, 4, 5];\nreturn numbers.map(n => n * 2);');
@@ -138,7 +173,45 @@ export function CodeWorkspaceDrawer({
     }
   };
 
-  // Run Terminal Command
+  // Load workspace files
+  const loadWorkspaceFiles = async () => {
+    setIsLoadingFiles(true);
+    try {
+      const data = await fetchWorkspaceFiles();
+      setWorkspaceFiles(data.files || []);
+    } catch (err) {
+      console.error('Failed to load workspace files:', err);
+    } finally {
+      setIsLoadingFiles(false);
+    }
+  };
+
+  // Load managed background processes
+  const loadProcesses = async () => {
+    setIsLoadingProcesses(true);
+    try {
+      const procs = await fetchProcesses();
+      setManagedProcesses(procs || []);
+      const withPort = procs.find((p: any) => p.port && p.status === 'running');
+      if (withPort?.port) {
+        setPreviewPort(withPort.port);
+        setCustomPortInput(String(withPort.port));
+      }
+    } catch (err) {
+      console.error('Failed to load processes:', err);
+    } finally {
+      setIsLoadingProcesses(false);
+    }
+  };
+
+  useEffect(() => {
+    if (isOpen) {
+      loadWorkspaceFiles();
+      loadProcesses();
+    }
+  }, [isOpen, activeTab]);
+
+  // Run Real Terminal Command with Live Chunk Streaming
   const handleRunTerminal = async (cmdToRun?: string) => {
     const cmd = (cmdToRun || terminalInput).trim();
     if (!cmd) return;
@@ -147,12 +220,110 @@ export function CodeWorkspaceDrawer({
     setTerminalInput('');
 
     try {
-      const res = await terminalManager.executeCommand(cmd);
-      setTerminalLogs(prev => [...prev, res.output || '(No output)']);
+      let accumulatedOutput = '';
+      const event = await runTerminalCommand(cmd, (chunk) => {
+        accumulatedOutput += chunk;
+        setTerminalLogs(prev => {
+          const next = [...prev];
+          next[next.length - 1] = accumulatedOutput;
+          return next;
+        });
+      });
+      setActiveTerminalTaskId(event.id);
+      if (event.output && !accumulatedOutput) {
+        setTerminalLogs(prev => [...prev, event.output]);
+      }
+      loadWorkspaceFiles();
+      loadProcesses();
     } catch (err: any) {
       setTerminalLogs(prev => [...prev, `[ERROR]: ${err?.message || 'Execution error'}`]);
     } finally {
       setIsTerminalRunning(false);
+      setActiveTerminalTaskId(null);
+    }
+  };
+
+  const handleStopTerminal = async () => {
+    if (activeTerminalTaskId) {
+      await stopTerminalCommand(activeTerminalTaskId);
+      setTerminalLogs(prev => [...prev, '[Terminal process stopped by user]']);
+      setIsTerminalRunning(false);
+      setActiveTerminalTaskId(null);
+    }
+  };
+
+  const handleOpenFile = async (fileP: string) => {
+    try {
+      const content = await readWorkspaceFile(fileP);
+      setFilePath(fileP);
+      setFileContent(content);
+      setActiveTab('editor');
+    } catch (err: any) {
+      alert(`Could not open file: ${err.message}`);
+    }
+  };
+
+  const handleCreateWorkspaceFile = async () => {
+    if (!newFileName.trim()) return;
+    try {
+      await writeWorkspaceFile(newFileName.trim(), `// Created by user in NOVA AI\n`);
+      setNewFileName('');
+      setShowNewFileInput(false);
+      await loadWorkspaceFiles();
+      handleOpenFile(newFileName.trim());
+    } catch (err: any) {
+      alert(`Could not create file: ${err.message}`);
+    }
+  };
+
+  const handleDeleteWorkspaceFile = async (fileP: string) => {
+    if (!confirm(`Delete ${fileP}?`)) return;
+    try {
+      await deleteWorkspaceFile(fileP);
+      await loadWorkspaceFiles();
+    } catch (err: any) {
+      alert(`Could not delete file: ${err.message}`);
+    }
+  };
+
+  const handleStartProcess = async () => {
+    if (!newProcessCmd.trim()) return;
+    try {
+      const port = newProcessPort ? parseInt(newProcessPort, 10) : undefined;
+      await startBackgroundProcess({
+        command: newProcessCmd.trim(),
+        name: newProcessName.trim() || undefined,
+        port,
+      });
+      setNewProcessCmd('');
+      setNewProcessName('');
+      setNewProcessPort('');
+      await loadProcesses();
+      if (port) {
+        setPreviewPort(port);
+        setCustomPortInput(String(port));
+      }
+    } catch (err: any) {
+      alert(`Failed to start process: ${err.message}`);
+    }
+  };
+
+  const handleStopProcess = async (id: string) => {
+    try {
+      await stopBackgroundProcess(id);
+      await loadProcesses();
+    } catch (err: any) {
+      alert(`Failed to stop process: ${err.message}`);
+    }
+  };
+
+  const handleViewProcessLogs = async (id: string) => {
+    setSelectedProcId(id);
+    try {
+      const logs = await fetchProcessLogs(id);
+      setSelectedProcLogs(logs);
+    } catch (err: any) {
+      setSelectedProcLogs([`Error fetching logs: ${err.message}`]);
     }
   };
 
@@ -346,8 +517,34 @@ export function CodeWorkspaceDrawer({
               : "text-slate-400 hover:text-slate-200 hover:bg-[#161821]"
           )}
         >
-          <Archive size={13} className="text-amber-400" />
-          <span>Files & ZIP Bundle</span>
+          <Folder size={13} className="text-amber-400" />
+          <span>Files & Project</span>
+        </button>
+
+        <button
+          onClick={() => setActiveTab('processes')}
+          className={clsx(
+            "px-3 py-2 font-medium rounded-t-lg transition-colors flex items-center gap-1.5 cursor-pointer whitespace-nowrap",
+            activeTab === 'processes'
+              ? "bg-[#181a24] text-white border-t-2 border-emerald-500"
+              : "text-slate-400 hover:text-slate-200 hover:bg-[#161821]"
+          )}
+        >
+          <Activity size={13} className="text-emerald-400" />
+          <span>Processes & Bots ({managedProcesses.filter(p => p.status === 'running').length})</span>
+        </button>
+
+        <button
+          onClick={() => setActiveTab('preview')}
+          className={clsx(
+            "px-3 py-2 font-medium rounded-t-lg transition-colors flex items-center gap-1.5 cursor-pointer whitespace-nowrap",
+            activeTab === 'preview'
+              ? "bg-[#181a24] text-white border-t-2 border-cyan-500"
+              : "text-slate-400 hover:text-slate-200 hover:bg-[#161821]"
+          )}
+        >
+          <Eye size={13} className="text-cyan-400" />
+          <span>Live Web Preview</span>
         </button>
       </div>
 
@@ -452,6 +649,15 @@ export function CodeWorkspaceDrawer({
                 <span className="font-semibold text-slate-200">Terminal Process Console</span>
               </div>
               <div className="flex items-center gap-2">
+                {isTerminalRunning && (
+                  <button
+                    onClick={handleStopTerminal}
+                    className="px-2.5 py-1 bg-rose-950/90 hover:bg-rose-900 border border-rose-700/60 text-rose-300 rounded text-[11px] font-bold flex items-center gap-1 cursor-pointer animate-pulse"
+                  >
+                    <Square size={9} fill="currentColor" />
+                    <span>Stop Task</span>
+                  </button>
+                )}
                 <button
                   onClick={() => setTerminalLogs(['Console cleared.'])}
                   className="px-2 py-1 text-slate-400 hover:text-white rounded hover:bg-[#222533]"
@@ -459,16 +665,16 @@ export function CodeWorkspaceDrawer({
                   Clear
                 </button>
                 <button
+                  onClick={() => handleRunTerminal('ls -la')}
+                  className="px-2.5 py-1 bg-[#202434] hover:bg-[#282d42] text-slate-200 rounded text-[11px]"
+                >
+                  ls -la
+                </button>
+                <button
                   onClick={() => handleRunTerminal('npm test')}
                   className="px-2.5 py-1 bg-[#202434] hover:bg-[#282d42] text-slate-200 rounded text-[11px]"
                 >
-                  Run npm test
-                </button>
-                <button
-                  onClick={() => handleRunTerminal('git status -s')}
-                  className="px-2.5 py-1 bg-[#202434] hover:bg-[#282d42] text-slate-200 rounded text-[11px]"
-                >
-                  git status
+                  npm test
                 </button>
               </div>
             </div>
@@ -794,155 +1000,376 @@ export function CodeWorkspaceDrawer({
           </div>
         )}
 
-        {/* TAB 7: FILES & ZIP BUNDLE MANAGER */}
+        {/* TAB: WORKSPACE FILES & PROJECT MANAGER */}
         {activeTab === 'files' && (
           <div className="space-y-4 text-xs font-sans">
             <div className="p-3 bg-[#151720] border border-[#262938] rounded-xl flex items-center justify-between gap-3">
               <div>
                 <h4 className="font-bold text-white mb-0.5 flex items-center gap-2">
-                  <Archive size={14} className="text-amber-400" />
-                  Workspace Project & ZIP Archive Manager
+                  <Folder size={14} className="text-amber-400" />
+                  Persistent Linux Workspace Explorer
                 </h4>
                 <p className="text-slate-400 text-[11px]">
-                  Inspect, manage, and bundle workspace files into downloadable ZIP packages or live HTML sandboxes.
+                  Real disk files stored on the backend. Click any file to edit, or export the entire project as a ZIP bundle.
                 </p>
               </div>
 
               <div className="flex items-center gap-2">
                 <button
-                  onClick={handleDownloadZip}
+                  onClick={loadWorkspaceFiles}
+                  disabled={isLoadingFiles}
+                  className="p-1.5 bg-[#202330] hover:bg-[#282d3e] text-slate-300 rounded-lg transition-colors cursor-pointer"
+                  title="Refresh files"
+                >
+                  <RefreshCw size={13} className={isLoadingFiles ? "animate-spin" : ""} />
+                </button>
+                <a
+                  href="/api/workspace/download"
+                  download="nova-workspace.zip"
                   className="px-3 py-1.5 bg-amber-600/20 hover:bg-amber-600/30 border border-amber-500/40 text-amber-300 rounded-lg text-xs font-bold flex items-center gap-1.5 transition-colors cursor-pointer"
                 >
                   <Download size={13} />
                   <span>Download Project as ZIP</span>
+                </a>
+              </div>
+            </div>
+
+            {/* Create New File bar */}
+            <div className="p-3 bg-[#14161f] border border-[#242735] rounded-xl flex items-center justify-between gap-2">
+              {showNewFileInput ? (
+                <div className="flex items-center gap-2 flex-1">
+                  <input
+                    type="text"
+                    value={newFileName}
+                    onChange={(e) => setNewFileName(e.target.value)}
+                    placeholder="e.g. server.js, app.py, styles.css..."
+                    className="flex-1 bg-[#0d0e13] border border-[#2e3345] rounded-lg px-2.5 py-1 text-slate-100 font-mono text-xs focus:outline-none"
+                    autoFocus
+                  />
+                  <button
+                    onClick={handleCreateWorkspaceFile}
+                    className="px-3 py-1 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-xs font-bold cursor-pointer"
+                  >
+                    Create
+                  </button>
+                  <button
+                    onClick={() => setShowNewFileInput(false)}
+                    className="px-2 py-1 bg-white/5 hover:bg-white/10 text-slate-300 rounded-lg text-xs cursor-pointer"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              ) : (
+                <div className="flex items-center justify-between w-full">
+                  <span className="text-slate-400 text-xs">Workspace Files ({workspaceFiles.length} items)</span>
+                  <button
+                    onClick={() => setShowNewFileInput(true)}
+                    className="px-2.5 py-1 bg-blue-600/20 hover:bg-blue-600/30 border border-blue-500/40 text-blue-300 rounded-lg text-xs font-semibold flex items-center gap-1 cursor-pointer"
+                  >
+                    <Plus size={12} />
+                    <span>New File</span>
+                  </button>
+                </div>
+              )}
+            </div>
+
+            {/* Workspace File List */}
+            <div className="bg-[#12131a] border border-[#222533] rounded-xl divide-y divide-[#1e202d] overflow-hidden">
+              {workspaceFiles.length === 0 ? (
+                <div className="p-8 text-center text-slate-500">
+                  <Folder size={32} className="mx-auto mb-2 opacity-30 text-amber-400" />
+                  <p className="text-xs">No files in workspace yet.</p>
+                  <p className="text-[11px] text-slate-600 mt-1">Ask Nova AI to build a project, create files, or click New File above.</p>
+                </div>
+              ) : (
+                workspaceFiles.map((file) => (
+                  <div
+                    key={file.path}
+                    className="p-2.5 flex items-center justify-between hover:bg-[#181a24] transition-colors group cursor-pointer"
+                    onClick={() => !file.isDirectory && handleOpenFile(file.path)}
+                  >
+                    <div className="flex items-center gap-2.5 min-w-0">
+                      {file.isDirectory ? (
+                        <Folder size={15} className="text-amber-400 shrink-0" />
+                      ) : (
+                        <FileCode size={15} className="text-blue-400 shrink-0" />
+                      )}
+                      <span className="font-mono text-xs text-slate-200 truncate">{file.path}</span>
+                    </div>
+
+                    <div className="flex items-center gap-3 shrink-0">
+                      {file.size !== undefined && (
+                        <span className="text-[10px] text-slate-500 font-mono">
+                          {file.size < 1024 ? `${file.size} B` : `${(file.size / 1024).toFixed(1)} KB`}
+                        </span>
+                      )}
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleDeleteWorkspaceFile(file.path);
+                        }}
+                        className="p-1 text-slate-500 hover:text-rose-400 opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer"
+                        title="Delete file"
+                      >
+                        <Trash2 size={13} />
+                      </button>
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* TAB: BACKGROUND PROCESSES & DAEMONS */}
+        {activeTab === 'processes' && (
+          <div className="space-y-4 text-xs font-sans">
+            <div className="p-3 bg-[#151720] border border-[#262938] rounded-xl flex items-center justify-between gap-3">
+              <div>
+                <h4 className="font-bold text-white mb-0.5 flex items-center gap-2">
+                  <Activity size={14} className="text-emerald-400" />
+                  Daemon & Background Process Manager
+                </h4>
+                <p className="text-slate-400 text-[11px]">
+                  Persistent servers, bots, and tasks running in the Linux execution environment.
+                </p>
+              </div>
+
+              <button
+                onClick={loadProcesses}
+                disabled={isLoadingProcesses}
+                className="p-1.5 bg-[#202330] hover:bg-[#282d3e] text-slate-300 rounded-lg transition-colors cursor-pointer"
+                title="Refresh processes"
+              >
+                <RefreshCw size={13} className={isLoadingProcesses ? "animate-spin" : ""} />
+              </button>
+            </div>
+
+            {/* Launch new background job form */}
+            <div className="p-3.5 bg-[#14161f] border border-[#242735] rounded-xl space-y-2.5">
+              <span className="font-bold text-slate-200 text-xs block">Start New Background Server or Bot</span>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                <input
+                  type="text"
+                  value={newProcessCmd}
+                  onChange={(e) => setNewProcessCmd(e.target.value)}
+                  placeholder="Command (e.g. node server.js)"
+                  className="sm:col-span-2 bg-[#0d0e13] border border-[#2e3345] rounded-lg px-2.5 py-1.5 text-slate-100 font-mono text-xs focus:outline-none"
+                />
+                <input
+                  type="number"
+                  value={newProcessPort}
+                  onChange={(e) => setNewProcessPort(e.target.value)}
+                  placeholder="Port (e.g. 5173)"
+                  className="bg-[#0d0e13] border border-[#2e3345] rounded-lg px-2.5 py-1.5 text-slate-100 font-mono text-xs focus:outline-none"
+                />
+              </div>
+              <div className="flex justify-end">
+                <button
+                  onClick={handleStartProcess}
+                  disabled={!newProcessCmd.trim()}
+                  className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-xs font-bold transition-colors cursor-pointer disabled:opacity-40"
+                >
+                  Start Daemon
                 </button>
               </div>
             </div>
 
-            {/* Active Workspace File Card */}
-            <div className="p-4 bg-[#14161f] border border-[#242735] rounded-xl space-y-3">
-              <div className="flex items-center justify-between">
-                <span className="font-semibold text-slate-200 text-xs flex items-center gap-2">
-                  <FileCode size={14} className="text-blue-400" />
-                  Active File: <code className="text-blue-300 font-mono text-[11px] bg-blue-950/40 px-2 py-0.5 rounded border border-blue-500/30">{filePath}</code>
-                </span>
-                <span className="text-[10px] text-slate-500 font-mono">
-                  {fileContent.length} bytes · {fileContent.split('\n').length} lines
-                </span>
+            {/* Running Process Cards */}
+            <div className="space-y-2">
+              {managedProcesses.length === 0 ? (
+                <div className="p-8 bg-[#12131a] border border-[#222533] rounded-xl text-center text-slate-500">
+                  <Activity size={32} className="mx-auto mb-2 opacity-30 text-emerald-400" />
+                  <p className="text-xs">No background processes running.</p>
+                  <p className="text-[11px] text-slate-600 mt-1">Start a web server, bot, or cron script using the form above or by prompting Nova in chat.</p>
+                </div>
+              ) : (
+                managedProcesses.map((proc) => (
+                  <div key={proc.id} className="p-3 bg-[#13151d] border border-[#252837] rounded-xl space-y-2">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <span className={clsx(
+                          "w-2 h-2 rounded-full",
+                          proc.status === 'running' ? "bg-emerald-400 animate-pulse" : "bg-slate-500"
+                        )} />
+                        <span className="font-bold text-white text-xs">{proc.name}</span>
+                        <span className="text-[10px] text-slate-500 font-mono">PID {proc.pid}</span>
+                      </div>
+
+                      <div className="flex items-center gap-1.5">
+                        {proc.port && (
+                          <button
+                            onClick={() => {
+                              setPreviewPort(proc.port!);
+                              setCustomPortInput(String(proc.port!));
+                              setActiveTab('preview');
+                            }}
+                            className="px-2 py-0.5 bg-cyan-600/20 hover:bg-cyan-600/30 border border-cyan-500/40 text-cyan-300 rounded text-[10px] font-bold cursor-pointer"
+                          >
+                            Open Preview
+                          </button>
+                        )}
+                        <button
+                          onClick={() => handleViewProcessLogs(proc.id)}
+                          className="px-2 py-0.5 bg-white/5 hover:bg-white/10 border border-white/10 text-slate-300 rounded text-[10px] cursor-pointer"
+                        >
+                          Logs
+                        </button>
+                        {proc.status === 'running' && (
+                          <button
+                            onClick={() => handleStopProcess(proc.id)}
+                            className="px-2 py-0.5 bg-rose-950/80 hover:bg-rose-900 border border-rose-700/60 text-rose-300 rounded text-[10px] font-bold cursor-pointer"
+                          >
+                            Stop
+                          </button>
+                        )}
+                      </div>
+                    </div>
+
+                    <div className="font-mono text-[11px] text-slate-400 bg-[#0c0d12] p-2 rounded border border-[#1f222e] truncate">
+                      $ {proc.command}
+                    </div>
+
+                    {proc.port && (
+                      <div className="text-[10px] text-emerald-400 flex items-center gap-1">
+                        <span>Listening on port {proc.port}</span>
+                        <span>· Preview URL: <code>{proc.previewUrl}</code></span>
+                      </div>
+                    )}
+                  </div>
+                ))
+              )}
+            </div>
+
+            {/* Selected Process Log Drawer */}
+            {selectedProcId && (
+              <div className="p-3 bg-[#0a0b10] border border-[#2b2e40] rounded-xl font-mono text-[11px] space-y-2">
+                <div className="flex items-center justify-between text-xs text-slate-400">
+                  <span className="font-bold text-white">Live Logs: {selectedProcId}</span>
+                  <button
+                    onClick={() => setSelectedProcId(null)}
+                    className="text-slate-500 hover:text-white"
+                  >
+                    Close
+                  </button>
+                </div>
+                <pre className="max-h-48 overflow-y-auto whitespace-pre-wrap break-all text-slate-300 scrollbar-thin">
+                  {selectedProcLogs.join('\n') || '(No logs recorded yet)'}
+                </pre>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* TAB: REAL WEB APP PREVIEW */}
+        {activeTab === 'preview' && (
+          <div className="flex flex-col h-full space-y-3 font-sans text-xs">
+            {/* Preview Toolbar */}
+            <div className="flex flex-wrap items-center justify-between gap-2 p-2 bg-[#171922] rounded-xl border border-[#272b3b]">
+              <div className="flex items-center gap-2">
+                <Eye size={14} className="text-cyan-400" />
+                <span className="font-bold text-white text-xs">Port:</span>
+                <input
+                  type="number"
+                  value={customPortInput}
+                  onChange={(e) => setCustomPortInput(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      const p = parseInt(customPortInput, 10);
+                      if (p) setPreviewPort(p);
+                    }
+                  }}
+                  className="w-18 bg-[#0e1017] border border-[#2e3345] rounded px-2 py-0.5 text-center font-mono text-xs text-cyan-300 focus:outline-none"
+                />
+                <button
+                  onClick={() => {
+                    const p = parseInt(customPortInput, 10);
+                    if (p) setPreviewPort(p);
+                  }}
+                  className="px-2 py-0.5 bg-blue-600 hover:bg-blue-500 text-white rounded text-[11px] font-semibold cursor-pointer"
+                >
+                  Go
+                </button>
               </div>
 
-              <div className="flex flex-wrap gap-2 pt-1">
-                {(filePath.toLowerCase().endsWith('.html') || fileContent.toLowerCase().includes('<html')) && (
-                  <button
-                    onClick={() => {
-                      window.dispatchEvent(new CustomEvent('void_ai_preview_html', {
-                        detail: { html: fileContent, title: filePath }
-                      }));
-                    }}
-                    className="px-2.5 py-1 bg-emerald-600/20 hover:bg-emerald-600/30 border border-emerald-500/40 text-emerald-300 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-colors cursor-pointer"
-                  >
-                    <Play size={11} fill="currentColor" />
-                    <span>Launch in HTML Sandbox</span>
-                  </button>
-                )}
-
+              {/* Viewport switchers */}
+              <div className="flex items-center gap-1 bg-[#10121a] p-1 rounded-lg border border-[#242735]">
                 <button
-                  onClick={() => setActiveTab('editor')}
-                  className="px-2.5 py-1 bg-white/5 hover:bg-white/10 border border-white/10 text-slate-200 rounded-lg text-xs font-medium flex items-center gap-1.5 transition-colors cursor-pointer"
+                  onClick={() => setPreviewDevice('desktop')}
+                  className={clsx(
+                    "p-1 rounded cursor-pointer transition-colors",
+                    previewDevice === 'desktop' ? "bg-blue-600 text-white" : "text-slate-400 hover:text-white"
+                  )}
+                  title="Desktop View"
                 >
-                  <Code2 size={12} />
-                  <span>Open in Code Editor</span>
+                  <Monitor size={13} />
                 </button>
+                <button
+                  onClick={() => setPreviewDevice('tablet')}
+                  className={clsx(
+                    "p-1 rounded cursor-pointer transition-colors",
+                    previewDevice === 'tablet' ? "bg-blue-600 text-white" : "text-slate-400 hover:text-white"
+                  )}
+                  title="Tablet View (768px)"
+                >
+                  <Tablet size={13} />
+                </button>
+                <button
+                  onClick={() => setPreviewDevice('mobile')}
+                  className={clsx(
+                    "p-1 rounded cursor-pointer transition-colors",
+                    previewDevice === 'mobile' ? "bg-blue-600 text-white" : "text-slate-400 hover:text-white"
+                  )}
+                  title="Mobile View (375px)"
+                >
+                  <Smartphone size={13} />
+                </button>
+              </div>
 
-                {onExecutePrompt && (
-                  <button
-                    onClick={() => {
-                      onExecutePrompt(`Please analyze and review the architecture of this file (\`${filePath}\`):\n\n\`\`\`\n${fileContent}\n\`\`\``);
-                      onClose();
-                    }}
-                    className="px-2.5 py-1 bg-indigo-600/20 hover:bg-indigo-600/30 border border-indigo-500/40 text-indigo-300 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-colors cursor-pointer"
-                  >
-                    <Sparkles size={12} />
-                    <span>Ask AI About This Code</span>
-                  </button>
-                )}
+              {/* Actions */}
+              <div className="flex items-center gap-1.5">
+                <button
+                  onClick={() => setPreviewKey(k => k + 1)}
+                  className="p-1.5 text-slate-400 hover:text-white bg-[#202330] rounded-lg transition-colors cursor-pointer"
+                  title="Reload preview"
+                >
+                  <RefreshCw size={13} />
+                </button>
+                <a
+                  href={`/api/preview/${previewPort}/`}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="px-2 py-1 text-cyan-300 hover:text-white bg-cyan-600/20 hover:bg-cyan-600/30 border border-cyan-500/40 rounded-lg text-[11px] font-semibold flex items-center gap-1 cursor-pointer"
+                >
+                  <span>Open Window</span>
+                  <ArrowUpRight size={12} />
+                </a>
               </div>
             </div>
 
-            {/* Quick Template Generators */}
-            <div className="p-4 bg-[#14161f] border border-[#242735] rounded-xl space-y-3">
-              <span className="font-semibold text-slate-200 text-xs block">
-                Load Quick Project Starter Templates
-              </span>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                <button
-                  onClick={() => {
-                    setFilePath('index.html');
-                    setFileContent(`<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>VOID AI Interactive Canvas</title>
-  <script src="https://cdn.tailwindcss.com"></script>
-</head>
-<body class="bg-slate-950 text-white min-h-screen flex flex-col items-center justify-center p-6">
-  <div class="max-w-md w-full bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-2xl text-center space-y-4">
-    <div class="w-12 h-12 bg-blue-600 rounded-xl mx-auto flex items-center justify-center font-bold text-xl">⚡</div>
-    <h1 class="text-xl font-bold">Interactive HTML Sandbox</h1>
-    <p class="text-sm text-slate-400">Created with VOID AI. Modify code in real-time or export as a downloadable ZIP package.</p>
-    <button onclick="alert('VOID AI Sandbox Live!')" class="w-full py-2 bg-blue-600 hover:bg-blue-500 font-semibold rounded-xl transition-all">Click Me</button>
-  </div>
-</body>
-</html>`);
-                    setActiveTab('editor');
-                  }}
-                  className="p-3 bg-[#0e1017] hover:bg-[#161824] border border-white/5 hover:border-blue-500/30 rounded-xl text-left transition-all cursor-pointer group"
-                >
-                  <div className="font-bold text-white group-hover:text-blue-400 text-xs flex items-center gap-1.5">
-                    <Globe size={13} className="text-emerald-400" />
-                    <span>Tailwind HTML5 App Starter</span>
-                  </div>
-                  <p className="text-[10px] text-slate-400 mt-1">Ready-to-run responsive single-page template with instant live sandbox execution.</p>
-                </button>
-
-                <button
-                  onClick={() => {
-                    setFilePath('app.ts');
-                    setFileContent(`// VOID AI TypeScript Micro-Service Architecture
-export interface UserSession {
-  id: string;
-  role: 'developer' | 'architect' | 'admin';
-  active: boolean;
-}
-
-export class ServicePipeline {
-  private sessions: Map<string, UserSession> = new Map();
-
-  register(session: UserSession): boolean {
-    this.sessions.set(session.id, session);
-    console.log("[Pipeline] Registered session:", session.id);
-    return true;
-  }
-}
-
-const pipeline = new ServicePipeline();
-pipeline.register({ id: 'sess-001', role: 'architect', active: true });
-`);
-                    setActiveTab('editor');
-                  }}
-                  className="p-3 bg-[#0e1017] hover:bg-[#161824] border border-white/5 hover:border-blue-500/30 rounded-xl text-left transition-all cursor-pointer group"
-                >
-                  <div className="font-bold text-white group-hover:text-blue-400 text-xs flex items-center gap-1.5">
-                    <Code2 size={13} className="text-blue-400" />
-                    <span>TypeScript Microservice Module</span>
-                  </div>
-                  <p className="text-[10px] text-slate-400 mt-1">Structured TypeScript class pipeline with session tracking and type safety.</p>
-                </button>
+            {/* Embedded Responsive Preview Sandbox */}
+            <div className="flex-1 min-h-[480px] bg-[#090a0f] border border-[#202331] rounded-xl overflow-hidden flex items-center justify-center p-2">
+              <div className={clsx(
+                "h-full bg-white rounded-lg overflow-hidden transition-all duration-300 shadow-2xl",
+                previewDevice === 'desktop' ? "w-full" :
+                previewDevice === 'tablet' ? "w-[768px] max-w-full" :
+                "w-[375px] max-w-full"
+              )}>
+                <iframe
+                  key={previewKey}
+                  src={`/api/preview/${previewPort}/`}
+                  title="NOVA Live Web Preview"
+                  className="w-full h-full border-none"
+                  sandbox="allow-scripts allow-same-origin allow-forms allow-popups"
+                />
               </div>
             </div>
           </div>
         )}
+      </div>
+    </div>
+    </>
+  );
       </div>
     </div>
     </>

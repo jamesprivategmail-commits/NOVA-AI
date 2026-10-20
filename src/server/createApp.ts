@@ -16,6 +16,10 @@ import { codebaseSearch } from "./search/codebaseSearch.js";
 import { codeVerifier } from "./agent/verifier.js";
 import { getAuthoritativeToolCapabilities } from "./tools/registry.js";
 import { terminalService } from "./terminal/terminalService.js";
+import { workspaceService } from "./workspace/workspaceService.js";
+import { processManager } from "./process/processManager.js";
+import { autonomousAgent } from "./agent/autonomousAgent.js";
+import http from "http";
 
 import { GoogleGenAI } from "@google/genai";
 dotenv.config();
@@ -1132,10 +1136,43 @@ export function createApp(): express.Express {
         }
       }
 
+      // Check if user request involves autonomous actions, terminal, coding, building, or processes
+      const isAutonomousRequest = Boolean(
+        req.body.autonomous ||
+        githubContext?.codingMode ||
+        messagesForAI.some((m: any) => {
+          const txt = String(m.text || m.content || '').toLowerCase();
+          return /^(run\s+|\$\s*|npm\s|git\s|python\s|node\s|build|install|test|create|debug|make|write|mkdir|curl|pytest|cargo)/i.test(txt) ||
+            txt.includes('terminal') || txt.includes('workspace') || txt.includes('install') || txt.includes('deploy') || txt.includes('background') || txt.includes('preview');
+        })
+      );
+
       let executedSuccessfully = false;
       let lastProviderError: any = null;
 
-      for (const p of providersToTry) {
+      if (isAutonomousRequest) {
+        try {
+          const autoSuccess = await autonomousAgent.runAutonomousLoop({
+            userId,
+            messages: messagesForAI,
+            systemPrompt: combinedSystemPrompt,
+            maxTokens,
+            provider,
+            model,
+            keys: { groqKeys, geminiKeys, cohereKeys, bazaarLinkKeys },
+            res,
+            maxSteps: 6,
+          });
+          if (autoSuccess) {
+            executedSuccessfully = true;
+          }
+        } catch (autoErr: any) {
+          console.warn('[Autonomous Agent Error]:', autoErr);
+        }
+      }
+
+      if (!executedSuccessfully) {
+        for (const p of providersToTry) {
         try {
           if (p === "groq") {
             if (groqKeys.length === 0) continue;
@@ -1162,6 +1199,7 @@ export function createApp(): express.Express {
           console.warn(`[Failover Engine] Provider ${p.toUpperCase()} failed:`, err?.message || err);
           lastProviderError = err;
         }
+      }
       }
 
       if (executedSuccessfully) {
@@ -2015,7 +2053,7 @@ export function createApp(): express.Express {
   // ── Real Terminal Runner & Execution Endpoints ───────────────────────
   app.post(["/api/terminal/run", "/terminal/run"], async (req, res) => {
     try {
-      const { command, stream = true, timeoutMs = 60000 } = req.body;
+      const { command, stream = true, timeoutMs = 60000, userId, cwd } = req.body;
       if (!command || typeof command !== "string") {
         return res.status(400).json({ error: "command is required" });
       }
@@ -2026,6 +2064,8 @@ export function createApp(): express.Express {
         res.setHeader("Connection", "keep-alive");
 
         const runner = terminalService.runCommand(command, {
+          userId,
+          cwd,
           timeoutMs,
           onChunk: (chunk, evt) => {
             res.write(`data: ${JSON.stringify({ type: "chunk", chunk, event: evt })}\n\n`);
@@ -2040,7 +2080,7 @@ export function createApp(): express.Express {
         res.write("data: [DONE]\n\n");
         res.end();
       } else {
-        const runner = terminalService.runCommand(command, { timeoutMs });
+        const runner = terminalService.runCommand(command, { userId, cwd, timeoutMs });
         const finalEvent = await runner.promise;
         res.json({ success: true, event: finalEvent });
       }
@@ -2074,6 +2114,193 @@ export function createApp(): express.Express {
       res.json({ success: true, event });
     } catch (err: any) {
       res.status(500).json({ error: err?.message || "Failed to get terminal task status" });
+    }
+  });
+
+  // ── Persistent Workspace Management Endpoints ─────────────────────
+  app.get(["/api/workspace/files", "/workspace/files"], async (req, res) => {
+    try {
+      const userId = (req.query.userId as string) || "workspace-default";
+      const subDir = (req.query.path as string) || "";
+      const files = await workspaceService.listFiles(userId, subDir);
+      res.json({ success: true, files, rootDir: `/workspaces/${userId}` });
+    } catch (err: any) {
+      res.status(500).json({ error: err?.message || "Failed to list workspace files" });
+    }
+  });
+
+  app.post(["/api/workspace/file/read", "/workspace/file/read"], async (req, res) => {
+    try {
+      const { userId = "workspace-default", path: filePath } = req.body;
+      if (!filePath) return res.status(400).json({ error: "path is required" });
+      const content = await workspaceService.readFile(userId, filePath);
+      res.json({ success: true, content });
+    } catch (err: any) {
+      res.status(500).json({ error: err?.message || "Failed to read file" });
+    }
+  });
+
+  app.post(["/api/workspace/file/write", "/workspace/file/write"], async (req, res) => {
+    try {
+      const { userId = "workspace-default", path: filePath, content = "" } = req.body;
+      if (!filePath) return res.status(400).json({ error: "path is required" });
+      await workspaceService.writeFile(userId, filePath, content);
+      res.json({ success: true, path: filePath });
+    } catch (err: any) {
+      res.status(500).json({ error: err?.message || "Failed to write file" });
+    }
+  });
+
+  app.delete(["/api/workspace/file/delete", "/workspace/file/delete"], async (req, res) => {
+    try {
+      const userId = (req.query.userId as string) || (req.body?.userId as string) || "workspace-default";
+      const filePath = (req.query.path as string) || (req.body?.path as string);
+      if (!filePath) return res.status(400).json({ error: "path is required" });
+      const deleted = await workspaceService.deleteFile(userId, filePath);
+      res.json({ success: deleted });
+    } catch (err: any) {
+      res.status(500).json({ error: err?.message || "Failed to delete file" });
+    }
+  });
+
+  app.get(["/api/workspace/download", "/workspace/download"], async (req, res) => {
+    try {
+      const userId = (req.query.userId as string) || "workspace-default";
+      const buffer = await workspaceService.exportZip(userId);
+      res.setHeader("Content-Type", "application/zip");
+      res.setHeader("Content-Disposition", `attachment; filename="nova-project-${userId.slice(0, 8)}.zip"`);
+      res.send(buffer);
+    } catch (err: any) {
+      res.status(500).json({ error: err?.message || "Failed to export workspace zip" });
+    }
+  });
+
+  // ── Managed Background Processes Endpoints ─────────────────────────
+  app.get(["/api/processes", "/processes"], (req, res) => {
+    try {
+      const userId = (req.query.userId as string) || undefined;
+      const procs = processManager.listProcesses(userId);
+      res.json({ success: true, processes: procs });
+    } catch (err: any) {
+      res.status(500).json({ error: err?.message || "Failed to list processes" });
+    }
+  });
+
+  app.post(["/api/processes/start", "/processes/start"], (req, res) => {
+    try {
+      const { userId = "workspace-default", command, name, port } = req.body;
+      if (!command) return res.status(400).json({ error: "command is required" });
+      const proc = processManager.startProcess({ userId, command, name, port });
+      res.json({ success: true, process: proc });
+    } catch (err: any) {
+      res.status(500).json({ error: err?.message || "Failed to start process" });
+    }
+  });
+
+  app.post(["/api/processes/stop", "/processes/stop"], (req, res) => {
+    try {
+      const { id } = req.body;
+      if (!id) return res.status(400).json({ error: "id is required" });
+      const stopped = processManager.stopProcess(id);
+      res.json({ success: stopped });
+    } catch (err: any) {
+      res.status(500).json({ error: err?.message || "Failed to stop process" });
+    }
+  });
+
+  app.get(["/api/processes/:id/logs", "/processes/:id/logs"], (req, res) => {
+    try {
+      const { id } = req.params;
+      const limit = req.query.limit ? parseInt(req.query.limit as string, 10) : 200;
+      const logs = processManager.getLogs(id, limit);
+      res.json({ success: true, logs });
+    } catch (err: any) {
+      res.status(500).json({ error: err?.message || "Failed to get process logs" });
+    }
+  });
+
+  // ── Real Web App Preview Proxy & HTTPS Preview Links ──────────────
+  app.all(["/api/preview/:port", "/api/preview/:port/*", "/preview/:port", "/preview/:port/*"], async (req, res) => {
+    const port = parseInt(req.params.port, 10);
+    if (!port || isNaN(port) || port < 1000 || port > 65535 || port === 3000) {
+      return res.status(400).send("Invalid preview port requested");
+    }
+
+    const rawUrl = req.url;
+    const prefixRegex = new RegExp(`^/(?:api/)?preview/${port}`);
+    let targetPath = rawUrl.replace(prefixRegex, '') || '/';
+    if (!targetPath.startsWith('/')) targetPath = '/' + targetPath;
+
+    const targetUrl = `http://127.0.0.1:${port}${targetPath}`;
+
+    const headers: Record<string, string> = {};
+    for (const [key, value] of Object.entries(req.headers)) {
+      if (key !== 'host' && key !== 'connection' && typeof value === 'string') {
+        headers[key] = value;
+      }
+    }
+
+    try {
+      const fetchOptions: RequestInit = {
+        method: req.method,
+        headers,
+      };
+
+      if (req.method !== 'GET' && req.method !== 'HEAD' && req.body) {
+        fetchOptions.body = typeof req.body === 'string' ? req.body : JSON.stringify(req.body);
+      }
+
+      const proxyRes = await fetch(targetUrl, fetchOptions);
+
+      res.status(proxyRes.status);
+      const contentType = proxyRes.headers.get('content-type') || 'text/html';
+      res.setHeader('Content-Type', contentType);
+
+      if (contentType.includes('text/html')) {
+        let html = await proxyRes.text();
+        const baseTag = `<base href="/api/preview/${port}/">`;
+        if (html.includes('<head>')) {
+          html = html.replace('<head>', `<head>${baseTag}`);
+        } else if (html.includes('<html>')) {
+          html = html.replace('<html>', `<html><head>${baseTag}</head>`);
+        } else {
+          html = `${baseTag}${html}`;
+        }
+        return res.send(html);
+      }
+
+      const arrayBuffer = await proxyRes.arrayBuffer();
+      res.send(Buffer.from(arrayBuffer));
+    } catch (proxyErr: any) {
+      res.status(502).send(`
+        <!DOCTYPE html>
+        <html>
+          <head>
+            <title>Server Starting - Port ${port}</title>
+            <style>
+              body { background: #090307; color: #fff; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; display: flex; align-items: center; justify-content: center; height: 90vh; text-align: center; margin: 0; }
+              .box { background: #161b22; border: 1px solid #30363d; border-radius: 16px; padding: 32px; max-width: 440px; box-shadow: 0 10px 40px rgba(0,0,0,0.5); }
+              .spinner { width: 36px; height: 36px; border: 3px solid rgba(139, 92, 246, 0.2); border-top-color: #8b5cf6; border-radius: 50%; animation: spin 1s linear infinite; margin: 0 auto 16px; }
+              @keyframes spin { to { transform: rotate(360deg); } }
+              h3 { margin: 0 0 8px; font-size: 16px; }
+              p { color: #8d8d91; font-size: 13px; line-height: 1.5; margin: 0 0 16px; }
+              code { background: #0d1117; padding: 2px 6px; border-radius: 4px; color: #c9d1d9; font-size: 12px; }
+              button { background: #8b5cf6; color: #fff; border: none; padding: 8px 16px; border-radius: 8px; font-weight: 600; cursor: pointer; font-size: 12px; }
+            </style>
+          </head>
+          <body>
+            <div class="box">
+              <div class="spinner"></div>
+              <h3>Waiting for server on port ${port}</h3>
+              <p>Nova AI or your background process is starting. Once the service is listening on port <code>${port}</code>, this preview will connect automatically.</p>
+              <button onclick="location.reload()">Refresh Preview</button>
+            </div>
+            <script>
+              setTimeout(() => location.reload(), 3000);
+            </script>
+          </body>
+        </html>
+      `);
     }
   });
 

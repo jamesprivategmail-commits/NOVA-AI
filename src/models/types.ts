@@ -242,3 +242,38 @@ export interface SupportChat {
   unreadAdmin: number;
   unreadUser: number;
 }
+
+export interface WorkspaceFileInfo {
+  name: string;
+  path: string;
+  isDirectory: boolean;
+  size?: number;
+  modifiedAt?: number;
+  extension?: string;
+  children?: WorkspaceFileInfo[];
+}
+
+export interface ManagedProcess {
+  id: string;
+  userId: string;
+  name: string;
+  command: string;
+  pid: number;
+  startedAt: number;
+  status: 'running' | 'stopped' | 'failed';
+  port?: number;
+  previewUrl?: string;
+  lastLog?: string;
+}
+
+export interface AutonomousExecutionStep {
+  stepNumber: number;
+  action: string;
+  command?: string;
+  path?: string;
+  status: 'running' | 'success' | 'error';
+  output?: string;
+  exitCode?: number;
+  durationMs?: number;
+}
+
