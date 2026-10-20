@@ -21,7 +21,7 @@ import {
   fetchProcessLogs, 
   runTerminalCommand, 
   stopTerminalCommand 
-} from '../../api/client';
+} from '../../../api/client';
 import { WorkspaceFileInfo, ManagedProcess } from '../../../models/types';
 import { clsx } from 'clsx';
 
@@ -1370,8 +1370,5 @@ export function CodeWorkspaceDrawer({
     </div>
     </>
   );
-      </div>
-    </div>
-    </>
-  );
 }
+

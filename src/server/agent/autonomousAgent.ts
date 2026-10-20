@@ -360,8 +360,8 @@ AUTONOMOUS EXECUTION & SELF-CORRECTION PRINCIPLES:
             messages: [
               { role: 'system', content: systemPrompt },
               ...messages.map((m: any) => ({
-                role: m.role === 'model' || m.role === 'assistant' ? 'assistant' : 'user',
-                content: m.text || m.content || '',
+                role: (m.role === 'model' || m.role === 'assistant' ? 'assistant' : 'user') as 'assistant' | 'user',
+                content: String(m.text || m.content || ''),
               })),
             ],
             max_tokens: maxTokens,
