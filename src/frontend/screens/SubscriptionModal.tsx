@@ -93,7 +93,7 @@ export function SubscriptionModal({ userId, walletBalance = 0, onClose, currentT
     }
   };
 
-    const freeLimit = brainSettings?.freeLimit ?? 15;
+    const freeLimit = brainSettings?.freeLimit ?? 30;
     const proLimit = brainSettings?.proLimit ?? 20;
     const premiumLimit = brainSettings?.premiumLimit ?? 50;
 

@@ -1002,7 +1002,7 @@ Please send the **email address** you want to use for your VOID AI account:
 
 Welcome to **VOID AI**, *${email}*! 🚀
 • **Account Email:** \`${email}\`
-• **Tier Plan:** *FREE* (15 messages per 2 hours)
+• **Tier Plan:** *FREE* (30 messages per 2 hours)
 • **Telegram Linked:** Yes ✅
 
 📧 A verification link has been dispatched to your email address.
@@ -1147,7 +1147,7 @@ Now choose and send a **secure password**:
 
 Welcome to **VOID AI**, *${email}*! 🚀
 • **Account Email:** \`${email}\`
-• **Tier Plan:** *FREE* (15 messages per 2 hours)
+• **Tier Plan:** *FREE* (30 messages per 2 hours)
 • **Telegram Linked:** Yes ✅
 
 📧 A confirmation link has been sent to your email inbox.
@@ -1230,7 +1230,7 @@ To chat with **VOID AI** on Telegram with full 2-hour reset limits, please log i
     let userTier = linkedUser.tier.toLowerCase();
     let messageCount = 0;
     let lastResetTime = 0;
-    let freeLimit = 15;
+    let freeLimit = 30;
     let proLimit = 20;
     let premiumLimit = 50;
     let vipLimit = 99999;

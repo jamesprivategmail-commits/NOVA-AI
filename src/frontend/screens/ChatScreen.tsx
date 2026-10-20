@@ -410,7 +410,7 @@ export function ChatScreen({ userId }: ChatScreenProps) {
     const mins = minsRemaining % 60;
     const timeStr = hours > 0 ? `${hours}h ${mins}m` : `${mins}m`;
 
-    const freeLimit = brainSettings?.freeLimit ?? 15;
+    const freeLimit = brainSettings?.freeLimit ?? 30;
     const proLimit = brainSettings?.proLimit ?? 20;
     const premiumLimit = brainSettings?.premiumLimit ?? 50;
 

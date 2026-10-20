@@ -79,7 +79,7 @@ export function AdminDashboard({ onClose }: AdminDashboardProps) {
     proPrompt: "Pro Tier Brain: Advanced marketing strategy, extended copy variations, deeper campaign analytics insights.",
     premiumPrompt: "Premium Tier Brain: Full campaign strategy suite, multi-stage funnel email sequences, conversion rate optimization hacks.",
     vipPrompt: "VIP Tier Brain: Unrestricted elite AI capabilities, custom bespoke campaign designs, 1-on-1 copy teardowns.",
-    freeLimit: 15,
+    freeLimit: 30,
     proLimit: 20,
     premiumLimit: 50,
     vipLimit: 99999,

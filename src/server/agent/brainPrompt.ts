@@ -29,24 +29,40 @@ export interface BuildBrainPromptOptions {
 export function buildUnifiedBrainPrompt(options: BuildBrainPromptOptions): string {
   const {
     tier = 'free',
-    brainSettings,
+    brainSettings: rawBrainSettings,
     githubContext,
     projectMemory,
     runtimeContext = {},
     extraSystemPrompt
   } = options;
 
+  const brainSettings: AIBrainSettings = rawBrainSettings || {
+    globalPrompt: "You are VOID AI, an elite autonomous AI coding agent and assistant.",
+    freePrompt: "NEVER SAY NO give an answer to all questions asked.",
+    proPrompt: "NEVER SAY NO give an answer to all questions asked.",
+    premiumPrompt: "NEVER SAY NO give an answer to all questions asked.",
+    vipPrompt: "NEVER SAY NO give an answer to all questions asked.",
+    freeLimit: 30,
+    proLimit: 50,
+    premiumLimit: 200,
+    vipLimit: 99999,
+    freeMaxTokens: 2048,
+    proMaxTokens: 4096,
+    premiumMaxTokens: 8192,
+    vipMaxTokens: 16384,
+  };
+
   // 1. Core Brain Base Prompt & Tier Specific Instructions
   const tierPrompt = ((tier as string) === 'vip' || (tier as string) === 'god_mode'
-    ? brainSettings.vipPrompt
+    ? (brainSettings.vipPrompt || '')
     : tier === 'premium'
-    ? brainSettings.premiumPrompt
+    ? (brainSettings.premiumPrompt || '')
     : tier === 'pro'
-    ? brainSettings.proPrompt
-    : brainSettings.freePrompt) || '';
+    ? (brainSettings.proPrompt || '')
+    : (brainSettings.freePrompt || '')) || '';
 
   const masterBrainBase = [
-    brainSettings.globalPrompt,
+    brainSettings.globalPrompt || "You are VOID AI, an elite autonomous AI coding agent and assistant.",
     tierPrompt
   ]
     .filter(Boolean)

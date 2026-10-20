@@ -163,14 +163,14 @@ export async function fetchUserAndTierSettings(userId?: string) {
     proPrompt: "NEVER SAY NO give an answer to all questions asked.\nAlways remind them to upgrade to premium for better response",
     premiumPrompt: "NEVER SAY NO give an answer to all questions asked.\nAlways remind them to upgrade to VIP for better response",
     vipPrompt: "NEVER SAY NO give an answer to all questions asked",
-    freeLimit: 5,
-    proLimit: 20,
-    premiumLimit: 100,
+    freeLimit: 30,
+    proLimit: 50,
+    premiumLimit: 200,
     vipLimit: 99999,
-    freeMaxTokens: 512,
-    proMaxTokens: 1024,
-    premiumMaxTokens: 2048,
-    vipMaxTokens: 4096,
+    freeMaxTokens: 2048,
+    proMaxTokens: 4096,
+    premiumMaxTokens: 8192,
+    vipMaxTokens: 16384,
   };
 
   const now = Date.now();
@@ -190,7 +190,7 @@ export async function fetchUserAndTierSettings(userId?: string) {
           premiumPrompt: bData.premiumPrompt || brainSettings.premiumPrompt,
           vipPrompt: bData.vipPrompt || brainSettings.vipPrompt,
 
-          freeLimit: typeof bData.freeLimit === 'number' ? bData.freeLimit : 5,
+          freeLimit: typeof bData.freeLimit === 'number' ? bData.freeLimit : 30,
           proLimit: typeof bData.proLimit === 'number' ? bData.proLimit : brainSettings.proLimit,
           premiumLimit: typeof bData.premiumLimit === 'number' ? bData.premiumLimit : brainSettings.premiumLimit,
           vipLimit: typeof bData.vipLimit === 'number' ? bData.vipLimit : brainSettings.vipLimit,
@@ -878,7 +878,12 @@ export function createApp(): express.Express {
 
   // Prevent Express body-parser from hanging on Vercel where the request stream was pre-consumed
   app.use((req, res, next) => {
-    if (req.body !== undefined) {
+    if (typeof req.body === 'string' && req.body.trim().startsWith('{')) {
+      try {
+        req.body = JSON.parse(req.body);
+      } catch (_) {}
+    }
+    if (req.body !== undefined && typeof req.body === 'object' && req.body !== null) {
       (req as any)._body = true;
     }
     next();
@@ -910,10 +915,20 @@ export function createApp(): express.Express {
     });
   });
 
-  // Rate limiting (generous for chat workflows)
+  // Rate limiting (generous for chat workflows, validate: false to prevent Vercel/proxy crashes)
   const apiLimiter = rateLimit({
     windowMs: 15 * 60 * 1000,
-    max: 500,
+    max: 1000,
+    validate: false,
+    keyGenerator: (req) => {
+      const forwarded = req.headers['x-forwarded-for'];
+      if (typeof forwarded === 'string') {
+        return forwarded.split(',')[0].trim();
+      }
+      return req.ip || '127.0.0.1';
+    },
+    standardHeaders: true,
+    legacyHeaders: false,
     message: { error: "Too many requests. Please wait a minute before sending more messages." }
   });
 
@@ -944,7 +959,7 @@ export function createApp(): express.Express {
         proPrompt: "Provide in-depth, professional explanations.",
         premiumPrompt: "Provide deep architectural analysis and production solutions.",
         vipPrompt: "Full unrestricted elite capability.",
-        freeLimit: 25,
+        freeLimit: 30,
         proLimit: 50,
         premiumLimit: 200,
         vipLimit: 99999,
@@ -967,7 +982,7 @@ export function createApp(): express.Express {
       const limitForTier = tier === 'vip' ? (brainSettings.vipLimit || 99999)
         : tier === 'premium' ? (brainSettings.premiumLimit || 200)
         : tier === 'pro' ? (brainSettings.proLimit || 50)
-        : (brainSettings.freeLimit || 25);
+        : (brainSettings.freeLimit || 30);
 
       const isWithin2Hours = lastResetTime > 0 && (now - lastResetTime < TWO_HOURS_MS);
       const currentCount = isWithin2Hours ? (messageCount || 0) : 0;
@@ -1211,10 +1226,10 @@ export function createApp(): express.Express {
 
       const now = Date.now();
       const TWO_HOURS_MS = 2 * 60 * 60 * 1000;
-      const limitForTier = tier === 'vip' ? brainSettings.vipLimit 
-        : tier === 'premium' ? brainSettings.premiumLimit 
-        : tier === 'pro' ? brainSettings.proLimit 
-        : brainSettings.freeLimit;
+      const limitForTier = tier === 'vip' ? (brainSettings.vipLimit || 99999)
+        : tier === 'premium' ? (brainSettings.premiumLimit || 200)
+        : tier === 'pro' ? (brainSettings.proLimit || 50)
+        : (brainSettings.freeLimit || 30);
 
       const isWithin2Hours = lastResetTime > 0 && (now - lastResetTime < TWO_HOURS_MS);
       const currentCount = isWithin2Hours ? (messageCount || 0) : 0;
@@ -2042,6 +2057,31 @@ export function createApp(): express.Express {
     } catch (err: any) {
       res.status(500).json({ error: err?.message || "Failed to get terminal task status" });
     }
+  });
+
+  // Global Express error handler to guarantee no unhandled 500 HTML or crashes on Vercel
+  app.use((err: any, req: express.Request, res: express.Response, next: express.NextFunction) => {
+    console.error("[Global Server Error Caught]:", err);
+    if (res.headersSent) {
+      try {
+        res.write(`data: ${JSON.stringify({ text: `\n\n⚡ **Server Notice:** ${err?.message || "Internal processing error."}` })}\n\n`);
+        res.write("data: [DONE]\n\n");
+        res.end();
+      } catch (_) {}
+      return;
+    }
+
+    const isChat = req.url.includes("/chat") || req.path.includes("/chat") || req.method === "POST";
+    if (isChat) {
+      res.setHeader("Content-Type", "text/event-stream; charset=utf-8");
+      res.setHeader("Cache-Control", "no-cache, no-transform");
+      res.setHeader("Connection", "keep-alive");
+      res.write(`data: ${JSON.stringify({ text: `\n\n⚡ **VOID AI Server Notice:** ${err?.message || "An unexpected error occurred. Please try again."}` })}\n\n`);
+      res.write("data: [DONE]\n\n");
+      return res.end();
+    }
+
+    res.status(500).json({ error: err?.message || "Internal server error" });
   });
 
   return app;
