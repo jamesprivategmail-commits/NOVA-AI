@@ -28,7 +28,7 @@ interface InputAreaProps {
   onImageGenerate?: (text: string) => void;
 }
 
-export function InputArea({ 
+export const InputArea = React.memo(function InputArea({ 
   onSend, 
   isLoading, 
   onStop, 
@@ -85,7 +85,7 @@ export function InputArea({
     }
   };
 
-  useLayoutEffect(() => {
+  React.useEffect(() => {
     const textarea = textareaRef.current;
     if (!textarea) return;
     textarea.style.height = 'auto';
@@ -433,4 +433,4 @@ export function InputArea({
       </div>
     </div>
   );
-}
+});

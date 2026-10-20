@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Sidebar } from '../components/Sidebar';
 import { MessageBubble } from '../components/MessageBubble';
 import { InputArea, ChatAttachment } from '../components/InputArea';
@@ -253,16 +253,16 @@ export function ChatScreen({ userId }: ChatScreenProps) {
     }
   }, [currentChatId]);
 
-  // Smooth scroll sync: Only auto-scroll when user hasn't explicitly scrolled up to read history
+  // Ultra-fast auto-scroll: zero layout thrashing
   useEffect(() => {
     const container = chatContainerRef.current;
-    if (!container) return;
-    if (!userScrolledUpRef.current) {
-      requestAnimationFrame(() => {
-        container.scrollTo({
-          top: container.scrollHeight,
-          behavior: streamingMessage ? 'auto' : 'smooth'
-        });
+    if (!container || userScrolledUpRef.current) return;
+    if (streamingMessage) {
+      container.scrollTop = container.scrollHeight;
+    } else {
+      container.scrollTo({
+        top: container.scrollHeight,
+        behavior: 'smooth'
       });
     }
   }, [messages, streamingMessage]);
@@ -321,13 +321,15 @@ export function ChatScreen({ userId }: ChatScreenProps) {
     });
   };
 
-  const handleToggleStar = async (msgId: string) => {
+  const handleToggleStar = useCallback(async (msgId: string) => {
     if (!currentChatId) return;
-    const msg = messages.find(m => m.id === msgId);
-    const newStarred = !msg?.isStarred;
-    await toggleStarMessage(currentChatId, msgId, newStarred);
-    setMessages(prev => prev.map(m => m.id === msgId ? { ...m, isStarred: newStarred } : m));
-  };
+    setMessages(prev => {
+      const msg = prev.find(m => m.id === msgId);
+      const newStarred = !msg?.isStarred;
+      toggleStarMessage(currentChatId, msgId, newStarred).catch(console.error);
+      return prev.map(m => m.id === msgId ? { ...m, isStarred: newStarred } : m);
+    });
+  }, [currentChatId]);
 
   const handleExportChat = (chatIdToExport?: string) => {
     const targetChatId = chatIdToExport || currentChatId;
@@ -437,17 +439,22 @@ export function ChatScreen({ userId }: ChatScreenProps) {
     return true;
   };
 
-  const handleDeleteMessage = async (msgId: string) => {
+  const handleDeleteMessage = useCallback(async (msgId: string) => {
     if (!currentChatId) return;
-    await deleteMessage(currentChatId, msgId);
-    setMessages(messages.filter((m) => m.id !== msgId));
-  };
+    deleteMessage(currentChatId, msgId).catch(console.error);
+    setMessages(prev => prev.filter((m) => m.id !== msgId));
+  }, [currentChatId]);
 
-  const handleEditMessage = async (msgId: string, newText: string) => {
+  const handleEditMessage = useCallback(async (msgId: string, newText: string) => {
     if (!currentChatId) return;
-    await updateMessage(currentChatId, msgId, newText);
-    setMessages(messages.map((m) => (m.id === msgId ? { ...m, text: newText } : m)));
-  };
+    updateMessage(currentChatId, msgId, newText).catch(console.error);
+    setMessages(prev => prev.map((m) => (m.id === msgId ? { ...m, text: newText } : m)));
+  }, [currentChatId]);
+
+  const handleEnableCodingMode = useCallback(() => {
+    setCodingMode(true);
+    setStoredGitHubCodingMode(true);
+  }, []);
 
   const handleStopGeneration = () => {
     if (abortControllerRef.current) {
@@ -899,10 +906,7 @@ export function ChatScreen({ userId }: ChatScreenProps) {
                   onToggleStar={handleToggleStar}
                   activeRepo={activeRepo}
                   codingModeEnabled={codingMode}
-                  onEnableCodingMode={() => {
-                    setCodingMode(true);
-                    setStoredGitHubCodingMode(true);
-                  }}
+                  onEnableCodingMode={handleEnableCodingMode}
                 />
               ))}
 

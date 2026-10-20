@@ -11,6 +11,7 @@ service cloud.firestore {
     function isAdmin() {
       return isAuthenticated() && (
         request.auth.token.email == 'mrnovatech4@gmail.com' ||
+        request.auth.token.email == 'hellomrman349@gmail.com' ||
         (exists(/databases/$(database)/documents/users/$(request.auth.uid)) && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.isAdmin == true)
       );
     }
@@ -48,6 +49,10 @@ service cloud.firestore {
     }
 
     match /broadcasts/{broadcastId} {
+      allow read, write: if true;
+    }
+
+    match /announcements/{announcementId} {
       allow read, write: if true;
     }
 

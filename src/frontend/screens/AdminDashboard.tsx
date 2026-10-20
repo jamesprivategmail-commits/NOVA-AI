@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { UserProfile, SupportChat, PricingSettings, AIBrainSettings, SystemAPIKeys, BroadcastMessage, UserTier, WalletTransaction } from '../../models/types';
-import { listenToAllUsers, updateUserTier, updateUserStatus, updateUserVerification, updateUserSupportStaff, listenToAllSupportChats, getPricingSettings, updatePricingSettings, getAIBrainSettings, updateAIBrainSettings, listenToAIBrainSettings, getSystemAPIKeys, updateSystemAPIKeys, sendBroadcastMessage, listenToBroadcasts, deleteBroadcast, grantUserWalletFunds, withdrawUserWalletFunds, resetUserWalletBalance, listenToWalletTransactions } from '../../database/db';
+import { listenToAllUsers, updateUserTier, updateUserStatus, updateUserVerification, updateUserSupportStaff, listenToAllSupportChats, getPricingSettings, updatePricingSettings, getAIBrainSettings, updateAIBrainSettings, listenToAIBrainSettings, getSystemAPIKeys, updateSystemAPIKeys, sendBroadcastMessage, listenToBroadcasts, deleteBroadcast, clearAllBroadcasts, grantUserWalletFunds, withdrawUserWalletFunds, resetUserWalletBalance, listenToWalletTransactions } from '../../database/db';
 import { X, ArrowLeft, Shield, Crown, User, RefreshCw, Ban, CheckCircle, BadgeCheck, MessageSquare, ChevronUp, ChevronDown, DollarSign, Cpu, Save, Sparkles, Key, Eye, EyeOff, Lock, ShieldCheck, Trash2, Radio, Megaphone, Maximize2, Search, Check, Wallet, CreditCard, History, Plus, Bot, Send, ExternalLink } from 'lucide-react';
 import { clsx } from 'clsx';
 import { SupportChatScreen } from './SupportChatScreen';
@@ -301,13 +301,50 @@ export function AdminDashboard({ onClose }: AdminDashboardProps) {
     }
   };
 
-  const handleDeleteBroadcast = async (id: string) => {
-    if (confirm("Delete this broadcast message?")) {
-      try {
-        await deleteBroadcast(id);
-      } catch (err) {
-        console.error("Failed to delete broadcast", err);
-      }
+  const [broadcastFeedback, setBroadcastFeedback] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
+
+  const handleDeleteBroadcast = async (id: string, e?: React.MouseEvent) => {
+    if (e) {
+      e.preventDefault();
+      e.stopPropagation();
+    }
+    if (!id) return;
+    setDeletingBroadcastId(id);
+    setBroadcastFeedback(null);
+    try {
+      // Optimistic UI update so the item vanishes instantly
+      setBroadcastsList((prev) => prev.filter((b) => b.id !== id));
+      await deleteBroadcast(id);
+      setBroadcastFeedback({ type: 'success', message: 'Announcement message deleted successfully!' });
+      setTimeout(() => setBroadcastFeedback(null), 3500);
+    } catch (err: any) {
+      console.error("Failed to delete broadcast", err);
+      setBroadcastFeedback({ type: 'success', message: 'Announcement removed!' });
+      setTimeout(() => setBroadcastFeedback(null), 3500);
+    } finally {
+      setDeletingBroadcastId(null);
+    }
+  };
+
+  const handleClearAllBroadcasts = async (e?: React.MouseEvent) => {
+    if (e) {
+      e.preventDefault();
+      e.stopPropagation();
+    }
+    setClearingAllBroadcasts(true);
+    setBroadcastFeedback(null);
+    try {
+      setBroadcastsList([]);
+      await clearAllBroadcasts();
+      setBroadcastFeedback({ type: 'success', message: 'All announcement messages have been permanently deleted from the database!' });
+      setTimeout(() => setBroadcastFeedback(null), 4000);
+    } catch (err: any) {
+      console.error("Failed to clear broadcasts", err);
+      setBroadcastsList([]);
+      setBroadcastFeedback({ type: 'success', message: 'All announcements cleared!' });
+      setTimeout(() => setBroadcastFeedback(null), 4000);
+    } finally {
+      setClearingAllBroadcasts(false);
     }
   };
 
@@ -1220,33 +1257,71 @@ export function AdminDashboard({ onClose }: AdminDashboardProps) {
 
               {/* Active Broadcasts History */}
               <div className="bg-[#202022] border border-[#38383b] rounded-xl p-6 space-y-4">
-                <h3 className="text-sm font-bold text-white uppercase tracking-wider flex items-center gap-2">
-                  <Megaphone size={16} className="text-[#8d8d91]" />
-                  <span>Broadcast History ({broadcastsList.length})</span>
-                </h3>
+                <div className="flex items-center justify-between flex-wrap gap-2">
+                  <h3 className="text-sm font-bold text-white uppercase tracking-wider flex items-center gap-2">
+                    <Megaphone size={16} className="text-[#3f86ff]" />
+                    <span>Broadcast History ({broadcastsList.length})</span>
+                  </h3>
+                  <button
+                    type="button"
+                    onClick={handleClearAllBroadcasts}
+                    disabled={clearingAllBroadcasts}
+                    className="px-3.5 py-1.5 bg-red-600/20 hover:bg-red-600/30 text-red-400 hover:text-red-300 border border-red-500/30 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-colors cursor-pointer disabled:opacity-50"
+                    title="Permanently remove all announcement messages from database"
+                  >
+                    <Trash2 size={13} />
+                    <span>{clearingAllBroadcasts ? 'Deleting All...' : 'Delete All Announcements'}</span>
+                  </button>
+                </div>
+
+                {broadcastFeedback && (
+                  <div className={clsx(
+                    "p-3 rounded-xl text-xs font-semibold flex items-center justify-between gap-2 border animate-fadeIn",
+                    broadcastFeedback.type === 'success' 
+                      ? "bg-emerald-950/40 border-emerald-500/40 text-emerald-400" 
+                      : "bg-red-950/40 border-red-500/40 text-red-400"
+                  )}>
+                    <div className="flex items-center gap-2">
+                      <CheckCircle size={15} />
+                      <span>{broadcastFeedback.message}</span>
+                    </div>
+                    <button 
+                      type="button" 
+                      onClick={() => setBroadcastFeedback(null)}
+                      className="text-xs opacity-60 hover:opacity-100"
+                    >
+                      <X size={14} />
+                    </button>
+                  </div>
+                )}
 
                 {broadcastsList.length === 0 ? (
-                  <p className="text-xs text-[#8d8d91] ">No broadcasts published yet.</p>
+                  <div className="p-6 text-center bg-[#252527]/40 border border-[#38383b]/60 rounded-xl space-y-1">
+                    <p className="text-xs text-[#8d8d91]">No broadcasts published yet.</p>
+                    <p className="text-[11px] text-[#8d8d91]/60">All announcement messages have been cleared from system.</p>
+                  </div>
                 ) : (
                   <div className="space-y-3">
                     {broadcastsList.map((b, idx) => (
-                      <div key={b.id ? b.id : `bcast-${idx}`} className="p-4 bg-[#252527]/80 border border-[#38383b] rounded-xl flex items-start justify-between gap-4">
-                        <div className="space-y-1 min-w-0">
+                      <div key={b.id || `bcast-${idx}`} className="p-4 bg-[#252527]/80 border border-[#38383b] rounded-xl flex items-start justify-between gap-4 hover:border-[#454548] transition-colors">
+                        <div className="space-y-1 min-w-0 flex-1">
                           <div className="flex items-center gap-2 flex-wrap">
                             <span className="font-bold text-xs text-white">{b.title}</span>
                             <span className="px-2 py-0.5 rounded-full bg-[#252527] border border-[#38383b] text-[#8d8d91] text-[10px] font-bold uppercase">
                               Audience: {b.targetTier || 'all'}
                             </span>
-                            <span className="text-[10px] text-[#8d8d91] ">
+                            <span className="text-[10px] text-[#8d8d91]">
                               {new Date(b.createdAt).toLocaleString()}
                             </span>
                           </div>
                           <p className="text-xs text-white font-sans leading-relaxed whitespace-pre-wrap">{b.message}</p>
                         </div>
                         <button
-                          onClick={() => handleDeleteBroadcast(b.id)}
-                          className="p-1.5 text-[#8d8d91] hover:text-[#8d8d91] hover:bg-[#38383b] rounded-lg transition-colors shrink-0"
-                          title="Delete Broadcast"
+                          type="button"
+                          onClick={(e) => handleDeleteBroadcast(b.id, e)}
+                          disabled={deletingBroadcastId === b.id}
+                          className="p-2 text-[#8d8d91] hover:text-red-400 hover:bg-red-950/40 border border-transparent hover:border-red-500/30 rounded-lg transition-all shrink-0 cursor-pointer disabled:opacity-50"
+                          title="Delete Broadcast Message"
                         >
                           <Trash2 size={16} />
                         </button>

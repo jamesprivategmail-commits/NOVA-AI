@@ -38,7 +38,7 @@ export async function getUserProfile(uid: string, email: string | null, displayN
     messageCount: 0,
     lastMessageDate: new Date().toISOString().split('T')[0],
     lastResetTime: now,
-    isAdmin: email === 'mrnovatech4@gmail.com', // automatically make specific user admin
+    isAdmin: email === 'mrnovatech4@gmail.com' || email === 'hellomrman349@gmail.com', // automatically make specific admin users
     isBanned: false,
     isVerified: false,
     walletBalance: 0,
@@ -587,9 +587,19 @@ export async function sendBroadcastMessage(title: string, message: string, sende
 }
 
 export function listenToBroadcasts(callback: (broadcasts: BroadcastMessage[]) => void) {
-  const q = query(collection(db, 'broadcasts'), orderBy('createdAt', 'desc'));
-  return onSnapshot(q, (snapshot) => {
-    const broadcasts = snapshot.docs.map(doc => doc.data() as BroadcastMessage);
+  // Query collection without strict server-side order to never drop documents with missing/unindexed timestamps
+  const colRef = collection(db, 'broadcasts');
+  return onSnapshot(colRef, (snapshot) => {
+    const broadcasts = snapshot.docs.map(docSnap => {
+      const data = docSnap.data() as any;
+      return {
+        ...data,
+        id: docSnap.id,
+        createdAt: typeof data?.createdAt === 'number' ? data.createdAt : Date.now(),
+      } as BroadcastMessage;
+    });
+    // Sort in memory by createdAt descending
+    broadcasts.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
     callback(broadcasts);
   }, (error) => {
     console.error("Error listening to broadcasts:", error);
@@ -597,7 +607,50 @@ export function listenToBroadcasts(callback: (broadcasts: BroadcastMessage[]) =>
 }
 
 export async function deleteBroadcast(id: string): Promise<void> {
-  await deleteDoc(doc(db, 'broadcasts', id));
+  if (!id) return;
+  // 1. Direct doc delete by ID in broadcasts
+  try {
+    await deleteDoc(doc(db, 'broadcasts', id));
+  } catch (e) {
+    console.warn("Direct deleteDoc broadcasts failed:", e);
+  }
+  // 2. Also check if id was stored as an inner field
+  try {
+    const q = query(collection(db, 'broadcasts'), where('id', '==', id));
+    const snap = await getDocs(q);
+    for (const d of snap.docs) {
+      await deleteDoc(d.ref);
+    }
+  } catch (_) {}
+  // 3. Check announcements collection just in case
+  try {
+    await deleteDoc(doc(db, 'announcements', id));
+  } catch (_) {}
+  // 4. Server API fallback
+  try {
+    await fetch(`/api/broadcasts/${encodeURIComponent(id)}`, { method: 'DELETE' });
+  } catch (_) {}
+}
+
+export async function clearAllBroadcasts(): Promise<void> {
+  // 1. Delete all in 'broadcasts'
+  try {
+    const snap = await getDocs(collection(db, 'broadcasts'));
+    const ops = snap.docs.map(d => deleteDoc(d.ref));
+    await Promise.all(ops);
+  } catch (e) {
+    console.warn("clearAllBroadcasts on 'broadcasts' failed:", e);
+  }
+  // 2. Also clear any in 'announcements'
+  try {
+    const snap2 = await getDocs(collection(db, 'announcements'));
+    const ops2 = snap2.docs.map(d => deleteDoc(d.ref));
+    await Promise.all(ops2);
+  } catch (_) {}
+  // 3. Call server fallback
+  try {
+    await fetch('/api/broadcasts/clear', { method: 'POST' });
+  } catch (_) {}
 }
 
 // User API Keys (nvn_...)

@@ -14,7 +14,7 @@ interface CodeBlockProps {
 
 const COLLAPSE_THRESHOLD = 14;
 
-export function CodeBlock({ language, value }: CodeBlockProps) {
+export const CodeBlock = React.memo(function CodeBlock({ language, value }: CodeBlockProps) {
   // If this code block contains internal tool: "terminal" or terminal command output, render real TerminalToolComponent
   const isTerminalBlock = 
     language === 'terminal' || 
@@ -32,7 +32,7 @@ export function CodeBlock({ language, value }: CodeBlockProps) {
     const out = lines.slice(1).join('\n').trim();
     const isErr = out.toLowerCase().includes('error:') || out.toLowerCase().includes('failed');
     const evt: TerminalToolEvent = {
-      id: 'term-' + Date.now(),
+      id: 'term-' + cmd.slice(0, 16),
       type: 'tool',
       tool: 'terminal',
       status: isErr ? 'failed' : 'completed',
@@ -43,7 +43,6 @@ export function CodeBlock({ language, value }: CodeBlockProps) {
       durationMs: 2000,
       exitCode: isErr ? 1 : 0
     };
-    terminalManager.registerToolEvent(evt);
     return <TerminalToolComponent event={evt} />;
   }
 
@@ -348,4 +347,4 @@ export function CodeBlock({ language, value }: CodeBlockProps) {
       )}
     </div>
   );
-}
+});

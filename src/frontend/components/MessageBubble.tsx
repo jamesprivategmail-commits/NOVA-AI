@@ -89,12 +89,14 @@ export const MessageBubble = React.memo(function MessageBubble({
   };
 
   const hasEnableActionTag = message.text.includes('[ENABLE_GITHUB_CODING_ACTION]');
-  let cleanDisplayText = message.text.replace(/\[ENABLE_GITHUB_CODING_ACTION\]/g, '').trim();
-  cleanDisplayText = cleanDisplayText.replace(/tool:\s*["']?terminal["']?\s*/gi, '').trim();
-  cleanDisplayText = cleanDisplayText.replace(/\[\s*tool:\s*["']?terminal["']?\s*\]/gi, '').trim();
-
-  // Parse structured tool events, thinking, and separate conversation from tools
-  const parsed = parseMessageContent(cleanDisplayText, message.toolEvents, message.thinking);
+  
+  const { cleanDisplayText, parsed } = React.useMemo(() => {
+    let clean = message.text.replace(/\[ENABLE_GITHUB_CODING_ACTION\]/g, '').trim();
+    clean = clean.replace(/tool:\s*["']?terminal["']?\s*/gi, '').trim();
+    clean = clean.replace(/\[\s*tool:\s*["']?terminal["']?\s*\]/gi, '').trim();
+    const p = parseMessageContent(clean, message.toolEvents, message.thinking);
+    return { cleanDisplayText: clean, parsed: p };
+  }, [message.text, message.toolEvents, message.thinking]);
 
   const markdownComponents = {
     code(props: any) {
@@ -522,5 +524,16 @@ export const MessageBubble = React.memo(function MessageBubble({
         </div>
       )}
     </div>
+  );
+}, (prev, next) => {
+  return (
+    prev.message.id === next.message.id &&
+    prev.message.text === next.message.text &&
+    prev.message.isStarred === next.message.isStarred &&
+    prev.isStreaming === next.isStreaming &&
+    prev.codingModeEnabled === next.codingModeEnabled &&
+    prev.activeRepo?.repo === next.activeRepo?.repo &&
+    prev.activeRepo?.branch === next.activeRepo?.branch &&
+    prev.activeRepo?.owner === next.activeRepo?.owner
   );
 });

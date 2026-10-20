@@ -384,6 +384,9 @@ export async function executeGroqWithRotation(
           const content = chunk.choices[0]?.delta?.content || "";
           if (content) {
             res.write(`data: ${JSON.stringify({ text: content })}\n\n`);
+            if (typeof (res as any).flush === 'function') {
+              (res as any).flush();
+            }
           }
         }
         return; // Succeeded!
@@ -731,6 +734,9 @@ export async function executeGeminiWithRotation(
           const text = chunk.text;
           if (text) {
             res.write(`data: ${JSON.stringify({ text })}\n\n`);
+            if (typeof (res as any).flush === 'function') {
+              (res as any).flush();
+            }
           }
         }
         return;
@@ -2056,6 +2062,48 @@ export function createApp(): express.Express {
       res.json({ success: true, event });
     } catch (err: any) {
       res.status(500).json({ error: err?.message || "Failed to get terminal task status" });
+    }
+  });
+
+  // ── Broadcasts & Announcements Management Endpoints ───────────────
+  app.delete(["/api/broadcasts/:id", "/broadcasts/:id"], async (req, res) => {
+    try {
+      const { id } = req.params;
+      if (id) {
+        try {
+          await deleteDoc(doc(db, "broadcasts", id));
+        } catch (_) {}
+        try {
+          const q = query(collection(db, "broadcasts"), where("id", "==", id));
+          const snap = await getDocs(q);
+          await Promise.all(snap.docs.map(d => deleteDoc(d.ref)));
+        } catch (_) {}
+        try {
+          await deleteDoc(doc(db, "announcements", id));
+        } catch (_) {}
+      }
+      res.json({ success: true, id });
+    } catch (err: any) {
+      res.status(500).json({ error: err?.message || "Failed to delete broadcast" });
+    }
+  });
+
+  app.post(["/api/broadcasts/clear", "/broadcasts/clear"], async (_req, res) => {
+    try {
+      let count = 0;
+      try {
+        const snap = await getDocs(collection(db, "broadcasts"));
+        await Promise.all(snap.docs.map(d => deleteDoc(d.ref)));
+        count += snap.size;
+      } catch (_) {}
+      try {
+        const snap2 = await getDocs(collection(db, "announcements"));
+        await Promise.all(snap2.docs.map(d => deleteDoc(d.ref)));
+        count += snap2.size;
+      } catch (_) {}
+      res.json({ success: true, count });
+    } catch (err: any) {
+      res.status(500).json({ error: err?.message || "Failed to clear broadcasts" });
     }
   });
 
