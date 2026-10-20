@@ -20,10 +20,18 @@ export default async function handler(req: any, res: any) {
     }
   }
 
-  if (typeof req.body === 'string' && req.body.trim().startsWith('{')) {
+  if (Buffer.isBuffer(req.body)) {
+    try {
+      req.body = JSON.parse(req.body.toString("utf8"));
+    } catch (_) {}
+  } else if (typeof req.body === 'string' && req.body.trim().startsWith('{')) {
     try {
       req.body = JSON.parse(req.body);
     } catch (_) {}
+  }
+
+  if (req.body && typeof req.body === 'object') {
+    (req as any)._body = true;
   }
 
   return new Promise((resolve) => {

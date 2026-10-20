@@ -867,7 +867,10 @@ export function createApp(): express.Express {
       (req.headers["x-matched-path"] as string);
 
     if (orig && (orig.startsWith("/api") || orig.startsWith("/v1") || orig.startsWith("/auth") || orig.startsWith("/chat"))) {
-      req.url = orig;
+      let clean = orig.replace(/\.(ts|js)$/i, '');
+      const qIdx = clean.indexOf('?');
+      if (qIdx !== -1) clean = clean.slice(0, qIdx);
+      req.url = clean;
     }
 
     if (req.url) {
@@ -876,6 +879,11 @@ export function createApp(): express.Express {
         const routeParam = parsed.searchParams.get("__route");
         if (routeParam) {
           req.url = routeParam;
+        } else {
+          const cleanPath = parsed.pathname.replace(/\.(ts|js)$/i, '');
+          if (cleanPath !== parsed.pathname) {
+            req.url = cleanPath + (parsed.search || '');
+          }
         }
       } catch (_) {}
     }
@@ -884,7 +892,11 @@ export function createApp(): express.Express {
 
   // Prevent Express body-parser from hanging on Vercel where the request stream was pre-consumed
   app.use((req, res, next) => {
-    if (typeof req.body === 'string' && req.body.trim().startsWith('{')) {
+    if (Buffer.isBuffer(req.body)) {
+      try {
+        req.body = JSON.parse(req.body.toString('utf8'));
+      } catch (_) {}
+    } else if (typeof req.body === 'string' && req.body.trim().startsWith('{')) {
       try {
         req.body = JSON.parse(req.body);
       } catch (_) {}
@@ -941,7 +953,7 @@ export function createApp(): express.Express {
   app.use("/api/", apiLimiter);
 
   // Core streaming AI completion route (supports /api/chat, /chat, and POST /api)
-  app.post(["/api/chat", "/chat", "/api"], async (req, res) => {
+  app.post(["/api/chat", "/chat", "/api", "/api/chat.ts", "/chat.ts"], async (req, res) => {
     try {
       const { messages = [], systemPrompt = "", userId = "", provider = "groq", model, attachment, githubContext } = req.body || {};
       

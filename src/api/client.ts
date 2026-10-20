@@ -110,7 +110,9 @@ export async function sendMessageToGroq(
       }
 
       if (errText.includes("<!DOCTYPE") || errText.includes("<html") || response.status === 404) {
-        errText = "⚡ **VOID AI Server Notice:** Backend API route unreachable. If running on Vercel, ensure you set GROQ_API_KEY or COHERE_API_KEY in Vercel Project Settings → Environment Variables and redeploy.";
+        errText = "⚡ **VOID AI Server Notice:** Backend API route unreachable. If running on Vercel, ensure you set GEMINI_API_KEY, GROQ_API_KEY, or COHERE_API_KEY in Vercel Project Settings → Environment Variables and redeploy.";
+      } else if (response.status === 500 || errText === 'API status 500') {
+        errText = "⚡ **VOID AI Server Notice:** Server returned status 500. If deployed on Vercel, please verify that you have added GEMINI_API_KEY, GROQ_API_KEY, or COHERE_API_KEY in your Vercel Project Settings → Environment Variables and redeployed.";
       }
       throw new Error(errText);
     }

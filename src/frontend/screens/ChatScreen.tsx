@@ -722,6 +722,7 @@ export function ChatScreen({ userId }: ChatScreenProps) {
         onTogglePinChat={handleTogglePin}
         onExportChat={handleExportChat}
         onLogout={handleLogout}
+        onClose={() => setIsSidebarOpen(false)}
         isOpen={isSidebarOpen}
         isAdmin={profile?.isAdmin || false}
         isSupportStaff={profile?.isSupportStaff || false}
@@ -1055,96 +1056,106 @@ export function ChatScreen({ userId }: ChatScreenProps) {
       )}
 
       {/* Developer API Keys & Billing Modal */}
-      <ApiKeyModal
-        user={profile}
-        isOpen={showApiKeyModal}
-        onClose={() => setShowApiKeyModal(false)}
-        onOpenSubscription={() => setShowSubscription(true)}
-      />
+      {showApiKeyModal && (
+        <ApiKeyModal
+          user={profile}
+          isOpen={showApiKeyModal}
+          onClose={() => setShowApiKeyModal(false)}
+          onOpenSubscription={() => setShowSubscription(true)}
+        />
+      )}
 
       {/* GitHub Workspace Modal */}
-      <GitHubModal
-        isOpen={showGitHubModal}
-        onClose={() => setShowGitHubModal(false)}
-        onSelectFileForChat={(repoName, filePath, content) => {
-          handleSend(`Please review, explain, or edit this file from **${repoName}**:\n\n\`\`\`\n// File: ${filePath}\n${content}\n\`\`\``);
-        }}
-        onRepoChanged={(newRepo) => {
-          setActiveRepo(newRepo);
-          setGitHubUser(getStoredGitHubUser());
-        }}
-      />
+      {showGitHubModal && (
+        <GitHubModal
+          isOpen={showGitHubModal}
+          onClose={() => setShowGitHubModal(false)}
+          onSelectFileForChat={(repoName, filePath, content) => {
+            handleSend(`Please review, explain, or edit this file from **${repoName}**:\n\n\`\`\`\n// File: ${filePath}\n${content}\n\`\`\``);
+          }}
+          onRepoChanged={(newRepo) => {
+            setActiveRepo(newRepo);
+            setGitHubUser(getStoredGitHubUser());
+          }}
+        />
+      )}
 
       {/* 2026 Global Command Palette (⌘K) */}
-      <CommandPalette
-        isOpen={showCommandPalette}
-        onClose={() => setShowCommandPalette(false)}
-        chats={chats}
-        onSelectChat={(id) => {
-          setCurrentChatId(id);
-          setShowCommandPalette(false);
-        }}
-        onNewChat={() => {
-          handleNewChat();
-          setShowCommandPalette(false);
-        }}
-        onClearHistory={handleClearAllHistory}
-        onOpenSettings={() => {
-          setShowSettings(true);
-          setShowCommandPalette(false);
-        }}
-        onOpenWorkspace={(tab) => {
-          if (tab) setWorkspaceTab(tab as WorkspaceTab);
-          setShowWorkspace(true);
-          setShowCommandPalette(false);
-        }}
-        onSelectModel={(provider, model) => {
-          handleSelectProviderModel(provider, model);
-        }}
-        onOpenPromptStudio={() => {
-          setShowPromptStudio(true);
-          setShowCommandPalette(false);
-        }}
-        onOpenLiveVoice={() => {
-          setShowLiveVoice(true);
-          setShowCommandPalette(false);
-        }}
-        onExportCurrentChat={handleExportChat}
-        onToggleCodingMode={() => {
-          const next = !codingMode;
-          setCodingMode(next);
-          setStoredGitHubCodingMode(next);
-        }}
-        codingModeEnabled={codingMode}
-      />
+      {showCommandPalette && (
+        <CommandPalette
+          isOpen={showCommandPalette}
+          onClose={() => setShowCommandPalette(false)}
+          chats={chats}
+          onSelectChat={(id) => {
+            setCurrentChatId(id);
+            setShowCommandPalette(false);
+          }}
+          onNewChat={() => {
+            handleNewChat();
+            setShowCommandPalette(false);
+          }}
+          onClearHistory={handleClearAllHistory}
+          onOpenSettings={() => {
+            setShowSettings(true);
+            setShowCommandPalette(false);
+          }}
+          onOpenWorkspace={(tab) => {
+            if (tab) setWorkspaceTab(tab as WorkspaceTab);
+            setShowWorkspace(true);
+            setShowCommandPalette(false);
+          }}
+          onSelectModel={(provider, model) => {
+            handleSelectProviderModel(provider, model);
+          }}
+          onOpenPromptStudio={() => {
+            setShowPromptStudio(true);
+            setShowCommandPalette(false);
+          }}
+          onOpenLiveVoice={() => {
+            setShowLiveVoice(true);
+            setShowCommandPalette(false);
+          }}
+          onExportCurrentChat={handleExportChat}
+          onToggleCodingMode={() => {
+            const next = !codingMode;
+            setCodingMode(next);
+            setStoredGitHubCodingMode(next);
+          }}
+          codingModeEnabled={codingMode}
+        />
+      )}
 
       {/* In-App Interactive Code Workspace & Sandbox Terminal Drawer */}
-      <CodeWorkspaceDrawer
-        isOpen={showWorkspace}
-        onClose={() => setShowWorkspace(false)}
-        activeRepo={activeRepo}
-        activeFileContent={workspaceFileContent}
-        activeFilePath={workspaceFilePath}
-        initialTab={workspaceTab}
-        onSaveFile={async (path, content) => {
-          setWorkspaceFileContent(content);
-          setWorkspaceFilePath(path);
-        }}
-        onExecutePrompt={(promptText) => {
-          handleSend(promptText);
-        }}
-      />
+      {showWorkspace && (
+        <CodeWorkspaceDrawer
+          isOpen={showWorkspace}
+          onClose={() => setShowWorkspace(false)}
+          activeRepo={activeRepo}
+          activeFileContent={workspaceFileContent}
+          activeFilePath={workspaceFilePath}
+          initialTab={workspaceTab}
+          onSaveFile={async (path, content) => {
+            setWorkspaceFileContent(content);
+            setWorkspaceFilePath(path);
+          }}
+          onExecutePrompt={(promptText) => {
+            handleSend(promptText);
+          }}
+        />
+      )}
 
       {/* Prompt Engineering Studio Modal */}
-      <PromptStudioModal
-        isOpen={showPromptStudio}
-        onClose={() => setShowPromptStudio(false)}
-        currentPrompt={customSystemPrompt}
-        onSavePrompt={(newPrompt) => {
-          setCustomSystemPrompt(newPrompt);
-          localStorage.setItem('void_ai_system_prompt', newPrompt);
-        }}
-      />
+      {showPromptStudio && (
+        <PromptStudioModal
+          isOpen={showPromptStudio}
+          onClose={() => setShowPromptStudio(false)}
+          currentPrompt={customSystemPrompt}
+          onSavePrompt={(newPrompt) => {
+            setCustomSystemPrompt(newPrompt);
+            localStorage.setItem('void_ai_system_prompt', newPrompt);
+          }}
+        />
+      )}
 
       {/* 2026 Interactive Live HTML Sandbox Modal */}
       {previewHtmlData && (

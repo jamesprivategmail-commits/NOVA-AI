@@ -18,6 +18,7 @@ interface SidebarProps {
   onLogout?: () => void;
   onTogglePinChat?: (id: string, isPinned: boolean) => void;
   onExportChat?: (id: string) => void;
+  onClose?: () => void;
   isOpen: boolean;
   userEmail?: string;
   userName?: string;
@@ -46,6 +47,7 @@ export function Sidebar({
   onOpenGitHub,
   onTogglePinChat,
   onExportChat,
+  onClose,
   isOpen,
   userEmail = 'mrnovatech4@gmail.com',
   userName = 'Mr nova tech'
@@ -90,19 +92,32 @@ export function Sidebar({
           </span>
         </div>
 
-        {/* Search button — increased by 20% to 34px */}
-        <button 
-          onClick={() => setIsSearching(!isSearching)}
-          className={clsx(
-            "w-[34px] h-[34px] rounded-lg border flex items-center justify-center transition-all cursor-pointer shrink-0",
-            isSearching 
-              ? "bg-[#252527] border-[#454547] text-white" 
-              : "bg-[#202022] hover:bg-[#252527] border-[#38383b] text-[#8d8d91] hover:text-white"
+        <div className="flex items-center gap-1.5">
+          {/* Search button — 34px */}
+          <button 
+            onClick={() => setIsSearching(!isSearching)}
+            className={clsx(
+              "w-[34px] h-[34px] rounded-lg border flex items-center justify-center transition-all cursor-pointer shrink-0",
+              isSearching 
+                ? "bg-[#252527] border-[#454547] text-white" 
+                : "bg-[#202022] hover:bg-[#252527] border-[#38383b] text-[#8d8d91] hover:text-white"
+            )}
+            title="Search Conversations"
+          >
+            <Search size={17} />
+          </button>
+
+          {/* Close drawer on mobile */}
+          {onClose && (
+            <button
+              onClick={onClose}
+              className="w-[34px] h-[34px] rounded-lg border bg-[#202022] hover:bg-[#252527] border-[#38383b] text-[#8d8d91] hover:text-white flex items-center justify-center transition-all cursor-pointer shrink-0 md:hidden"
+              title="Close sidebar"
+            >
+              <X size={17} />
+            </button>
           )}
-          title="Search Conversations"
-        >
-          <Search size={17} />
-        </button>
+        </div>
       </div>
 
       {/* Expandable Search Input */}

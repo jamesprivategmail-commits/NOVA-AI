@@ -209,11 +209,19 @@ export function CodeWorkspaceDrawer({
     }
   };
 
+  if (!isOpen) return null;
+
   return (
-    <div className={clsx(
-      "fixed inset-y-0 right-0 z-40 bg-[#111217] border-l border-[#242733] text-white flex flex-col shadow-2xl transition-all duration-300 ease-out select-none",
-      isExpanded ? "w-full md:w-[85vw]" : "w-full md:w-[620px] lg:w-[680px]"
-    )}>
+    <>
+      {/* Mobile & Tablet Backdrop to easily dismiss drawer */}
+      <div 
+        onClick={onClose} 
+        className="fixed inset-0 bg-black/60 backdrop-blur-xs z-30 transition-opacity" 
+      />
+      <div className={clsx(
+        "fixed inset-y-0 right-0 z-40 bg-[#111217] border-l border-[#242733] text-white flex flex-col shadow-2xl transition-all duration-300 ease-out select-none",
+        isExpanded ? "w-full md:w-[85vw]" : "w-full md:w-[620px] lg:w-[680px]"
+      )}>
       {/* Top Bar Header */}
       <div className="h-13 px-4 border-b border-[#242733] flex items-center justify-between shrink-0 bg-[#14151c]">
         <div className="flex items-center gap-3">
@@ -937,5 +945,6 @@ pipeline.register({ id: 'sess-001', role: 'architect', active: true });
         )}
       </div>
     </div>
+    </>
   );
 }
