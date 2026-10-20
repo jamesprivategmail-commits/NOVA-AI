@@ -5,7 +5,7 @@ import Groq from "groq-sdk";
 import helmet from "helmet";
 import rateLimit from "express-rate-limit";
 import dotenv from "dotenv";
-import { doc, getDoc, setDoc, collection, query, where, getDocs } from "firebase/firestore";
+import { doc, getDoc, setDoc, deleteDoc, collection, query, where, getDocs } from "firebase/firestore";
 import { db } from "../config/firebase.js";
 import { telegramBot } from "../telegram/bot.js";
 import { AI_CONFIG } from "../config/ai.js";

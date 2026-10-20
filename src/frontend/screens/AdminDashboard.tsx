@@ -35,6 +35,8 @@ export function AdminDashboard({ onClose }: AdminDashboardProps) {
   const [broadcastMessage, setBroadcastMessage] = useState('');
   const [broadcastTargetTier, setBroadcastTargetTier] = useState<'all' | UserTier>('all');
   const [sendingBroadcast, setSendingBroadcast] = useState(false);
+  const [deletingBroadcastId, setDeletingBroadcastId] = useState<string | null>(null);
+  const [clearingAllBroadcasts, setClearingAllBroadcasts] = useState<boolean>(false);
 
   // Telegram Bot State
   const [telegramStatus, setTelegramStatus] = useState<any>(null);
