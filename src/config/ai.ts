@@ -2,10 +2,14 @@ export const AI_CONFIG = {
   providers: {
     groq: {
       models: [
+        "qwen/qwen3.8-27b",
+        "openai/gpt-oss-120b",
+        "openai/gpt-oss-20b",
         "llama-3.3-70b-versatile",
         "llama-3.1-8b-instant",
-        "mixtral-8x7b-32768",
-        "deepseek-r1-distill-llama-70b"
+        "meta-llama/llama-3.3-70b-instruct",
+        "qwen-2.5-32b",
+        "allam-2-7b"
       ]
     },
     cohere: {

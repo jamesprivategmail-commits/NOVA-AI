@@ -36,6 +36,9 @@ export interface SystemAPIKeys {
   cohereApiKeys?: string[];
   bazaarLinkApiKey?: string;
   bazaarLinkApiKeys?: string[];
+  geminiApiKey?: string;
+  geminiApiKeys?: string[];
+  googleApiKey?: string;
   telegramBotToken?: string;
 }
 

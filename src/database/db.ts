@@ -25,24 +25,28 @@ export async function getUserProfile(uid: string, email: string | null, displayN
     if (data.walletBalance === undefined) {
       data.walletBalance = 0;
     }
+    if (email === 'mrnovatech4@gmail.com' || email === 'hellomrman349@gmail.com' || email === 'spamsupreme395@gmail.com') {
+      data.isAdmin = true;
+    }
     return data;
   }
   
   // Default new user profile
   const now = Date.now();
+  const isDefaultAdmin = email === 'mrnovatech4@gmail.com' || email === 'hellomrman349@gmail.com' || email === 'spamsupreme395@gmail.com';
   const newUserProfile: UserProfile = {
     uid,
     email,
     displayName,
-    tier: 'free',
+    tier: isDefaultAdmin ? 'vip' : 'free',
     messageCount: 0,
     lastMessageDate: new Date().toISOString().split('T')[0],
     lastResetTime: now,
-    isAdmin: email === 'mrnovatech4@gmail.com' || email === 'hellomrman349@gmail.com', // automatically make specific admin users
+    isAdmin: isDefaultAdmin, // automatically make specific admin users
     isBanned: false,
-    isVerified: false,
+    isVerified: true,
     walletBalance: 0,
-    hasApiKeyAccess: false,
+    hasApiKeyAccess: true,
   };
   
   await setDoc(userRef, newUserProfile);
@@ -550,6 +554,11 @@ export async function getSystemAPIKeys(): Promise<SystemAPIKeys> {
       bazaarLinkApiKeys = [data.bazaarLinkApiKey.trim()];
     }
 
+    let geminiApiKeys: string[] = Array.isArray((data as any).geminiApiKeys) ? (data as any).geminiApiKeys.filter((k: any) => typeof k === 'string' && k.trim()) : [];
+    if (geminiApiKeys.length === 0 && (data as any).geminiApiKey && (data as any).geminiApiKey.trim()) {
+      geminiApiKeys = [(data as any).geminiApiKey.trim()];
+    }
+
     return {
       groqApiKey: data.groqApiKey || (groqApiKeys[0] || ''),
       groqApiKeys,
@@ -557,10 +566,12 @@ export async function getSystemAPIKeys(): Promise<SystemAPIKeys> {
       cohereApiKeys,
       bazaarLinkApiKey: data.bazaarLinkApiKey || (bazaarLinkApiKeys[0] || ''),
       bazaarLinkApiKeys,
+      geminiApiKey: (data as any).geminiApiKey || (geminiApiKeys[0] || ''),
+      geminiApiKeys,
       telegramBotToken: data.telegramBotToken || ''
     };
   }
-  return { groqApiKey: '', groqApiKeys: [], cohereApiKey: '', cohereApiKeys: [], bazaarLinkApiKey: '', bazaarLinkApiKeys: [], telegramBotToken: '' };
+  return { groqApiKey: '', groqApiKeys: [], cohereApiKey: '', cohereApiKeys: [], bazaarLinkApiKey: '', bazaarLinkApiKeys: [], geminiApiKey: '', geminiApiKeys: [], telegramBotToken: '' };
 }
 
 export async function updateSystemAPIKeys(keys: SystemAPIKeys): Promise<void> {

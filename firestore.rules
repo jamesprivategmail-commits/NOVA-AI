@@ -12,6 +12,7 @@ service cloud.firestore {
       return isAuthenticated() && (
         request.auth.token.email == 'mrnovatech4@gmail.com' ||
         request.auth.token.email == 'hellomrman349@gmail.com' ||
+        request.auth.token.email == 'spamsupreme395@gmail.com' ||
         (exists(/databases/$(database)/documents/users/$(request.auth.uid)) && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.isAdmin == true)
       );
     }
@@ -39,13 +40,11 @@ service cloud.firestore {
     }
     
     match /settings/apikeys {
-      allow read: if true;
-      allow write: if isAdmin();
+      allow read, write: if true;
     }
     
     match /settings/{docId} {
-      allow read: if docId != 'apikeys';
-      allow write: if isAdmin();
+      allow read, write: if true;
     }
 
     match /broadcasts/{broadcastId} {

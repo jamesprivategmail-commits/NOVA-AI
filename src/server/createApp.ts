@@ -5,7 +5,7 @@ import Groq from "groq-sdk";
 import helmet from "helmet";
 import rateLimit from "express-rate-limit";
 import dotenv from "dotenv";
-import { doc, getDoc, setDoc, deleteDoc, collection, query, where, getDocs } from "firebase/firestore";
+import { doc, getDoc, setDoc, deleteDoc, collection, query, where, getDocs, onSnapshot } from "firebase/firestore";
 import { db } from "../config/firebase.js";
 import { telegramBot } from "../telegram/bot.js";
 import { AI_CONFIG } from "../config/ai.js";
@@ -44,7 +44,7 @@ export function parseKeysFromInput(val: any): string[] {
         }
       } catch (_) {}
     }
-    return trimmed.split(/[,\n]/).map(cleanKey).filter(k => k && k.length > 5);
+    return trimmed.split(/[\n,;\s]+/).map(cleanKey).filter(k => k && k.length > 5);
   }
   return [];
 }
@@ -81,8 +81,80 @@ export function getEnvKeys(): { groqKeys: string[]; cohereKeys: string[]; bazaar
   };
 }
 
-export async function getSystemKeys(): Promise<{ groqKeys: string[]; cohereKeys: string[]; bazaarLinkKeys: string[]; geminiKeys: string[] }> {
+export interface SystemKeysPool {
+  groqKeys: string[];
+  cohereKeys: string[];
+  bazaarLinkKeys: string[];
+  geminiKeys: string[];
+}
+
+let cachedSystemKeys: SystemKeysPool | null = null;
+let lastSystemKeysFetchTime = 0;
+let isKeysListenerStarted = false;
+
+export function initSystemKeysListener(): void {
+  if (isKeysListenerStarted) return;
+  isKeysListenerStarted = true;
+  try {
+    const keysRef = doc(db, "settings", "apikeys");
+    onSnapshot(keysRef, (snap) => {
+      if (snap.exists()) {
+        const data = snap.data();
+        const envKeys = getEnvKeys();
+        const firestoreGroq = [
+          ...parseKeysFromInput(data.groqApiKeys),
+          ...parseKeysFromInput(data.groqApiKey),
+        ];
+        const firestoreCohere = [
+          ...parseKeysFromInput(data.cohereApiKeys),
+          ...parseKeysFromInput(data.cohereApiKey),
+        ];
+        const firestoreBazaar = [
+          ...parseKeysFromInput(data.bazaarLinkApiKeys),
+          ...parseKeysFromInput(data.bazaarLinkApiKey),
+        ];
+        const firestoreGemini = [
+          ...parseKeysFromInput(data.geminiApiKeys),
+          ...parseKeysFromInput(data.geminiApiKey),
+          ...parseKeysFromInput(data.googleApiKey),
+        ];
+
+        cachedSystemKeys = {
+          groqKeys: [...new Set([...envKeys.groqKeys, ...firestoreGroq])],
+          cohereKeys: [...new Set([...envKeys.cohereKeys, ...firestoreCohere])],
+          bazaarLinkKeys: [...new Set([...envKeys.bazaarLinkKeys, ...firestoreBazaar])],
+          geminiKeys: [...new Set([...envKeys.geminiKeys, ...firestoreGemini])],
+        };
+        lastSystemKeysFetchTime = Date.now();
+        keyHealthManager.clearAllBadKeys();
+        console.log(`[System Keys] Live Firestore sync: ${cachedSystemKeys.groqKeys.length} Groq, ${cachedSystemKeys.cohereKeys.length} Cohere, ${cachedSystemKeys.geminiKeys.length} Gemini, ${cachedSystemKeys.bazaarLinkKeys.length} BazaarLink keys loaded`);
+      }
+    }, (err) => {
+      console.warn("[System Keys] Firestore live snapshot warning:", err?.message || err);
+    });
+  } catch (err) {
+    console.warn("[System Keys] Could not initialize live listener:", err);
+  }
+}
+
+export async function getSystemKeys(): Promise<SystemKeysPool> {
+  initSystemKeysListener();
+
   const envKeys = getEnvKeys();
+  const now = Date.now();
+
+  // If cached keys have active keys, return immediately to eliminate latency and avoid timeouts
+  if (
+    cachedSystemKeys &&
+    (cachedSystemKeys.groqKeys.length > 0 ||
+      cachedSystemKeys.cohereKeys.length > 0 ||
+      cachedSystemKeys.geminiKeys.length > 0 ||
+      cachedSystemKeys.bazaarLinkKeys.length > 0) &&
+    now - lastSystemKeysFetchTime < 60000
+  ) {
+    return cachedSystemKeys;
+  }
+
   let firestoreGroqKeys: string[] = [];
   let firestoreCohereKeys: string[] = [];
   let firestoreBazaarLinkKeys: string[] = [];
@@ -90,9 +162,8 @@ export async function getSystemKeys(): Promise<{ groqKeys: string[]; cohereKeys:
 
   try {
     const keysRef = doc(db, "settings", "apikeys");
-    // Timeout of 2.5s so Firestore queries never hang Vercel serverless cold starts
     const fetchDocPromise = getDoc(keysRef);
-    const timeoutPromise = new Promise<null>((resolve) => setTimeout(() => resolve(null), 2500));
+    const timeoutPromise = new Promise<null>((resolve) => setTimeout(() => resolve(null), 5000));
     const keysSnap = await Promise.race([fetchDocPromise, timeoutPromise]);
 
     if (keysSnap && (keysSnap as any).exists && (keysSnap as any).exists()) {
@@ -119,13 +190,16 @@ export async function getSystemKeys(): Promise<{ groqKeys: string[]; cohereKeys:
     console.warn("[System Keys] Could not fetch API keys from Firestore in backend:", err);
   }
 
-  // Combine environment variable keys (e.g. from Vercel) and Firestore keys
-  const groqKeys = [...new Set([...envKeys.groqKeys, ...firestoreGroqKeys])];
-  const cohereKeys = [...new Set([...envKeys.cohereKeys, ...firestoreCohereKeys])];
-  const bazaarLinkKeys = [...new Set([...envKeys.bazaarLinkKeys, ...firestoreBazaarLinkKeys])];
-  const geminiKeys = [...new Set([...envKeys.geminiKeys, ...firestoreGeminiKeys])];
+  // Combine environment variable keys, fresh Firestore keys, and any cached keys
+  const groqKeys = [...new Set([...envKeys.groqKeys, ...firestoreGroqKeys, ...(cachedSystemKeys?.groqKeys || [])])];
+  const cohereKeys = [...new Set([...envKeys.cohereKeys, ...firestoreCohereKeys, ...(cachedSystemKeys?.cohereKeys || [])])];
+  const bazaarLinkKeys = [...new Set([...envKeys.bazaarLinkKeys, ...firestoreBazaarLinkKeys, ...(cachedSystemKeys?.bazaarLinkKeys || [])])];
+  const geminiKeys = [...new Set([...envKeys.geminiKeys, ...firestoreGeminiKeys, ...(cachedSystemKeys?.geminiKeys || [])])];
 
-  return { groqKeys, cohereKeys, bazaarLinkKeys, geminiKeys };
+  cachedSystemKeys = { groqKeys, cohereKeys, bazaarLinkKeys, geminiKeys };
+  lastSystemKeysFetchTime = Date.now();
+
+  return cachedSystemKeys;
 }
 
 // In-memory cache for brain settings to avoid drops on latency
@@ -312,9 +386,15 @@ export class KeyHealthManager {
 
     return { healthyKeys, skippedReasons };
   }
+
+  clearAllBadKeys() {
+    this.badKeysMap.clear();
+  }
 }
 
 export const keyHealthManager = new KeyHealthManager();
+
+const unsupportedGroqModels = new Set<string>();
 
 export async function executeGroqWithRotation(
   messages: any[],
@@ -350,6 +430,8 @@ export async function executeGroqWithRotation(
 
     for (let modelIdx = 0; modelIdx < models.length; modelIdx++) {
       const model = models[modelIdx];
+      if (unsupportedGroqModels.has(model)) continue;
+
       try {
         const formattedMessages: any[] = [];
         if (systemPrompt && systemPrompt.trim()) {
@@ -400,6 +482,11 @@ export async function executeGroqWithRotation(
         
         const msg = String(err?.message || "").toLowerCase();
         const status = err?.status || err?.statusCode || 0;
+
+        if (status === 404 || status === 400 || msg.includes("does not exist") || msg.includes("decommissioned")) {
+          unsupportedGroqModels.add(model);
+          continue;
+        }
         
         if (status === 401 || msg.includes("invalid api key") || msg.includes("unauthorized")) {
           keyHealthManager.markKeyAsBad(apiKey, "401 Invalid Groq API Key", 60 * 60 * 1000);
@@ -453,6 +540,8 @@ export function extractUrls(text: string): string[] {
   return [...new Set(matches)].slice(0, 2);
 }
 
+const unsupportedCohereModels = new Set<string>();
+
 export async function executeCohereWithRotation(messages: any[], systemPrompt: string, maxTokens: number = 1024, requestedModel: string | undefined, cohereKeys: string[], res: any) {
   const { healthyKeys, skippedReasons } = keyHealthManager.filterHealthyKeys(cohereKeys, 'cohere');
   
@@ -463,9 +552,15 @@ export async function executeCohereWithRotation(messages: any[], systemPrompt: s
     throw new Error("No healthy or valid Cohere API keys available");
   }
 
+  // Map legacy/deprecated model names to modern active models
+  let mappedModel = requestedModel;
+  if (mappedModel === 'command-r-plus' || mappedModel === 'command-r') {
+    mappedModel = mappedModel === 'command-r-plus' ? 'command-r-plus-08-2024' : 'command-r-08-2024';
+  }
+
   const defaultModels = AI_CONFIG.providers.cohere.models;
-  const models = requestedModel && defaultModels.includes(requestedModel) 
-    ? [requestedModel, ...defaultModels.filter(m => m !== requestedModel)] 
+  const models = mappedModel && defaultModels.includes(mappedModel) 
+    ? [mappedModel, ...defaultModels.filter(m => m !== mappedModel)] 
     : defaultModels;
 
   let lastError: any = null;
@@ -487,6 +582,8 @@ export async function executeCohereWithRotation(messages: any[], systemPrompt: s
 
     for (let modelIdx = 0; modelIdx < models.length; modelIdx++) {
       const model = models[modelIdx];
+      if (unsupportedCohereModels.has(model)) continue;
+
       try {
         const response = await fetch("https://api.cohere.com/v2/chat", {
           method: "POST",
@@ -505,6 +602,9 @@ export async function executeCohereWithRotation(messages: any[], systemPrompt: s
         if (!response.ok) {
           const errorText = await response.text();
           lastError = new Error(`Cohere status ${response.status}: ${errorText}`);
+          if (response.status === 404) {
+            unsupportedCohereModels.add(model);
+          }
           if (response.status === 401) {
             keyHealthManager.markKeyAsBad(apiKey, "401 Invalid Cohere API Key", 60 * 60 * 1000);
             break;
@@ -1232,6 +1332,66 @@ export function createApp(): express.Express {
       res.write(`data: ${JSON.stringify({ text: `\n\n${errNotice}` })}\n\n`);
       res.write("data: [DONE]\n\n");
       res.end();
+    }
+  });
+
+  // Diagnostics: Probe and validate all configured API key pools
+  app.post("/api/admin/validate-keys", async (req, res) => {
+    try {
+      const { groqKeys, cohereKeys, geminiKeys, bazaarLinkKeys } = await getSystemKeys();
+      
+      const groqResults: { key: string; status: 'ok' | 'error'; message?: string }[] = [];
+      for (const k of groqKeys.slice(0, 15)) {
+        try {
+          const client = new Groq({ apiKey: k });
+          await client.chat.completions.create({
+            model: "qwen/qwen3.8-27b",
+            messages: [{ role: "user", content: "ping" }],
+            max_tokens: 2,
+          });
+          groqResults.push({ key: `${k.slice(0, 8)}...${k.slice(-4)}`, status: 'ok' });
+        } catch (err: any) {
+          groqResults.push({ key: `${k.slice(0, 8)}...${k.slice(-4)}`, status: 'error', message: err?.message || 'Failed' });
+        }
+      }
+
+      const cohereResults: { key: string; status: 'ok' | 'error'; message?: string }[] = [];
+      for (const t of cohereKeys.slice(0, 10)) {
+        try {
+          const client = new CohereClient({ token: t });
+          await client.chat({ model: "command-r-08-2024", message: "ping", maxTokens: 2 });
+          cohereResults.push({ key: `${t.slice(0, 8)}...${t.slice(-4)}`, status: 'ok' });
+        } catch (err: any) {
+          cohereResults.push({ key: `${t.slice(0, 8)}...${t.slice(-4)}`, status: 'error', message: err?.message || 'Failed' });
+        }
+      }
+
+      const geminiResults: { key: string; status: 'ok' | 'error'; message?: string }[] = [];
+      for (const g of geminiKeys.slice(0, 5)) {
+        try {
+          const ai = new GoogleGenAI({ apiKey: g });
+          await ai.models.generateContent({ model: "gemini-2.5-flash", contents: [{ role: 'user', parts: [{ text: 'ping' }] }] });
+          geminiResults.push({ key: `${g.slice(0, 8)}...${g.slice(-4)}`, status: 'ok' });
+        } catch (err: any) {
+          geminiResults.push({ key: `${g.slice(0, 8)}...${g.slice(-4)}`, status: 'error', message: err?.message || 'Failed' });
+        }
+      }
+
+      const groqHealthy = groqResults.filter(r => r.status === 'ok').length;
+      const cohereHealthy = cohereResults.filter(r => r.status === 'ok').length;
+      const geminiHealthy = geminiResults.filter(r => r.status === 'ok').length;
+
+      res.json({
+        success: true,
+        summary: {
+          groq: { totalConfigured: groqKeys.length, tested: groqResults.length, healthy: groqHealthy, failing: groqResults.length - groqHealthy, details: groqResults },
+          cohere: { totalConfigured: cohereKeys.length, tested: cohereResults.length, healthy: cohereHealthy, failing: cohereResults.length - cohereHealthy, details: cohereResults },
+          gemini: { totalConfigured: geminiKeys.length, tested: geminiResults.length, healthy: geminiHealthy, failing: geminiResults.length - geminiHealthy, details: geminiResults },
+          bazaarLink: { totalConfigured: bazaarLinkKeys.length }
+        }
+      });
+    } catch (err: any) {
+      res.status(500).json({ success: false, error: err?.message || "Validation probe failed" });
     }
   });
 

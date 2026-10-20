@@ -354,65 +354,101 @@ AUTONOMOUS EXECUTION & SELF-CORRECTION PRINCIPLES:
     for (const p of providersToTry) {
       try {
         if (p === 'groq' && keys.groqKeys.length > 0) {
-          const client = new Groq({ apiKey: keys.groqKeys[0] });
-          const stream = await client.chat.completions.create({
-            model: model && model !== 'auto' ? model : 'llama-3.3-70b-versatile',
-            messages: [
-              { role: 'system', content: systemPrompt },
-              ...messages.map((m: any) => ({
-                role: (m.role === 'model' || m.role === 'assistant' ? 'assistant' : 'user') as 'assistant' | 'user',
-                content: String(m.text || m.content || ''),
-              })),
-            ],
-            max_tokens: maxTokens,
-            temperature: 0.2,
-            stream: true,
-          });
+          const candidateModels = model && model !== 'auto'
+            ? [model, 'qwen/qwen3.8-27b', 'openai/gpt-oss-120b', 'llama-3.3-70b-versatile']
+            : ['qwen/qwen3.8-27b', 'openai/gpt-oss-120b', 'openai/gpt-oss-20b', 'llama-3.3-70b-versatile'];
 
-          for await (const chunk of stream) {
-            const text = chunk.choices[0]?.delta?.content || '';
-            if (text) onChunk(text);
+          for (const apiKey of keys.groqKeys) {
+            try {
+              const client = new Groq({ apiKey });
+              let stepSucceeded = false;
+              for (const groqModel of candidateModels) {
+                try {
+                  const stream = await client.chat.completions.create({
+                    model: groqModel,
+                    messages: [
+                      { role: 'system', content: systemPrompt },
+                      ...messages.map((m: any) => ({
+                        role: (m.role === 'model' || m.role === 'assistant' ? 'assistant' : 'user') as 'assistant' | 'user',
+                        content: String(m.text || m.content || ''),
+                      })),
+                    ],
+                    max_tokens: maxTokens,
+                    temperature: 0.2,
+                    stream: true,
+                  });
+
+                  for await (const chunk of stream) {
+                    const text = chunk.choices[0]?.delta?.content || '';
+                    if (text) onChunk(text);
+                  }
+                  stepSucceeded = true;
+                  break;
+                } catch (mErr: any) {
+                  if (mErr.status === 401) throw mErr;
+                  continue;
+                }
+              }
+              if (stepSucceeded) return true;
+            } catch (kErr: any) {
+              continue;
+            }
           }
-          return true;
+        } else if (p === 'cohere' && keys.cohereKeys.length > 0) {
+          const cohereModel = (model && model !== 'auto' && model !== 'command-r-plus' && model !== 'command-r')
+            ? model
+            : 'command-r-08-2024';
+
+          for (const token of keys.cohereKeys) {
+            try {
+              const client = new CohereClient({ token });
+              const stream = await client.chatStream({
+                message: messages[messages.length - 1]?.text || messages[messages.length - 1]?.content || 'proceed',
+                preamble: systemPrompt,
+                model: cohereModel,
+                chatHistory: messages.slice(0, -1).map((m: any) => ({
+                  role: m.role === 'model' || m.role === 'assistant' ? 'CHATBOT' : 'USER',
+                  message: m.text || m.content || '',
+                })),
+              });
+
+              for await (const chatEvent of stream) {
+                if (chatEvent.eventType === 'text-generation') {
+                  onChunk(chatEvent.text);
+                }
+              }
+              return true;
+            } catch (cErr: any) {
+              continue;
+            }
+          }
         } else if (p === 'gemini' && keys.geminiKeys.length > 0) {
-          const ai = new GoogleGenAI({ apiKey: keys.geminiKeys[0] });
           const contents = messages.map((m: any) => ({
             role: m.role === 'model' || m.role === 'assistant' ? 'model' : 'user',
             parts: [{ text: m.text || m.content || '' }],
           }));
 
-          const response = await ai.models.generateContentStream({
-            model: model && model !== 'auto' ? model : 'gemini-2.5-flash',
-            contents,
-            config: {
-              systemInstruction: systemPrompt,
-              maxOutputTokens: maxTokens,
-              temperature: 0.2,
-            },
-          });
+          for (const apiKey of keys.geminiKeys) {
+            try {
+              const ai = new GoogleGenAI({ apiKey });
+              const response = await ai.models.generateContentStream({
+                model: model && model !== 'auto' ? model : 'gemini-2.5-flash',
+                contents,
+                config: {
+                  systemInstruction: systemPrompt,
+                  maxOutputTokens: maxTokens,
+                  temperature: 0.2,
+                },
+              });
 
-          for await (const chunk of response) {
-            if (chunk.text) onChunk(chunk.text);
-          }
-          return true;
-        } else if (p === 'cohere' && keys.cohereKeys.length > 0) {
-          const client = new CohereClient({ token: keys.cohereKeys[0] });
-          const stream = await client.chatStream({
-            message: messages[messages.length - 1]?.text || messages[messages.length - 1]?.content || 'proceed',
-            preamble: systemPrompt,
-            model: model && model !== 'auto' ? model : 'command-r-plus',
-            chatHistory: messages.slice(0, -1).map((m: any) => ({
-              role: m.role === 'model' || m.role === 'assistant' ? 'CHATBOT' : 'USER',
-              message: m.text || m.content || '',
-            })),
-          });
-
-          for await (const chatEvent of stream) {
-            if (chatEvent.eventType === 'text-generation') {
-              onChunk(chatEvent.text);
+              for await (const chunk of response) {
+                if (chunk.text) onChunk(chunk.text);
+              }
+              return true;
+            } catch (gErr: any) {
+              continue;
             }
           }
-          return true;
         }
       } catch (err: any) {
         console.warn(`[AutonomousAgent] Provider ${p} step error:`, err.message || err);
