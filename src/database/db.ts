@@ -65,7 +65,7 @@ export async function incrementMessageCount(uid: string): Promise<UserProfile> {
     profile = {
       uid,
       email: null,
-      displayName: "Guest User",
+      displayName: "User",
       tier: 'free',
       messageCount: 0,
       lastMessageDate: today,
