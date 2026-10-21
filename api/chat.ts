@@ -37,9 +37,7 @@ export default async function handler(req: any, res: any) {
         if (err) {
           console.error("[Vercel api/chat error]:", err);
           if (!res.headersSent) {
-            res.setHeader("Content-Type", "text/event-stream; charset=utf-8");
-            res.setHeader("Cache-Control", "no-cache, no-transform");
-            res.write(`data: ${JSON.stringify({ text: `\n\n⚡ **VOID AI Notice:** Server error (${err?.message || "Internal error"}). If deployed on Vercel, please check that GEMINI_API_KEY, GROQ_API_KEY, or COHERE_API_KEY are configured in your Vercel Project Settings → Environment Variables.` })}\n\n`);
+            res.write(`data: ${JSON.stringify({ text: `\n\n⚡ **VOID AI Notice:** Server connection issue (${err?.message || "Internal error"}). Please verify your API keys in the AI Admin Panel.` })}\n\n`);
             res.write("data: [DONE]\n\n");
             res.end();
           }

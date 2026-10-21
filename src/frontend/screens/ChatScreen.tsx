@@ -43,9 +43,10 @@ import {
   listenToAIBrainSettings,
   listenToBroadcasts,
   togglePinChat,
-  toggleStarMessage
+  toggleStarMessage,
+  listenToSystemAPIKeys
 } from '../../database/db';
-import { sendMessageToGroq } from '../../api/client';
+import { sendMessageToGroq, setClientSystemKeys } from '../../api/client';
 import { memoryManager } from '../../memory/context';
 import { CommandPalette } from '../components/CommandPalette';
 import { ModelSelectorDropdown } from '../components/ModelSelectorDropdown';
@@ -237,6 +238,18 @@ export function ChatScreen({ userId }: ChatScreenProps) {
   const userScrolledUpRef = useRef(false);
 
   useEffect(() => {
+    const unsubKeys = listenToSystemAPIKeys((keys) => {
+      setClientSystemKeys({
+        groqKeys: keys.groqApiKeys,
+        cohereKeys: keys.cohereApiKeys,
+        bazaarLinkKeys: keys.bazaarLinkApiKeys,
+        geminiKeys: keys.geminiApiKeys,
+      });
+    });
+    return () => unsubKeys();
+  }, []);
+
+  useEffect(() => {
     loadProfileAndChats();
     const unsubProfile = listenToUserProfile(userId, (p) => {
       if (p) setProfile(p);
@@ -297,9 +310,9 @@ export function ChatScreen({ userId }: ChatScreenProps) {
     const userChats = await getUserChats(userId);
     setChats(userChats);
     offlineCache.saveChats(userChats);
-    if (userChats.length > 0 && !currentChatId) {
-      setCurrentChatId(userChats[0].id);
-    }
+    // Anytime you enter the website, always open a fresh, clean chat to eliminate lag and maximize performance!
+    setCurrentChatId(null);
+    setMessages([]);
   };
 
   const loadMessages = async (chatId: string) => {
@@ -350,12 +363,10 @@ export function ChatScreen({ userId }: ChatScreenProps) {
     URL.revokeObjectURL(url);
   };
 
-  const handleNewChat = async () => {
-    const chat = await createChat(userId);
-    const updatedChats = [chat, ...chats];
-    setChats(updatedChats);
-    offlineCache.saveChats(updatedChats);
-    setCurrentChatId(chat.id);
+  const handleNewChat = () => {
+    setCurrentChatId(null);
+    setMessages([]);
+    setStreamingMessage('');
   };
 
   const handleDeleteChat = async (id: string) => {
@@ -364,7 +375,8 @@ export function ChatScreen({ userId }: ChatScreenProps) {
     setChats(updatedChats);
     offlineCache.saveChats(updatedChats);
     if (currentChatId === id) {
-      setCurrentChatId(updatedChats.length > 0 ? updatedChats[0].id : null);
+      setCurrentChatId(null);
+      setMessages([]);
     }
   };
 

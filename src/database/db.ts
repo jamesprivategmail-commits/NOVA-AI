@@ -534,39 +534,41 @@ export function listenToAIBrainSettings(callback: (brain: AIBrainSettings) => vo
 
 import { SystemAPIKeys } from "../models/types";
 
+
+function parseKeysList(arrVal: any, strVal: any): string[] {
+  const result: string[] = [];
+  const collect = (val: any) => {
+    if (!val) return;
+    if (Array.isArray(val)) {
+      for (const item of val) collect(item);
+    } else if (typeof val === 'string') {
+      const parts = val.split(/[\n,;\s]+/).map(k => k.replace(/[\r\n]/g, '').replace(/^["']|["']$/g, '').trim()).filter(k => k && k.length > 5);
+      result.push(...parts);
+    }
+  };
+  collect(arrVal);
+  collect(strVal);
+  return [...new Set(result)];
+}
+
 export async function getSystemAPIKeys(): Promise<SystemAPIKeys> {
   const docRef = doc(db, 'settings', 'apikeys');
   const snap = await getDoc(docRef);
   if (snap.exists()) {
-    const data = snap.data() as SystemAPIKeys;
-    let groqApiKeys: string[] = Array.isArray(data.groqApiKeys) ? data.groqApiKeys.filter(k => typeof k === 'string' && k.trim()) : [];
-    if (groqApiKeys.length === 0 && data.groqApiKey && data.groqApiKey.trim()) {
-      groqApiKeys = [data.groqApiKey.trim()];
-    }
-
-    let cohereApiKeys: string[] = Array.isArray(data.cohereApiKeys) ? data.cohereApiKeys.filter(k => typeof k === 'string' && k.trim()) : [];
-    if (cohereApiKeys.length === 0 && data.cohereApiKey && data.cohereApiKey.trim()) {
-      cohereApiKeys = [data.cohereApiKey.trim()];
-    }
-
-    let bazaarLinkApiKeys: string[] = Array.isArray(data.bazaarLinkApiKeys) ? data.bazaarLinkApiKeys.filter(k => typeof k === 'string' && k.trim()) : [];
-    if (bazaarLinkApiKeys.length === 0 && data.bazaarLinkApiKey && data.bazaarLinkApiKey.trim()) {
-      bazaarLinkApiKeys = [data.bazaarLinkApiKey.trim()];
-    }
-
-    let geminiApiKeys: string[] = Array.isArray((data as any).geminiApiKeys) ? (data as any).geminiApiKeys.filter((k: any) => typeof k === 'string' && k.trim()) : [];
-    if (geminiApiKeys.length === 0 && (data as any).geminiApiKey && (data as any).geminiApiKey.trim()) {
-      geminiApiKeys = [(data as any).geminiApiKey.trim()];
-    }
+    const data = snap.data() as any;
+    const groqApiKeys = parseKeysList(data.groqApiKeys, data.groqApiKey);
+    const cohereApiKeys = parseKeysList(data.cohereApiKeys, data.cohereApiKey);
+    const bazaarLinkApiKeys = parseKeysList(data.bazaarLinkApiKeys, data.bazaarLinkApiKey);
+    const geminiApiKeys = parseKeysList(data.geminiApiKeys, data.geminiApiKey || data.googleApiKey);
 
     return {
-      groqApiKey: data.groqApiKey || (groqApiKeys[0] || ''),
+      groqApiKey: groqApiKeys[0] || (typeof data.groqApiKey === 'string' ? data.groqApiKey.trim() : ''),
       groqApiKeys,
-      cohereApiKey: data.cohereApiKey || (cohereApiKeys[0] || ''),
+      cohereApiKey: cohereApiKeys[0] || (typeof data.cohereApiKey === 'string' ? data.cohereApiKey.trim() : ''),
       cohereApiKeys,
-      bazaarLinkApiKey: data.bazaarLinkApiKey || (bazaarLinkApiKeys[0] || ''),
+      bazaarLinkApiKey: bazaarLinkApiKeys[0] || (typeof data.bazaarLinkApiKey === 'string' ? data.bazaarLinkApiKey.trim() : ''),
       bazaarLinkApiKeys,
-      geminiApiKey: (data as any).geminiApiKey || (geminiApiKeys[0] || ''),
+      geminiApiKey: geminiApiKeys[0] || (typeof data.geminiApiKey === 'string' ? data.geminiApiKey.trim() : ''),
       geminiApiKeys,
       telegramBotToken: data.telegramBotToken || ''
     };
@@ -577,6 +579,31 @@ export async function getSystemAPIKeys(): Promise<SystemAPIKeys> {
 export async function updateSystemAPIKeys(keys: SystemAPIKeys): Promise<void> {
   const docRef = doc(db, 'settings', 'apikeys');
   await setDoc(docRef, keys, { merge: true });
+}
+
+export function listenToSystemAPIKeys(callback: (keys: SystemAPIKeys) => void) {
+  const docRef = doc(db, 'settings', 'apikeys');
+  return onSnapshot(docRef, (snap) => {
+    if (snap.exists()) {
+      const data = snap.data() as any;
+      const groqApiKeys = parseKeysList(data.groqApiKeys, data.groqApiKey);
+      const cohereApiKeys = parseKeysList(data.cohereApiKeys, data.cohereApiKey);
+      const bazaarLinkApiKeys = parseKeysList(data.bazaarLinkApiKeys, data.bazaarLinkApiKey);
+      const geminiApiKeys = parseKeysList(data.geminiApiKeys, data.geminiApiKey || data.googleApiKey);
+
+      callback({
+        groqApiKey: groqApiKeys[0] || (typeof data.groqApiKey === 'string' ? data.groqApiKey.trim() : ''),
+        groqApiKeys,
+        cohereApiKey: cohereApiKeys[0] || (typeof data.cohereApiKey === 'string' ? data.cohereApiKey.trim() : ''),
+        cohereApiKeys,
+        bazaarLinkApiKey: bazaarLinkApiKeys[0] || (typeof data.bazaarLinkApiKey === 'string' ? data.bazaarLinkApiKey.trim() : ''),
+        bazaarLinkApiKeys,
+        geminiApiKey: geminiApiKeys[0] || (typeof data.geminiApiKey === 'string' ? data.geminiApiKey.trim() : ''),
+        geminiApiKeys,
+        telegramBotToken: data.telegramBotToken || ''
+      });
+    }
+  });
 }
 
 export async function sendBroadcastMessage(title: string, message: string, senderName: string = "Admin", targetTier: 'all' | UserTier = 'all'): Promise<BroadcastMessage> {

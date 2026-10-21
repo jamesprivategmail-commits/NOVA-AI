@@ -355,8 +355,8 @@ AUTONOMOUS EXECUTION & SELF-CORRECTION PRINCIPLES:
       try {
         if (p === 'groq' && keys.groqKeys.length > 0) {
           const candidateModels = model && model !== 'auto'
-            ? [model, 'qwen/qwen3.8-27b', 'openai/gpt-oss-120b', 'llama-3.3-70b-versatile']
-            : ['qwen/qwen3.8-27b', 'openai/gpt-oss-120b', 'openai/gpt-oss-20b', 'llama-3.3-70b-versatile'];
+            ? [model, 'qwen/qwen3.8-27b', 'openai/gpt-oss-120b', 'allam-2-7b']
+            : ['qwen/qwen3.8-27b', 'openai/gpt-oss-120b', 'openai/gpt-oss-20b', 'allam-2-7b'];
 
           for (const apiKey of keys.groqKeys) {
             try {

@@ -22,6 +22,7 @@ import { autonomousAgent } from "./agent/autonomousAgent.js";
 import http from "http";
 
 import { GoogleGenAI } from "@google/genai";
+import { CohereClient } from "cohere-ai";
 dotenv.config();
 
 export function cleanKey(k: any): string {
@@ -31,22 +32,28 @@ export function cleanKey(k: any): string {
 
 export function parseKeysFromInput(val: any): string[] {
   if (!val) return [];
-  if (Array.isArray(val)) {
-    return val.map(cleanKey).filter(k => k && k.length > 5);
-  }
-  if (typeof val === 'string') {
-    const trimmed = val.trim();
-    if (trimmed.startsWith('[') && trimmed.endsWith(']')) {
-      try {
-        const parsed = JSON.parse(trimmed);
-        if (Array.isArray(parsed)) {
-          return parsed.map(cleanKey).filter(k => k && k.length > 5);
-        }
-      } catch (_) {}
+  const list: string[] = [];
+  const collect = (item: any) => {
+    if (!item) return;
+    if (Array.isArray(item)) {
+      for (const sub of item) collect(sub);
+    } else if (typeof item === 'string') {
+      const trimmed = item.trim();
+      if (trimmed.startsWith('[') && trimmed.endsWith(']')) {
+        try {
+          const parsed = JSON.parse(trimmed);
+          if (Array.isArray(parsed)) {
+            collect(parsed);
+            return;
+          }
+        } catch (_) {}
+      }
+      const parts = trimmed.split(/[\n,;\s]+/).map(cleanKey).filter(k => k && k.length > 5);
+      list.push(...parts);
     }
-    return trimmed.split(/[\n,;\s]+/).map(cleanKey).filter(k => k && k.length > 5);
-  }
-  return [];
+  };
+  collect(val);
+  return [...new Set(list)];
 }
 
 export function getEnvKeys(): { groqKeys: string[]; cohereKeys: string[]; bazaarLinkKeys: string[]; geminiKeys: string[] } {
@@ -137,11 +144,36 @@ export function initSystemKeysListener(): void {
   }
 }
 
-export async function getSystemKeys(): Promise<SystemKeysPool> {
+export async function getSystemKeys(clientKeys?: {
+  groqKeys?: string[];
+  cohereKeys?: string[];
+  bazaarLinkKeys?: string[];
+  geminiKeys?: string[];
+}): Promise<SystemKeysPool> {
   initSystemKeysListener();
 
   const envKeys = getEnvKeys();
+  const clientGroq = parseKeysFromInput(clientKeys?.groqKeys);
+  const clientCohere = parseKeysFromInput(clientKeys?.cohereKeys);
+  const clientBazaar = parseKeysFromInput(clientKeys?.bazaarLinkKeys);
+  const clientGemini = parseKeysFromInput(clientKeys?.geminiKeys);
   const now = Date.now();
+
+  // If client provided keys, merge them directly into cache and reset health manager if needed
+  if (clientGroq.length > 0 || clientCohere.length > 0 || clientBazaar.length > 0 || clientGemini.length > 0) {
+    const mergedGroq = [...new Set([...clientGroq, ...(cachedSystemKeys?.groqKeys || []), ...envKeys.groqKeys])];
+    const mergedCohere = [...new Set([...clientCohere, ...(cachedSystemKeys?.cohereKeys || []), ...envKeys.cohereKeys])];
+    const mergedBazaar = [...new Set([...clientBazaar, ...(cachedSystemKeys?.bazaarLinkKeys || []), ...envKeys.bazaarLinkKeys])];
+    const mergedGemini = [...new Set([...clientGemini, ...(cachedSystemKeys?.geminiKeys || []), ...envKeys.geminiKeys])];
+    cachedSystemKeys = {
+      groqKeys: mergedGroq,
+      cohereKeys: mergedCohere,
+      bazaarLinkKeys: mergedBazaar,
+      geminiKeys: mergedGemini,
+    };
+    lastSystemKeysFetchTime = now;
+    return cachedSystemKeys;
+  }
 
   // If cached keys have active keys, return immediately to eliminate latency and avoid timeouts
   if (
@@ -150,7 +182,7 @@ export async function getSystemKeys(): Promise<SystemKeysPool> {
       cachedSystemKeys.cohereKeys.length > 0 ||
       cachedSystemKeys.geminiKeys.length > 0 ||
       cachedSystemKeys.bazaarLinkKeys.length > 0) &&
-    now - lastSystemKeysFetchTime < 60000
+    now - lastSystemKeysFetchTime < 120000
   ) {
     return cachedSystemKeys;
   }
@@ -163,7 +195,7 @@ export async function getSystemKeys(): Promise<SystemKeysPool> {
   try {
     const keysRef = doc(db, "settings", "apikeys");
     const fetchDocPromise = getDoc(keysRef);
-    const timeoutPromise = new Promise<null>((resolve) => setTimeout(() => resolve(null), 5000));
+    const timeoutPromise = new Promise<null>((resolve) => setTimeout(() => resolve(null), 10000));
     const keysSnap = await Promise.race([fetchDocPromise, timeoutPromise]);
 
     if (keysSnap && (keysSnap as any).exists && (keysSnap as any).exists()) {
@@ -405,8 +437,14 @@ export async function executeGroqWithRotation(
   res: any,
   imageDataUrl?: string
 ) {
-  const { healthyKeys, skippedReasons } = keyHealthManager.filterHealthyKeys(groqKeys, 'groq');
+  let { healthyKeys, skippedReasons } = keyHealthManager.filterHealthyKeys(groqKeys, 'groq');
   
+  if (healthyKeys.length === 0 && groqKeys.length > 0) {
+    console.warn(`[Groq Validation] All ${groqKeys.length} keys were flagged. Resetting key health map to retry.`);
+    keyHealthManager.clearAllBadKeys();
+    healthyKeys = groqKeys.filter(k => keyHealthManager.isKeyFormatValid(k, 'groq'));
+  }
+
   if (healthyKeys.length === 0) {
     if (skippedReasons.length > 0) {
       console.warn(`[Groq Validation] Skipped invalid/bad keys: ${skippedReasons.join(', ')}`);
@@ -418,7 +456,7 @@ export async function executeGroqWithRotation(
   const defaultModels = AI_CONFIG.providers.groq.models;
   const models = imageDataUrl
     ? [VISION_MODEL, ...defaultModels]
-    : requestedModel && defaultModels.includes(requestedModel)
+    : requestedModel && requestedModel !== 'auto' && defaultModels.includes(requestedModel)
       ? [requestedModel, ...defaultModels.filter(m => m !== requestedModel)]
       : defaultModels;
 
@@ -543,8 +581,14 @@ export function extractUrls(text: string): string[] {
 const unsupportedCohereModels = new Set<string>();
 
 export async function executeCohereWithRotation(messages: any[], systemPrompt: string, maxTokens: number = 1024, requestedModel: string | undefined, cohereKeys: string[], res: any) {
-  const { healthyKeys, skippedReasons } = keyHealthManager.filterHealthyKeys(cohereKeys, 'cohere');
+  let { healthyKeys, skippedReasons } = keyHealthManager.filterHealthyKeys(cohereKeys, 'cohere');
   
+  if (healthyKeys.length === 0 && cohereKeys.length > 0) {
+    console.warn(`[Cohere Validation] All ${cohereKeys.length} keys were flagged. Resetting key health map to retry.`);
+    keyHealthManager.clearAllBadKeys();
+    healthyKeys = cohereKeys.filter(k => keyHealthManager.isKeyFormatValid(k, 'cohere'));
+  }
+
   if (healthyKeys.length === 0) {
     if (skippedReasons.length > 0) {
       console.warn(`[Cohere Validation] Skipped invalid/bad keys: ${skippedReasons.join(', ')}`);
@@ -660,8 +704,14 @@ export async function executeCohereWithRotation(messages: any[], systemPrompt: s
 }
 
 export async function executeBazaarLinkWithRotation(messages: any[], systemPrompt: string, maxTokens: number = 1024, requestedModel: string | undefined, bazaarLinkKeys: string[], res: any) {
-  const { healthyKeys, skippedReasons } = keyHealthManager.filterHealthyKeys(bazaarLinkKeys, 'bazaarlink');
+  let { healthyKeys, skippedReasons } = keyHealthManager.filterHealthyKeys(bazaarLinkKeys, 'bazaarlink');
   
+  if (healthyKeys.length === 0 && bazaarLinkKeys.length > 0) {
+    console.warn(`[BazaarLink Validation] All ${bazaarLinkKeys.length} keys were flagged. Resetting key health map to retry.`);
+    keyHealthManager.clearAllBadKeys();
+    healthyKeys = bazaarLinkKeys.filter(k => keyHealthManager.isKeyFormatValid(k, 'bazaarlink'));
+  }
+
   if (healthyKeys.length === 0) {
     if (skippedReasons.length > 0) {
       console.warn(`[BazaarLink Validation] Skipped invalid/bad keys: ${skippedReasons.join(', ')}`);
@@ -779,7 +829,13 @@ export async function executeGeminiWithRotation(
   res: any,
   imageDataUrl?: string
 ) {
-  const { healthyKeys, skippedReasons } = keyHealthManager.filterHealthyKeys(geminiKeys, 'gemini');
+  let { healthyKeys, skippedReasons } = keyHealthManager.filterHealthyKeys(geminiKeys, 'gemini');
+
+  if (healthyKeys.length === 0 && geminiKeys.length > 0) {
+    console.warn(`[Gemini Validation] All ${geminiKeys.length} keys were flagged. Resetting key health map to retry.`);
+    keyHealthManager.clearAllBadKeys();
+    healthyKeys = geminiKeys.filter(k => keyHealthManager.isKeyFormatValid(k, 'gemini'));
+  }
 
   if (healthyKeys.length === 0) {
     if (skippedReasons.length > 0) {
@@ -1069,7 +1125,7 @@ export function createApp(): express.Express {
         (res as any).flushHeaders();
       }
 
-      const { groqKeys, cohereKeys, bazaarLinkKeys, geminiKeys } = await getSystemKeys();
+      const { groqKeys, cohereKeys, bazaarLinkKeys, geminiKeys } = await getSystemKeys(req.body?.clientKeys);
 
       // Retrieve user profile directly from Firestore backend
       const { userTier: dbTier, isBanned, isAdmin, messageCount, lastMessageDate, lastResetTime, brainSettings: fetchedBrainSettings } = await fetchUserAndTierSettings(userId);
@@ -1236,14 +1292,13 @@ export function createApp(): express.Express {
         }
       }
 
-      // Check if user request involves autonomous actions, terminal, coding, building, or processes
+      // Check if user request involves explicit autonomous actions, terminal, or coding mode
       const isAutonomousRequest = Boolean(
         req.body.autonomous ||
         githubContext?.codingMode ||
         messagesForAI.some((m: any) => {
-          const txt = String(m.text || m.content || '').toLowerCase();
-          return /^(run\s+|\$\s*|npm\s|git\s|python\s|node\s|build|install|test|create|debug|make|write|mkdir|curl|pytest|cargo)/i.test(txt) ||
-            txt.includes('terminal') || txt.includes('workspace') || txt.includes('install') || txt.includes('deploy') || txt.includes('background') || txt.includes('preview');
+          const txt = String(m.text || m.content || '').trim().toLowerCase();
+          return /^(\$\s+|run\s+|npm\s+|npx\s+|git\s+|python\s+|node\s+|pip\s+|cargo\s+|bash\s+|sh\s+)/i.test(txt);
         })
       );
 
@@ -1310,9 +1365,9 @@ export function createApp(): express.Express {
         let errNotice = "⚡ **VOID AI Traffic Notice:** Our AI connection pool is undergoing high demand. Please re-send your message in a moment or select a different model engine from the top bar.";
         
         if (groqKeys.length === 0 && cohereKeys.length === 0 && bazaarLinkKeys.length === 0 && geminiKeys.length === 0) {
-          errNotice = "⚡ **API Key Configuration Notice:** No active AI provider keys found in this environment. If deploying on Vercel, please add `GEMINI_API_KEY`, `GROQ_API_KEY`, or `COHERE_API_KEY` to your Vercel Project Settings → Environment Variables.";
+          errNotice = "⚡ **API Key Configuration Notice:** No active AI provider keys found. Please ensure you have added valid API keys in the AI Admin Panel on the website.";
         } else if (errMessage.toLowerCase().includes("healthy") || errMessage.toLowerCase().includes("valid")) {
-          errNotice = "⚡ **API Key Validation Notice:** Configured AI provider keys are currently invalid or depleted. Please check system API key configuration in Admin Settings or add `GEMINI_API_KEY` / `GROQ_API_KEY` to your Vercel Environment Variables.";
+          errNotice = "⚡ **API Key Validation Notice:** Configured AI provider keys are currently invalid or depleted. Please check your system API key configuration in Admin Settings.";
         } else if (errMessage.toLowerCase().includes("rate_limit_exceeded") || errMessage.toLowerCase().includes("rate limit") || errMessage.toLowerCase().includes("429") || errMessage.toLowerCase().includes("tokens")) {
           errNotice = "⚡ **Rate Limit Notice:** Provider rate or token limit reached on current model. Please switch engine in the top bar.";
         }

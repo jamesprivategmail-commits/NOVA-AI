@@ -18,6 +18,50 @@ export interface ChatTelemetryResult {
   totalTokens: number;
 }
 
+// In-memory and localStorage cache for system API keys loaded from Firestore on client
+let cachedClientKeys: {
+  groqKeys?: string[];
+  cohereKeys?: string[];
+  bazaarLinkKeys?: string[];
+  geminiKeys?: string[];
+} | null = null;
+
+export function setClientSystemKeys(keys: {
+  groqKeys?: string[];
+  cohereKeys?: string[];
+  bazaarLinkKeys?: string[];
+  geminiKeys?: string[];
+}) {
+  cachedClientKeys = keys;
+  try {
+    localStorage.setItem('void_ai_client_system_keys', JSON.stringify(keys));
+  } catch (_) {}
+}
+
+export function getClientSystemKeys(): {
+  groqKeys?: string[];
+  cohereKeys?: string[];
+  bazaarLinkKeys?: string[];
+  geminiKeys?: string[];
+} | null {
+  if (cachedClientKeys && (
+    (cachedClientKeys.groqKeys && cachedClientKeys.groqKeys.length > 0) ||
+    (cachedClientKeys.cohereKeys && cachedClientKeys.cohereKeys.length > 0) ||
+    (cachedClientKeys.geminiKeys && cachedClientKeys.geminiKeys.length > 0) ||
+    (cachedClientKeys.bazaarLinkKeys && cachedClientKeys.bazaarLinkKeys.length > 0)
+  )) {
+    return cachedClientKeys;
+  }
+  try {
+    const raw = localStorage.getItem('void_ai_client_system_keys');
+    if (raw) {
+      cachedClientKeys = JSON.parse(raw);
+      return cachedClientKeys;
+    }
+  } catch (_) {}
+  return null;
+}
+
 export async function sendMessageToGroq(
   messages: { role: string; text: string }[], 
   systemPrompt: string = '',
@@ -28,14 +72,31 @@ export async function sendMessageToGroq(
   provider: 'groq' | 'cohere' | 'bazaarlink' | 'gemini' = 'groq',
   model?: string,
   attachment?: ChatAttachment,
-  githubContext?: GitHubContextPayload
+  githubContext?: GitHubContextPayload,
+  clientKeysParam?: {
+    groqKeys?: string[];
+    cohereKeys?: string[];
+    bazaarLinkKeys?: string[];
+    geminiKeys?: string[];
+  }
 ): Promise<ChatTelemetryResult> {
   const startTime = performance.now();
   let firstTokenTime: number | null = null;
   let accumulatedChars = 0;
   let chunkCount = 0;
   try {
-    const payload = JSON.stringify({ messages, systemPrompt, userId, userTier, provider, model, attachment, githubContext });
+    const clientKeys = clientKeysParam || getClientSystemKeys();
+    const payload = JSON.stringify({ 
+      messages, 
+      systemPrompt, 
+      userId, 
+      userTier, 
+      provider, 
+      model, 
+      attachment, 
+      githubContext,
+      clientKeys: clientKeys || undefined
+    });
 
     let response: Response;
     try {
@@ -112,7 +173,7 @@ export async function sendMessageToGroq(
       if (errText.includes("<!DOCTYPE") || errText.includes("<html") || response.status === 404) {
         errText = "⚡ **VOID AI Server Notice:** Backend API route unreachable. Please verify server connectivity or model selection.";
       } else if (!errText || errText === 'API status 500' || errText === 'Internal server error') {
-        errText = "⚡ **VOID AI Server Notice:** Server returned an internal error. Please check your API key vault in Admin Settings.";
+        errText = "⚡ **VOID AI Server Notice:** AI completion encountered a server issue. Your API keys from the admin panel are being refreshed. Please try again or switch model.";
       }
       throw new Error(errText);
     }

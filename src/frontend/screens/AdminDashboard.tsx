@@ -3,6 +3,7 @@ import { UserProfile, SupportChat, PricingSettings, AIBrainSettings, SystemAPIKe
 import { listenToAllUsers, updateUserTier, updateUserStatus, updateUserVerification, updateUserSupportStaff, listenToAllSupportChats, getPricingSettings, updatePricingSettings, getAIBrainSettings, updateAIBrainSettings, listenToAIBrainSettings, getSystemAPIKeys, updateSystemAPIKeys, sendBroadcastMessage, listenToBroadcasts, deleteBroadcast, clearAllBroadcasts, grantUserWalletFunds, withdrawUserWalletFunds, resetUserWalletBalance, listenToWalletTransactions } from '../../database/db';
 import { X, ArrowLeft, Shield, Crown, User, RefreshCw, Ban, CheckCircle, BadgeCheck, MessageSquare, ChevronUp, ChevronDown, DollarSign, Cpu, Save, Sparkles, Key, Eye, EyeOff, Lock, ShieldCheck, Trash2, Radio, Megaphone, Maximize2, Search, Check, Wallet, CreditCard, History, Plus, Bot, Send, ExternalLink } from 'lucide-react';
 import { clsx } from 'clsx';
+import { setClientSystemKeys } from '../../api/client';
 import { SupportChatScreen } from './SupportChatScreen';
 import { FullPageSupportDesk } from './FullPageSupportDesk';
 
@@ -67,9 +68,11 @@ export function AdminDashboard({ onClose }: AdminDashboardProps) {
   const [groqKeysList, setGroqKeysList] = useState<string[]>(Array(10).fill(''));
   const [cohereKeysList, setCohereKeysList] = useState<string[]>(Array(10).fill(''));
   const [bazaarLinkKeysList, setBazaarLinkKeysList] = useState<string[]>(Array(10).fill(''));
+  const [geminiKeysList, setGeminiKeysList] = useState<string[]>(Array(10).fill(''));
   const [bulkGroqText, setBulkGroqText] = useState<string>('');
   const [bulkCohereText, setBulkCohereText] = useState<string>('');
   const [bulkBazaarLinkText, setBulkBazaarLinkText] = useState<string>('');
+  const [bulkGeminiText, setBulkGeminiText] = useState<string>('');
   const [keyInputMode, setKeyInputMode] = useState<'slots' | 'bulk'>('bulk');
   const [showKeys, setShowKeys] = useState(false);
   const [savingKey, setSavingKey] = useState(false);
@@ -190,10 +193,19 @@ export function AdminDashboard({ onClose }: AdminDashboardProps) {
       const gKeys = keys.groqApiKeys && keys.groqApiKeys.length > 0 ? keys.groqApiKeys : (keys.groqApiKey ? [keys.groqApiKey] : []);
       const cKeys = keys.cohereApiKeys && keys.cohereApiKeys.length > 0 ? keys.cohereApiKeys : (keys.cohereApiKey ? [keys.cohereApiKey] : []);
       const bKeys = keys.bazaarLinkApiKeys && keys.bazaarLinkApiKeys.length > 0 ? keys.bazaarLinkApiKeys : (keys.bazaarLinkApiKey ? [keys.bazaarLinkApiKey] : []);
+      const gemKeys = keys.geminiApiKeys && keys.geminiApiKeys.length > 0 ? keys.geminiApiKeys : (keys.geminiApiKey ? [keys.geminiApiKey] : []);
 
       setBulkGroqText(gKeys.join('\n'));
       setBulkCohereText(cKeys.join('\n'));
       setBulkBazaarLinkText(bKeys.join('\n'));
+      setBulkGeminiText(gemKeys.join('\n'));
+
+      setClientSystemKeys({
+        groqKeys: gKeys,
+        cohereKeys: cKeys,
+        bazaarLinkKeys: bKeys,
+        geminiKeys: gemKeys,
+      });
 
       if (keys.telegramBotToken) {
         setTelegramTokenInput(keys.telegramBotToken);
@@ -210,6 +222,10 @@ export function AdminDashboard({ onClose }: AdminDashboardProps) {
       const bList = Array(10).fill('');
       bKeys.slice(0, 10).forEach((k, idx) => { bList[idx] = k; });
       setBazaarLinkKeysList(bList);
+
+      const gemList = Array(10).fill('');
+      gemKeys.slice(0, 10).forEach((k, idx) => { gemList[idx] = k; });
+      setGeminiKeysList(gemList);
     });
 
     const unsubTxs = listenToWalletTransactions(null, (list) => {
@@ -364,6 +380,7 @@ export function AdminDashboard({ onClose }: AdminDashboardProps) {
       const parsedGroq = parseRawKeyInput(bulkGroqText, groqKeysList);
       const parsedCohere = parseRawKeyInput(bulkCohereText, cohereKeysList);
       const parsedBazaarLink = parseRawKeyInput(bulkBazaarLinkText, bazaarLinkKeysList);
+      const parsedGemini = parseRawKeyInput(bulkGeminiText, geminiKeysList);
 
       const payload: any = { 
         groqApiKey: parsedGroq[0] || '',
@@ -371,7 +388,9 @@ export function AdminDashboard({ onClose }: AdminDashboardProps) {
         cohereApiKey: parsedCohere[0] || '',
         cohereApiKeys: parsedCohere,
         bazaarLinkApiKey: parsedBazaarLink[0] || '',
-        bazaarLinkApiKeys: parsedBazaarLink
+        bazaarLinkApiKeys: parsedBazaarLink,
+        geminiApiKey: parsedGemini[0] || '',
+        geminiApiKeys: parsedGemini,
       };
 
       if (telegramTokenInput.trim()) {
@@ -379,6 +398,23 @@ export function AdminDashboard({ onClose }: AdminDashboardProps) {
       }
 
       await updateSystemAPIKeys(payload);
+
+      // Immediately cache in client storage
+      setClientSystemKeys({
+        groqKeys: parsedGroq,
+        cohereKeys: parsedCohere,
+        bazaarLinkKeys: parsedBazaarLink,
+        geminiKeys: parsedGemini,
+      });
+
+      // Synchronously notify the backend server to refresh in-memory keys
+      try {
+        await fetch('/api/admin/reload-keys', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+      } catch (_) {}
 
       // If a telegram token was provided, also sync directly to settings/telegram and notify the backend
       if (telegramTokenInput.trim()) {
@@ -405,6 +441,7 @@ export function AdminDashboard({ onClose }: AdminDashboardProps) {
       setBulkGroqText(parsedGroq.join('\n'));
       setBulkCohereText(parsedCohere.join('\n'));
       setBulkBazaarLinkText(parsedBazaarLink.join('\n'));
+      setBulkGeminiText(parsedGemini.join('\n'));
 
       const newGList = Array(10).fill('');
       parsedGroq.slice(0, 10).forEach((k, idx) => { newGList[idx] = k; });
@@ -417,6 +454,10 @@ export function AdminDashboard({ onClose }: AdminDashboardProps) {
       const newBList = Array(10).fill('');
       parsedBazaarLink.slice(0, 10).forEach((k, idx) => { newBList[idx] = k; });
       setBazaarLinkKeysList(newBList);
+
+      const newGemList = Array(10).fill('');
+      parsedGemini.slice(0, 10).forEach((k, idx) => { newGemList[idx] = k; });
+      setGeminiKeysList(newGemList);
 
       setKeySaveSuccess(true);
       setTimeout(() => setKeySaveSuccess(false), 3000);
@@ -1942,7 +1983,7 @@ export function AdminDashboard({ onClose }: AdminDashboardProps) {
                 </div>
 
                 {/* Status Bar */}
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 p-4 bg-[#252527]/60 border border-[#38383b] rounded-xl">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 p-4 bg-[#252527]/60 border border-[#38383b] rounded-xl">
                   <div className="flex items-center justify-between px-3 py-2 bg-[#202022]/80 border border-[#38383b] rounded-lg">
                     <div className="flex items-center gap-2">
                       <span className="w-2.5 h-2.5 rounded-full bg-[#3f86ff] animate-pulse"></span>
@@ -1970,6 +2011,16 @@ export function AdminDashboard({ onClose }: AdminDashboardProps) {
                     </div>
                     <span className="text-xs font-bold text-amber-400">
                       {parseRawKeyInput(bulkBazaarLinkText, bazaarLinkKeysList).length} BAZAARLINK KEYS
+                    </span>
+                  </div>
+
+                  <div className="flex items-center justify-between px-3 py-2 bg-[#202022]/80 border border-emerald-950/60 rounded-lg">
+                    <div className="flex items-center gap-2">
+                      <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse"></span>
+                      <span className="text-xs font-bold text-white">GEMINI POOL</span>
+                    </div>
+                    <span className="text-xs font-bold text-emerald-400">
+                      {parseRawKeyInput(bulkGeminiText, geminiKeysList).length} GEMINI KEYS
                     </span>
                   </div>
                 </div>
@@ -2044,6 +2095,30 @@ export function AdminDashboard({ onClose }: AdminDashboardProps) {
                         onChange={(e) => setBulkBazaarLinkText(e.target.value)}
                         placeholder="bazaarlink_key1...\nbazaarlink_key2..."
                         className="w-full bg-[#202022] border border-[#38383b] rounded-xl p-3 text-white text-xs focus:border-amber-500 outline-none leading-relaxed"
+                        style={!showKeys ? ({ WebkitTextSecurity: 'disc' } as React.CSSProperties) : undefined}
+                      />
+                    </div>
+
+                    {/* BULK GEMINI KEYS TEXTAREA */}
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between">
+                        <label className="text-xs font-bold text-emerald-400 uppercase tracking-wider flex items-center gap-2">
+                          <Cpu size={14} />
+                          <span>Bulk Gemini / Google AI Keys Vault (Paste up to 100 Keys)</span>
+                        </label>
+                        <span className="text-[11px] text-[#8d8d91]">
+                          {parseRawKeyInput(bulkGeminiText, []).length} keys detected
+                        </span>
+                      </div>
+                      <p className="text-[11px] text-[#8d8d91]">
+                        Paste all your Google Gemini API keys (`AIza...`) here. VOID AI automatically rotates through all active keys.
+                      </p>
+                      <textarea
+                        rows={4}
+                        value={bulkGeminiText}
+                        onChange={(e) => setBulkGeminiText(e.target.value)}
+                        placeholder="AIzaSy...\nAIzaSy..."
+                        className="w-full bg-[#202022] border border-[#38383b] rounded-xl p-3 text-white text-xs focus:border-emerald-500 outline-none leading-relaxed"
                         style={!showKeys ? ({ WebkitTextSecurity: 'disc' } as React.CSSProperties) : undefined}
                       />
                     </div>
