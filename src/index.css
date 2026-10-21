@@ -12,12 +12,26 @@
     width: 100%;
     margin: 0;
     padding: 0;
-    overflow: hidden;
-    overscroll-behavior: none;
+    overflow-x: hidden;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
     -webkit-tap-highlight-color: transparent;
     text-rendering: optimizeSpeed;
+  }
+
+  input, textarea, select, [contenteditable="true"] {
+    user-select: text !important;
+    -webkit-user-select: text !important;
+    pointer-events: auto !important;
+  }
+
+  button, a {
+    pointer-events: auto !important;
+    touch-action: manipulation;
+  }
+
+  #aistudio-design-mode-overlay {
+    pointer-events: none !important;
   }
 
   code, pre, kbd, samp, .font-mono {

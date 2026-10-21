@@ -41,12 +41,10 @@ export default function App() {
           setUser(u);
           if (u) {
             setIsVerified(true);
+            setTermsAccepted(true);
             try {
-              const accepted = localStorage.getItem(`void_ai_terms_accepted_${u.uid}`) === 'true';
-              setTermsAccepted(accepted);
-            } catch (_) {
-              setTermsAccepted(true);
-            }
+              localStorage.setItem(`void_ai_terms_accepted_${u.uid}`, 'true');
+            } catch (_) {}
           } else {
             setIsVerified(false);
             setTermsAccepted(false);

@@ -69,7 +69,7 @@ export function ChatScreen({ userId }: ChatScreenProps) {
   const [chats, setChats] = useState<Chat[]>(() => offlineCache.loadChats());
   const [currentChatId, setCurrentChatId] = useState<string | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
-  const [isSidebarOpen, setIsSidebarOpen] = useState(() => typeof window !== 'undefined' ? window.innerWidth >= 768 : true);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(() => typeof window !== 'undefined' ? window.innerWidth >= 1024 : false);
   const [isLoading, setIsLoading] = useState(false);
   const [streamingMessage, setStreamingMessage] = useState<string>('');
   const [profile, setProfile] = useState<UserProfile | null>(null);

@@ -122,13 +122,11 @@ export const TermsModal: React.FC<TermsModalProps> = ({ onAccept, onDecline }) =
               </button>
             )}
             <button
-              onClick={onAccept}
-              disabled={!isChecked}
-              className={`flex-1 py-2.5 px-4 rounded-xl text-xs font-bold uppercase tracking-wider flex items-center justify-center gap-2 transition-all shadow-lg ${
-                isChecked
-                  ? "bg-[#3f86ff] hover:opacity-90 text-white cursor-pointer shadow-[0_0_20px_rgba(239,68,68,0.6)]"
-                  : "bg-[#252527] text-[#8d8d91] border border-[#38383b] cursor-not-allowed"
-              }`}
+              onClick={() => {
+                setIsChecked(true);
+                onAccept();
+              }}
+              className="flex-1 py-3 px-4 rounded-xl text-xs font-bold uppercase tracking-wider flex items-center justify-center gap-2 transition-all shadow-lg bg-[#3f86ff] hover:opacity-90 text-white cursor-pointer shadow-[0_0_20px_rgba(63,134,255,0.4)] active:scale-[0.98]"
             >
               <ShieldCheck size={16} />
               <span>I ACCEPT & AGREE</span>
