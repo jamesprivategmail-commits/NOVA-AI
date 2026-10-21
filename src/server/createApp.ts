@@ -1039,7 +1039,7 @@ export function createApp(): express.Express {
         const routeParam = parsed.searchParams.get("__route");
         if (routeParam) {
           req.url = routeParam;
-        } else {
+        } else if (parsed.pathname.startsWith("/api") || parsed.pathname.startsWith("/v1")) {
           const cleanPath = parsed.pathname.replace(/\.(ts|js)$/i, '');
           if (cleanPath !== parsed.pathname) {
             req.url = cleanPath + (parsed.search || '');
