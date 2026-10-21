@@ -1078,6 +1078,7 @@ export function createApp(): express.Express {
     res.removeHeader("X-Frame-Options");
     next();
   });
+  app.use(express.static(path.join(process.cwd(), "public")));
   app.use(express.json({ limit: '20mb' }));
 
   // Normalize POST requests hitting /api, /, or /api/ to /api/chat after body is parsed
@@ -1746,13 +1747,34 @@ export function createApp(): express.Express {
 
   // Serve VOID AI Logo Image
   app.get(["/void-logo.jpg", "/api/void-logo.jpg"], (req, res) => {
-    const logoPath = path.join(process.cwd(), "src", "assets", "images", "void_ai_logo_1786145082397.jpg");
-    if (fs.existsSync(logoPath)) {
-      res.header("Access-Control-Allow-Origin", "*");
-      res.sendFile(logoPath);
-    } else {
-      res.status(404).send("Image not found");
+    const paths = [
+      path.join(process.cwd(), "public", "void-logo.jpg"),
+      path.join(process.cwd(), "src", "assets", "images", "void_ai_logo_1786145082397.jpg")
+    ];
+    for (const p of paths) {
+      if (fs.existsSync(p)) {
+        res.header("Access-Control-Allow-Origin", "*");
+        res.header("Content-Type", "image/jpeg");
+        return res.sendFile(p);
+      }
     }
+    res.status(404).send("Image not found");
+  });
+
+  // Serve VOID AI Wallpaper Image
+  app.get(["/void-wallpaper.jpg", "/api/void-wallpaper.jpg"], (req, res) => {
+    const paths = [
+      path.join(process.cwd(), "public", "void-wallpaper.jpg"),
+      path.join(process.cwd(), "src", "assets", "images", "void_night_mountains_1791012408359.jpg")
+    ];
+    for (const p of paths) {
+      if (fs.existsSync(p)) {
+        res.header("Access-Control-Allow-Origin", "*");
+        res.header("Content-Type", "image/jpeg");
+        return res.sendFile(p);
+      }
+    }
+    res.status(404).send("Wallpaper not found");
   });
 
   // Telegram Status Endpoint

@@ -9,7 +9,11 @@ import {
 import { AlertCircle, RefreshCw, Mail, Lock, CheckCircle2, ShieldCheck } from 'lucide-react';
 import { validateEmail, validatePassword } from '../../utils/security';
 
-export function AuthScreen() {
+interface AuthScreenProps {
+  onGuestLogin?: () => void;
+}
+
+export function AuthScreen({ onGuestLogin }: AuthScreenProps = {}) {
   const [error, setError] = useState('');
   const [infoMsg, setInfoMsg] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -212,6 +216,24 @@ export function AuthScreen() {
                 <span>{isRegistering ? 'REGISTER WITH EMAIL' : 'SIGN IN'}</span>
               )}
             </button>
+
+            {onGuestLogin && (
+              <>
+                <div className="relative flex py-1 items-center">
+                  <div className="flex-grow border-t border-[#38383b]"></div>
+                  <span className="flex-shrink mx-3 text-[10px] text-[#8d8d91] uppercase tracking-widest font-semibold">OR</span>
+                  <div className="flex-grow border-t border-[#38383b]"></div>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={onGuestLogin}
+                  className="w-full py-2.5 bg-[#252527] hover:bg-[#2e2e30] border border-[#38383b] text-white font-bold text-xs rounded-xl transition-all cursor-pointer uppercase tracking-wider flex items-center justify-center gap-2"
+                >
+                  <span>CONTINUE AS GUEST</span>
+                </button>
+              </>
+            )}
           </form>
         </div>
       </div>

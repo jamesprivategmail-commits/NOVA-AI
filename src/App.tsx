@@ -10,50 +10,94 @@ const ChatScreen = lazy(() => import('./frontend/screens/ChatScreen').then(m => 
 
 export default function App() {
   const [user, setUser] = useState<FirebaseUser | null>(null);
+  const [isGuest, setIsGuest] = useState(() => {
+    try {
+      return localStorage.getItem('void_ai_guest_mode') === 'true';
+    } catch (_) {
+      return false;
+    }
+  });
   const [loading, setLoading] = useState(true);
   const [isVerified, setIsVerified] = useState(false);
   const [termsAccepted, setTermsAccepted] = useState(false);
 
   useEffect(() => {
-    const auth = getAuth(app);
     let resolved = false;
-    const unsubscribe = onAuthStateChanged(auth, (u) => {
-      resolved = true;
-      setUser(u);
-      if (u) {
-        setIsVerified(true);
-        const accepted = localStorage.getItem(`void_ai_terms_accepted_${u.uid}`) === 'true';
-        setTermsAccepted(accepted);
-      } else {
-        setIsVerified(false);
-        setTermsAccepted(false);
-      }
-      setLoading(false);
-    });
+    let unsubscribe = () => {};
 
-    const timeout = setTimeout(() => {
+    // 400ms maximum loading delay - ensures the app never hangs on initialization
+    const timer = setTimeout(() => {
       if (!resolved) {
-        console.warn("[Auth] Auth check timed out, showing screen.");
+        resolved = true;
         setLoading(false);
       }
-    }, 2500);
+    }, 400);
+
+    try {
+      const auth = getAuth(app);
+      unsubscribe = onAuthStateChanged(
+        auth,
+        (u) => {
+          resolved = true;
+          clearTimeout(timer);
+          setUser(u);
+          if (u) {
+            setIsVerified(true);
+            try {
+              const accepted = localStorage.getItem(`void_ai_terms_accepted_${u.uid}`) === 'true';
+              setTermsAccepted(accepted);
+            } catch (_) {
+              setTermsAccepted(true);
+            }
+          } else {
+            setIsVerified(false);
+            setTermsAccepted(false);
+          }
+          setLoading(false);
+        },
+        (err) => {
+          console.warn("[Auth] onAuthStateChanged warning:", err);
+          resolved = true;
+          clearTimeout(timer);
+          setLoading(false);
+        }
+      );
+    } catch (err) {
+      console.warn("[Auth] getAuth initialization error:", err);
+      resolved = true;
+      clearTimeout(timer);
+      setLoading(false);
+    }
 
     return () => {
-      unsubscribe();
-      clearTimeout(timeout);
+      clearTimeout(timer);
+      try {
+        unsubscribe();
+      } catch (_) {}
     };
   }, []);
 
   const handleAcceptTerms = () => {
     if (user) {
-      localStorage.setItem(`void_ai_terms_accepted_${user.uid}`, 'true');
+      try {
+        localStorage.setItem(`void_ai_terms_accepted_${user.uid}`, 'true');
+      } catch (_) {}
       setTermsAccepted(true);
     }
   };
 
   const handleDeclineTerms = () => {
-    const auth = getAuth(app);
-    auth.signOut();
+    try {
+      const auth = getAuth(app);
+      auth.signOut();
+    } catch (_) {}
+  };
+
+  const handleGuestLogin = () => {
+    try {
+      localStorage.setItem('void_ai_guest_mode', 'true');
+    } catch (_) {}
+    setIsGuest(true);
   };
 
   if (loading) {
@@ -65,6 +109,9 @@ export default function App() {
             src="/void-logo.jpg" 
             alt="NOVA AI Profile" 
             className="w-full h-full object-cover"
+            onError={(e) => {
+              (e.target as HTMLImageElement).src = '/void-logo.jpg';
+            }}
           />
         </div>
         <div className="relative flex items-center gap-2 text-red-500 font-mono text-xs font-bold tracking-widest uppercase">
@@ -75,8 +122,30 @@ export default function App() {
     );
   }
 
+  if (isGuest) {
+    return (
+      <Suspense fallback={
+        <div className="min-h-screen bg-[#06070a] flex flex-col items-center justify-center gap-4 relative overflow-hidden">
+          <div className="w-20 h-20 rounded-2xl bg-black border border-red-600/80 p-1.5 shadow-[0_0_30px_rgba(220,38,38,0.4)] flex items-center justify-center overflow-hidden">
+            <img 
+              src="/void-logo.jpg" 
+              alt="NOVA AI" 
+              className="w-full h-full object-cover"
+            />
+          </div>
+          <div className="flex items-center gap-2 text-red-500 font-mono text-xs font-bold tracking-widest uppercase">
+            <span className="w-2 h-2 rounded-full bg-red-600 animate-pulse" />
+            <span>LOADING NOVA AI...</span>
+          </div>
+        </div>
+      }>
+        <ChatScreen userId="guest_demo_user" />
+      </Suspense>
+    );
+  }
+
   if (!user) {
-    return <AuthScreen />;
+    return <AuthScreen onGuestLogin={handleGuestLogin} />;
   }
 
   if (!isVerified) {
