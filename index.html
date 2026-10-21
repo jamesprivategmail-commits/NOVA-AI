@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="en" class="dark bg-black">
+<html lang="en" class="dark bg-black" style="background-color: #06070a; color: #f1f2f6; height: 100%; margin: 0; padding: 0;">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, interactive-widget=resizes-content, viewport-fit=cover" />
@@ -17,9 +17,31 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <style>
+      @keyframes pulseDot {
+        0%, 100% { opacity: 1; transform: scale(1); }
+        50% { opacity: 0.3; transform: scale(0.85); }
+      }
+    </style>
   </head>
-  <body class="min-h-screen antialiased bg-[#06070a] text-[#f1f2f6]">
-    <div id="root" class="min-h-screen"></div>
+  <body class="min-h-screen antialiased bg-[#06070a] text-[#f1f2f6]" style="background-color: #06070a; color: #f1f2f6; min-height: 100vh; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;">
+    <div id="root" class="min-h-screen" style="min-height: 100vh; background-color: #06070a; color: #f1f2f6;">
+      <div id="initial-loading-view" style="display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 100vh; width: 100%; background-color: #06070a; color: #f1f2f6; padding: 24px; box-sizing: border-box; text-align: center;">
+        <div style="position: relative; width: 80px; height: 80px; margin-bottom: 20px;">
+          <div style="position: absolute; inset: -4px; border-radius: 20px; background: radial-gradient(circle, rgba(220, 38, 38, 0.45) 0%, transparent 70%);"></div>
+          <div style="position: relative; width: 80px; height: 80px; border-radius: 18px; border: 1.5px solid rgba(220, 38, 38, 0.85); background: #0a0b10; box-shadow: 0 0 25px rgba(220, 38, 38, 0.4); overflow: hidden; display: flex; align-items: center; justify-content: center;">
+            <img src="/void-logo.jpg" alt="NOVA AI" style="width: 100%; height: 100%; object-fit: cover;" onerror="this.style.display='none'" />
+          </div>
+        </div>
+        <div style="font-size: 22px; font-weight: 800; letter-spacing: 0.15em; color: #ffffff; margin-bottom: 8px;">
+          NOVA AI
+        </div>
+        <div style="display: flex; align-items: center; gap: 8px; font-family: monospace; font-size: 11px; font-weight: 700; letter-spacing: 0.2em; color: #ef4444; text-transform: uppercase;">
+          <span style="display: inline-block; width: 8px; height: 8px; border-radius: 50%; background-color: #ef4444; animation: pulseDot 1.4s infinite ease-in-out;"></span>
+          INITIALIZING NOVA AI...
+        </div>
+      </div>
+    </div>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>

@@ -1,5 +1,6 @@
 import express from "express";
 import path from "path";
+import fs from "fs";
 import { createServer as createViteServer } from "vite";
 import { 
   createApp, 
@@ -11,6 +12,8 @@ import {
 } from "./src/server/createApp.js";
 import { telegramBot } from "./src/telegram/bot.js";
 import { buildUnifiedBrainPrompt } from "./src/server/agent/brainPrompt.js";
+import { doc, getDoc, onSnapshot } from "firebase/firestore";
+import { db } from "./src/config/firebase.js";
 
 async function startServer() {
   const app = createApp();
@@ -114,9 +117,6 @@ async function startServer() {
     // Live Firestore listeners for real-time bot token updates without needing server restart
     (async () => {
       try {
-        const { getDoc, doc, onSnapshot } = await import("firebase/firestore");
-        const { db } = await import("./src/config/firebase.js");
-        
         let lastAppliedToken = telegramBot.getToken();
 
         // 1. Live listener for settings/telegram
@@ -173,13 +173,32 @@ async function startServer() {
     })();
   }
 
-  // Vite middleware for development (AI Studio) or static hosting in production (Docker)
-  if (process.env.NODE_ENV !== "production") {
+  // Check if running in production mode (dist/server.cjs) or dev mode (AI Studio with tsx)
+  const isProduction = 
+    process.env.NODE_ENV === "production" || 
+    (typeof process.argv[1] === "string" && (process.argv[1].endsWith(".cjs") || process.argv[1].includes("dist")));
+
+  if (!isProduction) {
     const vite = await createViteServer({
       server: { middlewareMode: true, allowedHosts: true },
       appType: "spa",
     });
     app.use(vite.middlewares);
+
+    // Fallback for SPA routing in development mode
+    app.use("*", async (req, res, next) => {
+      if (req.method !== "GET" || req.originalUrl.startsWith("/api") || req.originalUrl.startsWith("/health")) {
+        return next();
+      }
+      try {
+        const indexPath = path.resolve(process.cwd(), "index.html");
+        let html = fs.readFileSync(indexPath, "utf-8");
+        html = await vite.transformIndexHtml(req.originalUrl, html);
+        res.status(200).set({ "Content-Type": "text/html" }).end(html);
+      } catch (err) {
+        next(err);
+      }
+    });
   } else {
     const distPath = path.join(process.cwd(), "dist");
     app.use(express.static(distPath));
