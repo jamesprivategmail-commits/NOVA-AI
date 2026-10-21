@@ -14,15 +14,12 @@ export default function App() {
 
   useEffect(() => {
     const auth = getAuth(app);
+    let resolved = false;
     const unsubscribe = onAuthStateChanged(auth, (u) => {
+      resolved = true;
       setUser(u);
       if (u) {
-        // Google auth automatically verifies email, or if user is admin or verified email
-        const isGoogle = u.providerData?.some(p => p.providerId === 'google.com');
-        const isAdmin = u.email === 'mrnovatech4@gmail.com';
         setIsVerified(true);
-
-        // Check terms acceptance
         const accepted = localStorage.getItem(`void_ai_terms_accepted_${u.uid}`) === 'true';
         setTermsAccepted(accepted);
       } else {
@@ -31,7 +28,18 @@ export default function App() {
       }
       setLoading(false);
     });
-    return () => unsubscribe();
+
+    const timeout = setTimeout(() => {
+      if (!resolved) {
+        console.warn("[Auth] Auth check timed out, showing screen.");
+        setLoading(false);
+      }
+    }, 3000);
+
+    return () => {
+      unsubscribe();
+      clearTimeout(timeout);
+    };
   }, []);
 
   const handleAcceptTerms = () => {

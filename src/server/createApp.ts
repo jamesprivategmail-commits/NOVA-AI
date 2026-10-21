@@ -1069,8 +1069,15 @@ export function createApp(): express.Express {
 
   app.use(helmet({
     contentSecurityPolicy: false,
-    crossOriginEmbedderPolicy: false
+    crossOriginEmbedderPolicy: false,
+    crossOriginOpenerPolicy: false,
+    crossOriginResourcePolicy: false,
+    xFrameOptions: false
   }));
+  app.use((req, res, next) => {
+    res.removeHeader("X-Frame-Options");
+    next();
+  });
   app.use(express.json({ limit: '20mb' }));
 
   // Normalize POST requests hitting /api, /, or /api/ to /api/chat after body is parsed

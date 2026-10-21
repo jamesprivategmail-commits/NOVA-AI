@@ -176,7 +176,7 @@ async function startServer() {
   // Vite middleware for development (AI Studio) or static hosting in production (Docker)
   if (process.env.NODE_ENV !== "production") {
     const vite = await createViteServer({
-      server: { middlewareMode: true },
+      server: { middlewareMode: true, allowedHosts: true },
       appType: "spa",
     });
     app.use(vite.middlewares);
