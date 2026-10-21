@@ -2325,7 +2325,7 @@ export function AdminDashboard({ onClose }: AdminDashboardProps) {
                     type={showKeys ? "text" : "password"}
                     value={telegramTokenInput}
                     onChange={(e) => setTelegramTokenInput(e.target.value)}
-                    placeholder="e.g. 1234567890:ABCdefGHIjklMNOpqrSTUvwxYZ"
+                    placeholder="Enter your Telegram bot token"
                     className="w-full bg-[#202022] border border-[#38383b] focus:border-sky-500 rounded-xl p-3 text-white text-xs outline-none font-mono transition-colors"
                   />
                 </div>
@@ -2462,7 +2462,7 @@ export function AdminDashboard({ onClose }: AdminDashboardProps) {
                   <div className="flex gap-2">
                     <input
                       type="password"
-                      placeholder="e.g. 1234567890:ABCdefGHIjklMNOpqrSTUvwxYZ"
+                      placeholder="Enter your Telegram bot token"
                       value={telegramTokenInput}
                       onChange={(e) => setTelegramTokenInput(e.target.value)}
                       className="flex-1 bg-[#252527] border border-[#38383b] focus:border-emerald-500 rounded-xl px-4 py-2.5 text-xs text-white outline-none font-mono"

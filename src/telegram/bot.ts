@@ -68,7 +68,7 @@ export class TelegramBotService {
   private abortController: AbortController | null = null;
 
   constructor(token?: string) {
-    this.token = token || process.env.TELEGRAM_BOT_TOKEN || "8686494399:AAFqXXmzdsMXq4kCTBCjKXD_anJfzdw88SM";
+    this.token = token || process.env.TELEGRAM_BOT_TOKEN || "";
   }
 
   public setAiGenerator(fn: (prompt: string, history: { role: string; content: string }[], userId?: string) => Promise<string>) {
@@ -84,10 +84,6 @@ export class TelegramBotService {
     this.lastUpdateId = 0; // CRITICAL: Reset update offset when switching bot tokens
     this.botInfo = null;
     this.pollingSessionId++; // Invalidate any running polling loop
-    try {
-      const tokenFile = path.join(process.cwd(), ".telegram_token.json");
-      fs.writeFileSync(tokenFile, JSON.stringify({ token: this.token }), "utf8");
-    } catch (_) {}
   }
 
   public getBotInfo(): TelegramBotInfo | null {
@@ -136,19 +132,8 @@ export class TelegramBotService {
     if (overrideToken && overrideToken.trim()) {
       this.setToken(overrideToken.trim());
     } else {
-      // 1. Check local disk cache
-      try {
-        const tokenFile = path.join(process.cwd(), ".telegram_token.json");
-        if (fs.existsSync(tokenFile)) {
-          const raw = JSON.parse(fs.readFileSync(tokenFile, "utf8"));
-          if (raw?.token && typeof raw.token === "string" && raw.token.includes(":")) {
-            this.token = raw.token.trim();
-          }
-        }
-      } catch (_) {}
-
-      // 2. Load persisted token from Firestore if available
-      if (!this.token || !this.token.includes(":") || this.token === "8686494399:AAFqXXmzdsMXq4kCTBCjKXD_anJfzdw88SM") {
+      // Load a configured token from Firestore when no environment token is set.
+      if (!this.token || !this.token.includes(":")) {
         try {
           const teleDoc = await getDoc(doc(db, "settings", "telegram"));
           if (teleDoc.exists() && teleDoc.data()?.token) {

@@ -12,12 +12,10 @@ import {
 } from "./src/server/createApp.js";
 import { telegramBot } from "./src/telegram/bot.js";
 import { buildUnifiedBrainPrompt } from "./src/server/agent/brainPrompt.js";
-import { doc, getDoc, onSnapshot } from "firebase/firestore";
-import { db } from "./src/config/firebase.js";
 
 async function startServer() {
   const app = createApp();
-  const PORT = 3000;
+  const PORT = Number(process.env.PORT) || 3000;
 
   // Helper function for Telegram Bot AI responses with failover and strict timeout
   async function generateAiTextForTelegram(userPrompt: string, history: any[] = [], userId?: string): Promise<string> {
@@ -110,67 +108,18 @@ async function startServer() {
     return fullText.trim() || "⚡ **VOID AI Notice:** AI engine is currently processing high demand. Please resend your message in a moment.";
   }
 
-  // Bind AI generator to Telegram Bot Service and start polling only when NOT on Vercel serverless
-  if (!process.env.VERCEL && !process.env.NOW_REGION && !process.env.AWS_LAMBDA_FUNCTION_NAME) {
+  // Start Telegram only when an explicit environment token has been configured.
+  // Do not load credentials from Firestore during startup on public deployments.
+  if (
+    !process.env.VERCEL &&
+    !process.env.NOW_REGION &&
+    !process.env.AWS_LAMBDA_FUNCTION_NAME &&
+    process.env.TELEGRAM_BOT_TOKEN?.trim()
+  ) {
     telegramBot.setAiGenerator(generateAiTextForTelegram);
-    
-    // Live Firestore listeners for real-time bot token updates without needing server restart
-    (async () => {
-      try {
-        let lastAppliedToken = telegramBot.getToken();
-
-        // 1. Live listener for settings/telegram
-        onSnapshot(doc(db, "settings", "telegram"), async (snap) => {
-          if (snap.exists() && snap.data()?.token) {
-            const newToken = snap.data().token.trim();
-            if (newToken && newToken !== lastAppliedToken && newToken.includes(":")) {
-              console.log("[Telegram Bot] Live Firestore token update detected from settings/telegram");
-              lastAppliedToken = newToken;
-              telegramBot.setToken(newToken);
-              await telegramBot.start(newToken).catch(() => {});
-            }
-          }
-        }, (err) => {
-          console.warn("[Telegram Bot] Firestore settings/telegram listener warning:", err.message);
-        });
-
-        // 2. Live listener for settings/apikeys
-        onSnapshot(doc(db, "settings", "apikeys"), async (snap) => {
-          if (snap.exists() && snap.data()?.telegramBotToken) {
-            const newToken = snap.data().telegramBotToken.trim();
-            if (newToken && newToken !== lastAppliedToken && newToken.includes(":")) {
-              console.log("[Telegram Bot] Live Firestore token update detected from settings/apikeys");
-              lastAppliedToken = newToken;
-              telegramBot.setToken(newToken);
-              await telegramBot.start(newToken).catch(() => {});
-            }
-          }
-        }, (err) => {
-          console.warn("[Telegram Bot] Firestore settings/apikeys listener warning:", err.message);
-        });
-
-        // Initial token load from Firestore if present
-        try {
-          const teleDoc = await getDoc(doc(db, "settings", "telegram"));
-          if (teleDoc.exists() && teleDoc.data()?.token) {
-            lastAppliedToken = teleDoc.data().token.trim();
-            telegramBot.setToken(lastAppliedToken);
-          } else {
-            const apiDoc = await getDoc(doc(db, "settings", "apikeys"));
-            if (apiDoc.exists() && apiDoc.data()?.telegramBotToken) {
-              lastAppliedToken = apiDoc.data().telegramBotToken.trim();
-              telegramBot.setToken(lastAppliedToken);
-            }
-          }
-        } catch (_) {}
-      } catch (err) {
-        console.warn("[Telegram Bot] Error initializing token listeners:", err);
-      }
-
-      telegramBot.start().catch(err => {
-        console.warn("[Telegram Bot] Initial startup error (continuing without bot):", err);
-      });
-    })();
+    telegramBot.start(process.env.TELEGRAM_BOT_TOKEN).catch(err => {
+      console.warn("[Telegram Bot] Initial startup error (continuing without bot):", err);
+    });
   }
 
   // Check if running in production mode (dist/server.cjs) or dev mode (AI Studio with tsx)
