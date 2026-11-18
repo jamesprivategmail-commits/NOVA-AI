@@ -10,8 +10,7 @@ import {
 } from 'firebase/auth';
 import { AlertCircle, RefreshCw, Mail, Lock, CheckCircle2, ShieldCheck } from 'lucide-react';
 import { validateEmail, validatePassword } from '../../utils/security';
-import { NovaOrb } from '../components/NovaOrb';
-import { NOVA_PERSONAS } from '../models/personas';
+import { PWAInstallButton } from '../components/pwa/PWAInstallButton';
 
 export function AuthScreen() {
   const [error, setError] = useState('');
@@ -118,17 +117,22 @@ export function AuthScreen() {
       {/* Ambient warm glow */}
       <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[40rem] h-80 rounded-full blur-3xl pointer-events-none opacity-65" style={{ background: 'var(--accent-soft)' }} />
 
+      {/* Install App Pill (suppressed when already installed in standalone mode) */}
+      <div className="fixed top-4 right-4 z-20">
+        <PWAInstallButton />
+      </div>
+
       <div className="w-full max-w-md flex flex-col items-center z-10 my-auto">
-        {/* Muse Companion Portrait */}
+        {/* NOVA AI Brand Portrait Emblem */}
         <div className="relative mb-5">
           <div className="muse-glass-panel rounded-[2rem] p-2 inline-flex items-center justify-center">
-            <NovaOrb
-              size={84}
-              state="idle"
-              persona={NOVA_PERSONAS[0]}
-              shape="rounded"
-              label="Shii — NOVA Muse"
-            />
+            <div className="w-[84px] h-[84px] rounded-[1.5rem] overflow-hidden border border-[var(--line-strong)] shadow-[var(--shadow-sm)] bg-[#1c1b1a]">
+              <img
+                src="/pwa-192x192.png"
+                alt="NOVA AI"
+                className="w-full h-full object-cover"
+              />
+            </div>
           </div>
         </div>
 

@@ -172,7 +172,7 @@ export function Sidebar({
         <div className="flex items-center gap-2.5">
           <div className="w-9 h-9 rounded-2xl glass border border-[var(--line-strong)] p-0.5 flex items-center justify-center overflow-hidden shadow-[var(--shadow-xs)]">
             <img
-              src="/void-logo.jpg?v=3"
+              src="/pwa-192x192.png"
               alt="NOVA Muse Logo"
               className="w-full h-full object-cover rounded-[10px]"
             />

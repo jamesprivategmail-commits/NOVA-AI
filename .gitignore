@@ -8,3 +8,5 @@ coverage/
 !.env.example
 
 .telegram_token.json
+dev-dist/
+.playwright-cli/

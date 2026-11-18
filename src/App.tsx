@@ -1,13 +1,12 @@
-import React, { useState, useEffect, Suspense, lazy } from 'react';
+import React, { useState, useEffect } from 'react';
 import { getAuth, onAuthStateChanged, User as FirebaseUser } from 'firebase/auth';
 import { app } from './config/firebase'; // Ensure initialized
 import { AuthScreen } from './frontend/screens/AuthScreen';
+import { ChatScreen } from './frontend/screens/ChatScreen';
 import { EmailVerificationNotice } from './frontend/screens/EmailVerificationNotice';
 import { TermsModal } from './frontend/components/TermsModal';
 import { applyAppearance } from './frontend/components/AppearanceMenu';
-
-// Code-split heavy workspace to make initial page load instant on mobile
-const ChatScreen = lazy(() => import('./frontend/screens/ChatScreen').then(m => ({ default: m.ChatScreen })));
+import { OfflineIndicator } from './frontend/components/pwa/OfflineIndicator';
 
 export default function App() {
   const [user, setUser] = useState<FirebaseUser | null>(null);
@@ -100,7 +99,7 @@ export default function App() {
       <div className="relative glass-thick rounded-3xl p-2 shadow-[var(--shadow-lg)] flex items-center justify-center overflow-hidden">
         <div className="w-18 h-18 rounded-2xl overflow-hidden border border-[var(--line-strong)]">
           <img
-            src="/void-logo.jpg?v=3"
+            src="/pwa-192x192.png"
             alt="NOVA AI"
             className="w-full h-full object-cover"
           />
@@ -114,35 +113,52 @@ export default function App() {
   );
 
   if (loading) {
-    return <LoadingStage label="Waking Muse Studio..." />;
+    return (
+      <>
+        <LoadingStage label="Waking Muse Studio..." />
+        <OfflineIndicator />
+      </>
+    );
   }
 
   // Strict check: Only real authenticated Firebase users can proceed
   if (!user) {
-    return <AuthScreen />;
+    return (
+      <>
+        <AuthScreen />
+        <OfflineIndicator />
+      </>
+    );
   }
 
   if (!isVerified) {
     return (
-      <EmailVerificationNotice 
-        user={user} 
-        onVerified={() => setIsVerified(true)} 
-      />
+      <>
+        <EmailVerificationNotice
+          user={user}
+          onVerified={() => setIsVerified(true)}
+        />
+        <OfflineIndicator />
+      </>
     );
   }
 
   if (!termsAccepted) {
     return (
-      <TermsModal 
-        onAccept={handleAcceptTerms} 
-        onDecline={handleDeclineTerms} 
-      />
+      <>
+        <TermsModal
+          onAccept={handleAcceptTerms}
+          onDecline={handleDeclineTerms}
+        />
+        <OfflineIndicator />
+      </>
     );
   }
 
   return (
-    <Suspense fallback={<LoadingStage label="Loading Muse Workspace..." />}>
+    <>
       <ChatScreen userId={user.uid} />
-    </Suspense>
+      <OfflineIndicator />
+    </>
   );
 }

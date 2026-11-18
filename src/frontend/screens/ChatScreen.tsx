@@ -15,6 +15,7 @@ import { BrainPanel } from '../components/BrainPanel';
 import { EvolutionCentre } from '../components/EvolutionCentre';
 import { ApiKeyModal } from '../components/ApiKeyModal';
 import { GitHubModal } from '../components/GitHubModal';
+import { PWAInstallButton } from '../components/pwa/PWAInstallButton';
 import { 
   getStoredGitHubUser, 
   getStoredActiveRepo, 
@@ -1266,6 +1267,8 @@ export function ChatScreen({ userId }: ChatScreenProps) {
                 <Code2 size={14} style={showWorkspace ? undefined : { color: 'var(--accent)' }} />
                 <span className="hidden sm:inline">Workspace</span>
               </button>
+
+              <PWAInstallButton compact />
 
               <AppearanceMenu />
 
