@@ -2,6 +2,7 @@ import { AIBrainSettings, UserTier } from '../../models/types';
 import { ProjectMemory } from './types';
 import { getAuthoritativeToolCapabilities, RuntimeContext } from '../tools/registry';
 import { projectMemoryService } from '../memory/projectMemory';
+import { compactSystemPrompt } from '../aiRouting.js';
 
 export interface GitHubContextPayload {
   owner?: string;
@@ -160,5 +161,5 @@ ${githubContext?.activeFile ? `Currently Selected File: ${githubContext.activeFi
     .filter(Boolean)
     .map((s) => s.trim());
 
-  return sections.join('\n\n');
+  return compactSystemPrompt(sections.join('\n\n'), 6800);
 }

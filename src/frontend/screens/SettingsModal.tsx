@@ -74,6 +74,7 @@ export function SettingsModal({
   const [currentView, setCurrentView] = useState<'main' | 'integrations-github' | 'project-memory'>(initialView);
   const [isEditingProfile, setIsEditingProfile] = useState(false);
   const [displayName, setDisplayName] = useState(userName);
+  const [showPersonalizationNotice, setShowPersonalizationNotice] = useState(false);
 
   // GitHub integration states
   const [gitHubToken, setGitHubToken] = useState<string | null>(() => getStoredGitHubToken());
@@ -661,14 +662,14 @@ export function SettingsModal({
 
                 <div className="flex items-center justify-between p-2 rounded-lg bg-black/30 border border-[#3D3929]/40">
                   <span className="text-[#6B6A67]">Terminal Execution:</span>
-                  <span className="font-mono text-[11px] font-bold text-amber-400">
-                    UNAVAILABLE
+                  <span className="font-mono text-[11px] font-bold text-emerald-400">
+                    SANDBOX READY
                   </span>
                 </div>
               </div>
 
               <p className="text-[10px] text-[#6B6A67] italic pt-1">
-                Notice: Terminal execution isn't available yet, so VOID can modify the repository directly but can't execute local terminal commands.
+                Notice: Sandboxed terminal execution and GitHub repository coding are both active for autonomous verification.
               </p>
             </div>
 
@@ -958,19 +959,22 @@ export function SettingsModal({
                 VOID AI PREFERENCES
               </span>
               <div className="bg-gradient-to-b from-[#FFFFFF] via-[#FFFFFF] to-[#FAF9F5] border border-[#3D3929] rounded-2xl overflow-hidden divide-y divide-[#3D3929]">
-                <div 
-                  onClick={() => alert('Personalization set to: GOD MODE System Rules Active.')}
-                  className="p-3 flex items-center justify-between hover:bg-[#1F1E1D] transition-colors cursor-pointer"
+                <button
+                  type="button"
+                  onClick={() => setShowPersonalizationNotice((prev) => !prev)}
+                  className="w-full text-left p-3 flex items-center justify-between hover:bg-[#1F1E1D]/10 transition-colors cursor-pointer"
                 >
                   <div className="flex items-center gap-2.5">
                     <Sliders size={16} className="text-[#D97757] shrink-0" />
                     <div>
                       <span className="text-xs font-semibold text-[#1F1E1D] block">Personalization & System Prompt</span>
-                      <span className="text-[10px] text-[#6B6A67]">Persona set to DEMONIC GOD MODE Engine</span>
+                      <span className="text-[10px] text-[#6B6A67]">
+                        {showPersonalizationNotice ? 'Unified brain directives active — edit via Prompt Studio' : 'Unified Brain & Persona directives'}
+                      </span>
                     </div>
                   </div>
                   <ChevronRight size={15} className="text-[#6B6A67]" />
-                </div>
+                </button>
 
                 <div 
                   onClick={() => {
@@ -1060,7 +1064,7 @@ export function SettingsModal({
                       <select
                         value={selectedProvider}
                         onChange={(e) => {
-                          const newProv = e.target.value as 'groq' | 'cohere' | 'bazaarlink';
+                          const newProv = e.target.value as 'groq' | 'cohere' | 'bazaarlink' | 'gemini';
                           if (onSelectProviderModel) {
                             onSelectProviderModel(newProv, 'auto');
                           }
@@ -1068,8 +1072,9 @@ export function SettingsModal({
                         className="w-full bg-[#FAF9F5] border border-[#3D3929] hover:border-[#F0EEE5] text-[#1F1E1D] text-xs py-1.5 px-2.5 rounded-xl focus:outline-none cursor-pointer"
                       >
                         <option value="groq">Groq AI (Ultra Low-Latency LPU)</option>
+                        <option value="gemini">Google Gemini (2.5 Flash & Pro)</option>
                         <option value="cohere">Cohere AI (Enterprise Command R+)</option>
-                        <option value="bazaarlink">BazaarLink AI (Distributed DeepSeek/Llama)</option>
+                        <option value="bazaarlink">BazaarLink AI (Distributed Routing)</option>
                       </select>
                     </div>
 
@@ -1080,23 +1085,25 @@ export function SettingsModal({
                         onChange={(e) => {
                           const [prov, mod] = e.target.value.split(':');
                           if (onSelectProviderModel) {
-                            onSelectProviderModel(prov as any, mod || 'auto');
+                            onSelectProviderModel(prov as 'groq' | 'cohere' | 'bazaarlink' | 'gemini', mod || 'auto');
                           }
                         }}
                         className="w-full bg-[#FAF9F5] border border-[#3D3929] hover:border-[#F0EEE5] text-[#1F1E1D] text-xs py-1.5 px-2.5 rounded-xl focus:outline-none cursor-pointer"
                       >
-                        <option value="groq:auto">Groq: Auto (Optimized Fast Llama 3.3)</option>
-                        <option value="groq:llama-3.3-70b-versatile">Groq: Llama 3.3 70B Versatile</option>
-                        <option value="groq:llama-3.1-8b-instant">Groq: Llama 3.1 8B Instant</option>
-                        <option value="groq:mixtral-8x7b-32768">Groq: Mixtral 8x7B (32k Context)</option>
-                        <option value="groq:deepseek-r1-distill-llama-70b">Groq: DeepSeek R1 70B Reasoning</option>
+                        <option value="groq:auto">Groq: Auto (Qwen 3.8 27B / GPT-OSS)</option>
+                        <option value="groq:qwen/qwen3.8-27b">Groq: Qwen 3.8 27B</option>
+                        <option value="groq:openai/gpt-oss-120b">Groq: OpenAI GPT-OSS 120B</option>
+                        <option value="groq:openai/gpt-oss-20b">Groq: OpenAI GPT-OSS 20B</option>
+                        <option value="groq:allam-2-7b">Groq: Allam 2 7B</option>
+                        <option value="gemini:auto">Gemini: Auto (2.5 Flash)</option>
+                        <option value="gemini:gemini-2.5-flash">Gemini: 2.5 Flash</option>
+                        <option value="gemini:gemini-2.5-pro">Gemini: 2.5 Pro</option>
                         <option value="cohere:auto">Cohere: Auto</option>
                         <option value="cohere:command-r-plus-08-2024">Cohere: Command R+ (Flagship)</option>
                         <option value="cohere:command-r-08-2024">Cohere: Command R</option>
                         <option value="bazaarlink:auto">BazaarLink: Auto</option>
                         <option value="bazaarlink:bazaarlink-fast">BazaarLink: Fast AI</option>
                         <option value="bazaarlink:bazaarlink-pro">BazaarLink: Pro AI</option>
-                        <option value="bazaarlink:deepseek-r1">BazaarLink: DeepSeek R1 Full</option>
                       </select>
                     </div>
                   </div>
@@ -1261,21 +1268,22 @@ export function SettingsModal({
                   </div>
                 )}
 
-                {/* Self-Evolution Engine */}
+                {/* Evolution Centre */}
                 {onOpenEvolutionPanel && (
-                  <div
+                  <button
+                    type="button"
                     onClick={() => { onClose(); onOpenEvolutionPanel(); }}
-                    className="p-3 flex items-center justify-between hover:bg-[#1F1E1D] transition-colors cursor-pointer"
+                    className="w-full text-left p-3 flex items-center justify-between hover:bg-[#1F1E1D]/10 transition-colors cursor-pointer"
                   >
                     <div className="flex items-center gap-2.5">
-                      <Sparkles size={16} className="text-[#6B6A67] shrink-0" />
+                      <Sparkles size={16} className="text-[#D97757] shrink-0" />
                       <div>
-                        <span className="text-xs font-semibold text-[#1F1E1D] block">Self-Evolution Engine</span>
-                        <span className="text-[10px] text-[#6B6A67]">Propose and commit Nova's own upgrades</span>
+                        <span className="text-xs font-semibold text-[#1F1E1D] block">Evolution Centre</span>
+                        <span className="text-[10px] text-[#6B6A67]">Autonomous 4-agent self-analysis, R&amp;D debate &amp; upgrades</span>
                       </div>
                     </div>
                     <ChevronRight size={15} className="text-[#6B6A67]" />
-                  </div>
+                  </button>
                 )}
 
                 {/* Telegram Bot Integration */}

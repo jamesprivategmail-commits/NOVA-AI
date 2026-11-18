@@ -27,6 +27,15 @@ import http from "http";
 
 import { GoogleGenAI } from "@google/genai";
 import { CohereClient } from "cohere-ai";
+import {
+  clampTokensForModel,
+  compactMessagesForRetry,
+  compactSystemPrompt,
+  isMaxTokensError,
+  isPayloadOrContextError,
+  isPermanentAuthKeyError,
+  shouldBlacklistModelOnError,
+} from "./aiRouting.js";
 dotenv.config();
 
 export function cleanKey(k: any): string {
@@ -137,7 +146,7 @@ export function initSystemKeysListener(): void {
           geminiKeys: [...new Set([...envKeys.geminiKeys, ...firestoreGemini])],
         };
         lastSystemKeysFetchTime = Date.now();
-        keyHealthManager.clearAllBadKeys();
+        keyHealthManager.clearTransientBadKeys();
         console.log(`[System Keys] Live Firestore sync: ${cachedSystemKeys.groqKeys.length} Groq, ${cachedSystemKeys.cohereKeys.length} Cohere, ${cachedSystemKeys.geminiKeys.length} Gemini, ${cachedSystemKeys.bazaarLinkKeys.length} BazaarLink keys loaded`);
       }
     }, (err) => {
@@ -361,6 +370,7 @@ export async function validateApiKeyServer(apiKey: string): Promise<{ userId: st
 interface BadKeyInfo {
   reason: string;
   expiresAt: number;
+  permanent?: boolean;
 }
 
 export class KeyHealthManager {
@@ -380,13 +390,14 @@ export class KeyHealthManager {
     return true;
   }
 
-  markKeyAsBad(apiKey: string, reason: string, ttlMs: number = 10 * 60 * 1000) {
+  markKeyAsBad(apiKey: string, reason: string, ttlMs: number = 10 * 60 * 1000, permanent: boolean = false) {
     const keyHash = this.getKeyHash(apiKey);
     const masked = apiKey.length > 8 ? `${apiKey.slice(0, 4)}...${apiKey.slice(-4)}` : '***';
     console.warn(`[Key Health Manager] Flagging key (${masked}) as BAD for ${Math.round(ttlMs / 60000)}m. Reason: ${reason}`);
     this.badKeysMap.set(keyHash, {
       reason,
       expiresAt: Date.now() + ttlMs,
+      permanent,
     });
   }
 
@@ -421,6 +432,14 @@ export class KeyHealthManager {
     }
 
     return { healthyKeys, skippedReasons };
+  }
+
+  clearTransientBadKeys() {
+    for (const [k, info] of this.badKeysMap.entries()) {
+      if (!info.permanent) {
+        this.badKeysMap.delete(k);
+      }
+    }
   }
 
   clearAllBadKeys() {
@@ -465,6 +484,7 @@ export async function executeGroqWithRotation(
       ? [requestedModel, ...defaultModels.filter(m => m !== requestedModel)]
       : defaultModels;
 
+  const compactedSystem = compactSystemPrompt(systemPrompt, 6800);
   let lastError: any = null;
 
   for (let keyIdx = 0; keyIdx < healthyKeys.length; keyIdx++) {
@@ -475,97 +495,141 @@ export async function executeGroqWithRotation(
       const model = models[modelIdx];
       if (unsupportedGroqModels.has(model)) continue;
 
-      try {
-        const formattedMessages: any[] = [];
-        if (systemPrompt && systemPrompt.trim()) {
-          formattedMessages.push({ role: "system", content: systemPrompt.trim() });
-        }
+      let activeSystem = compactedSystem;
+      let activeMessages = messages;
+      let activeMaxTokens = clampTokensForModel('groq', model, maxTokens);
+      let retriedPayloadOrTokens = false;
 
-        for (const m of messages) {
-          formattedMessages.push({
-            role: (m.role === "user" ? "user" : "assistant"),
-            content: m.text || m.content || ""
-          });
-        }
-
-        if (imageDataUrl && formattedMessages.length > 0) {
-          const lastIdx = formattedMessages.length - 1;
-          const lastMsg = formattedMessages[lastIdx];
-          if (lastMsg.role === "user") {
-            formattedMessages[lastIdx] = {
-              role: "user",
-              content: [
-                { type: "text", text: lastMsg.content || "What's in this image?" },
-                { type: "image_url", image_url: { url: imageDataUrl } }
-              ]
-            };
+      while (true) {
+        const reqStartedAt = Date.now();
+        let wroteChunks = false;
+        try {
+          const formattedMessages: any[] = [];
+          if (activeSystem && activeSystem.trim()) {
+            formattedMessages.push({ role: "system", content: activeSystem.trim() });
           }
-        }
 
-        // Seamless auto-continuation up to 2 extra passes if output hits token limit or leaves unclosed code fences
-        let pass = 0;
-        const maxPasses = 3;
-        const workingMessages = [...formattedMessages];
+          for (const m of activeMessages) {
+            formattedMessages.push({
+              role: (m.role === "user" ? "user" : "assistant"),
+              content: m.text || m.content || ""
+            });
+          }
 
-        while (pass < maxPasses) {
-          pass++;
-          let passText = "";
-          let hitLengthLimit = false;
+          if (imageDataUrl && formattedMessages.length > 0) {
+            const lastIdx = formattedMessages.length - 1;
+            const lastMsg = formattedMessages[lastIdx];
+            if (lastMsg.role === "user") {
+              formattedMessages[lastIdx] = {
+                role: "user",
+                content: [
+                  { type: "text", text: lastMsg.content || "What's in this image?" },
+                  { type: "image_url", image_url: { url: imageDataUrl } }
+                ]
+              };
+            }
+          }
 
-          const stream = await groq.chat.completions.create({
-            model: model,
-            messages: workingMessages,
-            max_tokens: maxTokens,
-            temperature: Math.max(0, Math.min(1.5, temperature)),
-            stream: true,
-          });
+          let pass = 0;
+          const maxPasses = 3;
+          const workingMessages = [...formattedMessages];
 
-          for await (const chunk of stream) {
-            const content = chunk.choices[0]?.delta?.content || "";
-            if (content) {
-              passText += content;
-              res.write(`data: ${JSON.stringify({ text: content })}\n\n`);
-              if (typeof (res as any).flush === 'function') {
-                (res as any).flush();
+          while (pass < maxPasses) {
+            pass++;
+            let passText = "";
+            let hitLengthLimit = false;
+
+            const stream = await groq.chat.completions.create(
+              {
+                model: model,
+                messages: workingMessages,
+                max_tokens: activeMaxTokens,
+                temperature: Math.max(0, Math.min(1.5, temperature)),
+                stream: true,
+              },
+              { signal: AbortSignal.timeout(45000) }
+            );
+
+            for await (const chunk of stream) {
+              const content = chunk.choices[0]?.delta?.content || "";
+              if (content) {
+                wroteChunks = true;
+                passText += content;
+                res.write(`data: ${JSON.stringify({ text: content })}\n\n`);
+                if (typeof (res as any).flush === 'function') {
+                  (res as any).flush();
+                }
+              }
+              if (chunk.choices[0]?.finish_reason === "length") {
+                hitLengthLimit = true;
               }
             }
-            if (chunk.choices[0]?.finish_reason === "length") {
-              hitLengthLimit = true;
+
+            if (!hitLengthLimit || !passText.trim() || pass >= maxPasses) {
+              break;
+            }
+
+            workingMessages.push({ role: "assistant", content: passText });
+            workingMessages.push({
+              role: "user",
+              content: "Continue seamlessly from the exact character where you stopped to finish the task cleanly. Do not repeat anything already written."
+            });
+          }
+
+          evolutionEngine.recordTelemetry({
+            route: "/api/chat",
+            provider: "groq",
+            model,
+            latencyMs: Date.now() - reqStartedAt,
+            success: true,
+          });
+          return; // Succeeded!
+        } catch (err: any) {
+          console.warn(`[Groq] Key #${keyIdx + 1} with model ${model} failed:`, err?.message || err);
+          lastError = err;
+
+          const msg = String(err?.message || "");
+          const status = err?.status || err?.statusCode || 0;
+
+          if (!wroteChunks && !retriedPayloadOrTokens) {
+            if (isMaxTokensError(msg)) {
+              retriedPayloadOrTokens = true;
+              activeMaxTokens = Math.max(512, Math.min(4096, Math.floor(activeMaxTokens / 2)));
+              continue;
+            }
+            if (isPayloadOrContextError(status, msg)) {
+              retriedPayloadOrTokens = true;
+              activeSystem = compactSystemPrompt(activeSystem, 3200);
+              activeMessages = compactMessagesForRetry(activeMessages, 6, 1400);
+              continue;
             }
           }
 
-          if (!hitLengthLimit || !passText.trim() || pass >= maxPasses) {
+          evolutionEngine.recordTelemetry({
+            route: "/api/chat",
+            provider: "groq",
+            model,
+            latencyMs: Date.now() - reqStartedAt,
+            success: false,
+            error: msg.slice(0, 180),
+          });
+
+          if (shouldBlacklistModelOnError(status, msg)) {
+            unsupportedGroqModels.add(model);
             break;
           }
 
-          workingMessages.push({ role: "assistant", content: passText });
-          workingMessages.push({
-            role: "user",
-            content: "Continue seamlessly from the exact character where you stopped to finish the task cleanly. Do not repeat anything already written."
-          });
-        }
-        return; // Succeeded!
-      } catch (err: any) {
-        console.warn(`[Groq] Key #${keyIdx + 1} with model ${model} failed:`, err?.message || err);
-        lastError = err;
-        
-        const msg = String(err?.message || "").toLowerCase();
-        const status = err?.status || err?.statusCode || 0;
+          if (isPermanentAuthKeyError(status, msg)) {
+            keyHealthManager.markKeyAsBad(apiKey, "401 Invalid Groq API Key", 24 * 60 * 60 * 1000, true);
+            break; // Break outer model loop via flag check below
+          }
 
-        if (status === 404 || status === 400 || msg.includes("does not exist") || msg.includes("decommissioned")) {
-          unsupportedGroqModels.add(model);
-          continue;
+          break;
         }
-        
-        if (status === 401 || msg.includes("invalid api key") || msg.includes("unauthorized")) {
-          keyHealthManager.markKeyAsBad(apiKey, "401 Invalid Groq API Key", 60 * 60 * 1000);
-          break; // Next key
-        }
-        
-        if (msg.includes("rate_limit_exceeded") || msg.includes("tokens per day") || msg.includes("tpd")) {
-          console.warn(`[Groq] Model ${model} daily token limit reached on Key #${keyIdx + 1}.`);
-        }
-        continue;
+      }
+
+      if (!keyHealthManager.isKeyHealthy(apiKey, 'groq').healthy) {
+        break;
       }
     }
   }
@@ -640,9 +704,10 @@ export async function executeCohereWithRotation(messages: any[], systemPrompt: s
 
   let lastError: any = null;
 
+  const compactedSystem = compactSystemPrompt(systemPrompt, 6800);
   const formattedMessages: { role: string; content: string }[] = [];
-  if (systemPrompt && systemPrompt.trim()) {
-    formattedMessages.push({ role: "system", content: systemPrompt.trim() });
+  if (compactedSystem && compactedSystem.trim()) {
+    formattedMessages.push({ role: "system", content: compactedSystem.trim() });
   }
 
   for (const m of messages) {
@@ -659,7 +724,9 @@ export async function executeCohereWithRotation(messages: any[], systemPrompt: s
       const model = models[modelIdx];
       if (unsupportedCohereModels.has(model)) continue;
 
+      const reqStartedAt = Date.now();
       try {
+        const clampedCohereTokens = clampTokensForModel('cohere', model, maxTokens);
         const response = await fetch("https://api.cohere.com/v2/chat", {
           method: "POST",
           headers: {
@@ -670,20 +737,29 @@ export async function executeCohereWithRotation(messages: any[], systemPrompt: s
           body: JSON.stringify({
             model,
             messages: formattedMessages,
-            max_tokens: maxTokens,
+            max_tokens: clampedCohereTokens,
             temperature: Math.max(0, Math.min(1.0, temperature)),
             stream: true
-          })
+          }),
+          signal: AbortSignal.timeout(35000),
         });
 
         if (!response.ok) {
           const errorText = await response.text();
           lastError = new Error(`Cohere status ${response.status}: ${errorText}`);
+          evolutionEngine.recordTelemetry({
+            route: "/api/chat",
+            provider: "cohere",
+            model,
+            latencyMs: Date.now() - reqStartedAt,
+            success: false,
+            error: lastError.message.slice(0, 180),
+          });
           if (response.status === 404) {
             unsupportedCohereModels.add(model);
           }
           if (response.status === 401) {
-            keyHealthManager.markKeyAsBad(apiKey, "401 Invalid Cohere API Key", 60 * 60 * 1000);
+            keyHealthManager.markKeyAsBad(apiKey, "401 Invalid Cohere API Key", 24 * 60 * 60 * 1000, true);
             break;
           }
           continue;
@@ -759,9 +835,10 @@ export async function executeBazaarLinkWithRotation(messages: any[], systemPromp
 
   let lastError: any = null;
 
+  const compactedSystem = compactSystemPrompt(systemPrompt, 6800);
   const formattedMessages: { role: string; content: string }[] = [];
-  if (systemPrompt && systemPrompt.trim()) {
-    formattedMessages.push({ role: "system", content: systemPrompt.trim() });
+  if (compactedSystem && compactedSystem.trim()) {
+    formattedMessages.push({ role: "system", content: compactedSystem.trim() });
   }
 
   for (const m of messages) {
@@ -778,7 +855,9 @@ export async function executeBazaarLinkWithRotation(messages: any[], systemPromp
 
     for (let modelIdx = 0; modelIdx < models.length; modelIdx++) {
       const model = models[modelIdx];
+      const reqStartedAt = Date.now();
       try {
+        const clampedBazaarTokens = clampTokensForModel('bazaarlink', model, maxTokens);
         const response = await fetch(`${baseUrl}/chat/completions`, {
           method: "POST",
           headers: {
@@ -789,17 +868,30 @@ export async function executeBazaarLinkWithRotation(messages: any[], systemPromp
           body: JSON.stringify({
             model,
             messages: formattedMessages,
-            max_tokens: maxTokens,
+            max_tokens: clampedBazaarTokens,
             temperature: Math.max(0, Math.min(1.5, temperature)),
             stream: true
-          })
+          }),
+          signal: AbortSignal.timeout(8000),
         });
 
         if (!response.ok) {
           const errorText = await response.text();
           lastError = new Error(`BazaarLink status ${response.status}: ${errorText}`);
+          evolutionEngine.recordTelemetry({
+            route: "/api/chat",
+            provider: "bazaarlink",
+            model,
+            latencyMs: Date.now() - reqStartedAt,
+            success: false,
+            error: lastError.message.slice(0, 180),
+          });
           if (response.status === 401 || response.status === 403) {
-            keyHealthManager.markKeyAsBad(apiKey, `BazaarLink API Key Invalid (${response.status})`, 60 * 60 * 1000);
+            keyHealthManager.markKeyAsBad(apiKey, `BazaarLink API Key Invalid (${response.status})`, 24 * 60 * 60 * 1000, true);
+            break;
+          }
+          if (response.status === 503 || response.status === 502) {
+            keyHealthManager.markKeyAsBad(apiKey, `BazaarLink unavailable (${response.status})`, 2 * 60 * 1000);
             break;
           }
           continue;
@@ -886,12 +978,18 @@ export async function executeGeminiWithRotation(
 
   let lastError: any = null;
 
+  const compactedSystem = compactSystemPrompt(systemPrompt, 8000);
+
   for (let keyIdx = 0; keyIdx < healthyKeys.length; keyIdx++) {
     const apiKey = healthyKeys[keyIdx];
-    const ai = new GoogleGenAI({ apiKey });
+    const ai = new GoogleGenAI({
+      apiKey,
+      httpOptions: { headers: { "User-Agent": "aistudio-build" } },
+    });
 
     for (let modelIdx = 0; modelIdx < models.length; modelIdx++) {
       const model = models[modelIdx];
+      const reqStartedAt = Date.now();
       try {
         const contents: any[] = [];
         for (const m of messages) {
@@ -919,6 +1017,7 @@ export async function executeGeminiWithRotation(
         let pass = 0;
         const maxPasses = 3;
         const workingContents = [...contents];
+        const clampedGeminiTokens = clampTokensForModel('gemini', model, maxTokens);
 
         while (pass < maxPasses) {
           pass++;
@@ -929,8 +1028,8 @@ export async function executeGeminiWithRotation(
             model,
             contents: workingContents,
             config: {
-              systemInstruction: systemPrompt && systemPrompt.trim() ? systemPrompt.trim() : undefined,
-              maxOutputTokens: maxTokens,
+              systemInstruction: compactedSystem && compactedSystem.trim() ? compactedSystem.trim() : undefined,
+              maxOutputTokens: clampedGeminiTokens,
               temperature: Math.max(0, Math.min(1.5, temperature)),
             }
           });
@@ -960,13 +1059,28 @@ export async function executeGeminiWithRotation(
             parts: [{ text: "Continue seamlessly from the exact character where you stopped without repeating anything already written." }]
           });
         }
+        evolutionEngine.recordTelemetry({
+          route: "/api/chat",
+          provider: "gemini",
+          model,
+          latencyMs: Date.now() - reqStartedAt,
+          success: true,
+        });
         return;
       } catch (err: any) {
         console.warn(`[Gemini] Key #${keyIdx + 1} with model ${model} failed:`, err?.message || err);
         lastError = err;
+        evolutionEngine.recordTelemetry({
+          route: "/api/chat",
+          provider: "gemini",
+          model,
+          latencyMs: Date.now() - reqStartedAt,
+          success: false,
+          error: String(err?.message || err).slice(0, 180),
+        });
         const msg = String(err?.message || "").toLowerCase();
         if (msg.includes("api_key_invalid") || msg.includes("api key not valid") || msg.includes("401") || msg.includes("403")) {
-          keyHealthManager.markKeyAsBad(apiKey, "Invalid Gemini API Key", 60 * 60 * 1000);
+          keyHealthManager.markKeyAsBad(apiKey, "Invalid Gemini API Key", 24 * 60 * 60 * 1000, true);
           break;
         }
       }
@@ -1069,6 +1183,17 @@ export function shouldSearchWeb(text: string): boolean {
 export function createApp(): express.Express {
   const app = express();
   app.set("trust proxy", 1);
+
+  // Wire Evolution Engine key pool provider + autonomous background scheduler
+  evolutionEngine.registerKeyProvider(async () => {
+    const pool = await getSystemKeys();
+    return {
+      groqKeys: keyHealthManager.filterHealthyKeys(pool.groqKeys, 'groq').healthyKeys,
+      geminiKeys: keyHealthManager.filterHealthyKeys(pool.geminiKeys, 'gemini').healthyKeys,
+      cohereKeys: keyHealthManager.filterHealthyKeys(pool.cohereKeys, 'cohere').healthyKeys,
+    };
+  });
+  evolutionEngine.startScheduler();
 
   // Permissive CORS handling for Vercel preview environments, custom domains, and REST APIs
   app.use((req, res, next) => {
@@ -1300,7 +1425,7 @@ export function createApp(): express.Express {
         : tier === 'pro' ? brainSettings.proMaxTokens
         : brainSettings.freeMaxTokens) || 4096;
       const minTokenFloor = tier === 'vip' ? 16384 : (tier === 'premium' || tier === 'pro') ? 8192 : 4096;
-      const maxTokens = Math.max(rawTierTokens, minTokenFloor);
+      const maxTokens = Math.min(Math.max(rawTierTokens, minTokenFloor), 16384);
 
       // Retrieve persistent project memory
       const projectId = (githubContext && githubContext.repo)
@@ -1761,10 +1886,11 @@ export function createApp(): express.Express {
 
       await incrementUserMessageCountServer(userId);
 
-      const maxTokens = max_tokens || (tier === 'vip' ? brainSettings.vipMaxTokens
+      const rawOpenAiTokens = max_tokens || (tier === 'vip' ? brainSettings.vipMaxTokens
         : tier === 'premium' ? brainSettings.premiumMaxTokens
         : tier === 'pro' ? brainSettings.proMaxTokens
         : brainSettings.freeMaxTokens) || 2048;
+      const maxTokens = Math.min(Math.max(256, Number(rawOpenAiTokens) || 2048), 16384);
 
       const tierPrompt = ((tier as string) === 'vip' || (tier as string) === 'god_mode' ? brainSettings.vipPrompt
         : tier === 'premium' ? brainSettings.premiumPrompt
@@ -1966,11 +2092,14 @@ export function createApp(): express.Express {
       object: "list",
       data: [
         { id: "void-ai-fast", object: "model", created: 1710000000, owned_by: "void-ai" },
-        { id: "llama-3.3-70b-versatile", object: "model", created: 1710000000, owned_by: "groq" },
-        { id: "llama-3.1-8b-instant", object: "model", created: 1710000000, owned_by: "groq" },
-        { id: "command-r-plus", object: "model", created: 1710000000, owned_by: "cohere" },
-        { id: "command-r", object: "model", created: 1710000000, owned_by: "cohere" },
-        { id: "deepseek-r1", object: "model", created: 1710000000, owned_by: "bazaarlink" }
+        { id: "qwen/qwen3.8-27b", object: "model", created: 1710000000, owned_by: "groq" },
+        { id: "openai/gpt-oss-120b", object: "model", created: 1710000000, owned_by: "groq" },
+        { id: "openai/gpt-oss-20b", object: "model", created: 1710000000, owned_by: "groq" },
+        { id: "gemini-2.5-flash", object: "model", created: 1710000000, owned_by: "gemini" },
+        { id: "gemini-2.5-pro", object: "model", created: 1710000000, owned_by: "gemini" },
+        { id: "command-r-plus-08-2024", object: "model", created: 1710000000, owned_by: "cohere" },
+        { id: "command-r-08-2024", object: "model", created: 1710000000, owned_by: "cohere" },
+        { id: "bazaarlink-fast", object: "model", created: 1710000000, owned_by: "bazaarlink" }
       ]
     });
   };
@@ -2149,6 +2278,17 @@ export function createApp(): express.Express {
         } catch (_) {
           return res.json({ valid: true, message: "BazaarLink API key configured successfully!" });
         }
+      } else if (provider === "gemini") {
+        const ai = new GoogleGenAI({
+          apiKey: trimmedKey,
+          httpOptions: { headers: { "User-Agent": "aistudio-build" } },
+        });
+        await ai.models.generateContent({
+          model: "gemini-2.5-flash",
+          contents: [{ role: "user", parts: [{ text: "ping" }] }],
+          config: { maxOutputTokens: 4 },
+        });
+        return res.json({ valid: true, message: "Gemini API key is valid and connected!" });
       } else {
         return res.status(400).json({ valid: false, error: "Unsupported provider" });
       }
@@ -2511,7 +2651,83 @@ export function createApp(): express.Express {
     res.json({ ok: true, summary: coreBrain.distill() });
   });
 
-  // ── Self-Evolution routes ──────────────────────────────────────
+  // ── Autonomous Self-Evolution Engine & Evolution Centre Routes ─
+  app.get(["/api/evolution/state", "/evolution/state"], (_req, res) => {
+    try {
+      res.json({ ok: true, state: evolutionEngine.getFullState() });
+    } catch (err: any) {
+      res.status(500).json({ error: err?.message || "Failed to load evolution state" });
+    }
+  });
+
+  app.post(["/api/evolution/analyze", "/evolution/analyze"], (_req, res) => {
+    try {
+      const analysis = evolutionEngine.runAnalysis();
+      res.json({ ok: true, analysis, state: evolutionEngine.getFullState() });
+    } catch (err: any) {
+      res.status(500).json({ error: err?.message || "Self-analysis failed" });
+    }
+  });
+
+  app.post(["/api/evolution/research", "/evolution/research"], async (req, res) => {
+    try {
+      const { query } = req.body || {};
+      const discoveries = await evolutionEngine.runResearch(typeof query === "string" ? query : undefined);
+      res.json({ ok: true, discoveries, state: evolutionEngine.getFullState() });
+    } catch (err: any) {
+      res.status(500).json({ error: err?.message || "Web research failed" });
+    }
+  });
+
+  app.post(["/api/evolution/cycle/run", "/evolution/cycle/run"], async (req, res) => {
+    try {
+      const { goal, researchEnabled = true } = req.body || {};
+      const experiment = await evolutionEngine.runEvolutionCycle({
+        customGoal: typeof goal === "string" ? goal : undefined,
+        researchEnabled: Boolean(researchEnabled),
+      });
+      res.json({ ok: true, experiment, state: evolutionEngine.getFullState() });
+    } catch (err: any) {
+      res.status(500).json({ error: err?.message || "Evolution cycle failed" });
+    }
+  });
+
+  app.post(["/api/evolution/scheduler", "/evolution/scheduler"], (req, res) => {
+    try {
+      const config = evolutionEngine.updateScheduler(req.body || {});
+      res.json({ ok: true, config, state: evolutionEngine.getFullState() });
+    } catch (err: any) {
+      res.status(500).json({ error: err?.message || "Failed to update scheduler" });
+    }
+  });
+
+  app.post(["/api/evolution/approvals/:id/approve", "/evolution/approvals/:id/approve"], (req, res) => {
+    try {
+      const result = evolutionEngine.approveExperiment(req.params.id);
+      res.json({ ok: true, ...result, state: evolutionEngine.getFullState() });
+    } catch (err: any) {
+      res.status(400).json({ error: err?.message || "Approval failed" });
+    }
+  });
+
+  app.post(["/api/evolution/approvals/:id/reject", "/evolution/approvals/:id/reject"], (req, res) => {
+    try {
+      const experiment = evolutionEngine.rejectExperiment(req.params.id, req.body?.reason);
+      res.json({ ok: true, experiment, state: evolutionEngine.getFullState() });
+    } catch (err: any) {
+      res.status(400).json({ error: err?.message || "Rejection failed" });
+    }
+  });
+
+  app.post(["/api/evolution/experiments/:id/rollback", "/evolution/experiments/:id/rollback"], (req, res) => {
+    try {
+      const experiment = evolutionEngine.rollbackExperiment(req.params.id, req.body?.reason);
+      res.json({ ok: true, experiment, state: evolutionEngine.getFullState() });
+    } catch (err: any) {
+      res.status(400).json({ error: err?.message || "Rollback failed" });
+    }
+  });
+
   app.get(["/api/evolution/stats", "/evolution/stats"], (_req, res) => {
     res.json(evolutionEngine.getEvolutionStats());
   });
@@ -2522,9 +2738,10 @@ export function createApp(): express.Express {
 
   app.post(["/api/evolution/proposals", "/evolution/proposals"], (req, res) => {
     try {
-      const { idea, area, file } = req.body || {};
+      const { idea, description, area, file } = req.body || {};
+      const text = typeof idea === "string" && idea.trim() ? idea : description;
       const proposal = evolutionEngine.generateProposal(
-        typeof idea === "string" && idea.trim() ? idea : undefined,
+        typeof text === "string" && text.trim() ? text : undefined,
         area || "ui",
         file
       );
@@ -2536,10 +2753,11 @@ export function createApp(): express.Express {
 
   app.post(["/api/evolution/apply", "/evolution/apply"], async (req, res) => {
     try {
-      const { proposal, token, owner, repo, branch } = req.body || {};
-      if (!proposal) return res.status(400).json({ error: "proposal required" });
+      const { proposal, id, token, owner, repo, branch } = req.body || {};
+      const target = proposal || id;
+      if (!target) return res.status(400).json({ error: "proposal or id required" });
       if (!token) return res.status(401).json({ error: "GitHub token required" });
-      const updated = await evolutionEngine.applyProposal(proposal as EvolutionProposal, token, {
+      const updated = await evolutionEngine.applyProposal(target as EvolutionProposal | string, token, {
         owner: owner || "jamesprivategmail-commits",
         repo: repo || "NOVA-AI",
         branch: branch || "main"

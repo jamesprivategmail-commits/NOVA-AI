@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import {
   Plus, Search, X, Edit2, Trash2, Settings, Pin, Download,
-  MessageSquare, Github, AudioLines, Sparkles, Terminal, ShieldCheck
+  MessageSquare, Github, AudioLines, Sparkles, Terminal, ShieldCheck, FlaskConical
 } from 'lucide-react';
 import { Chat } from '../../models/types';
 import { clsx } from 'clsx';
@@ -29,6 +29,7 @@ interface SidebarProps {
   onOpenCampaignGenerator?: () => void;
   onOpenLiveVoice?: () => void;
   onOpenPromptStudio?: () => void;
+  onOpenEvolutionCentre?: () => void;
   onOpenApiKeys?: () => void;
   onOpenTelegram?: () => void;
   isAdmin?: boolean;
@@ -131,6 +132,7 @@ export function Sidebar({
   onOpenGitHub,
   onOpenLiveVoice,
   onOpenPromptStudio,
+  onOpenEvolutionCentre,
   onOpenAdmin,
   onTogglePinChat,
   onExportChat,
@@ -246,7 +248,7 @@ export function Sidebar({
           <span>New Conversation</span>
         </button>
 
-        {(onOpenGitHub || onOpenPromptStudio || onOpenLiveVoice) && (
+        {(onOpenGitHub || onOpenPromptStudio || onOpenLiveVoice || onOpenEvolutionCentre) && (
           <div className="space-y-1.5">
             <div className="section-label px-1">Studio Workspace</div>
             <div className="grid grid-cols-2 gap-1.5">
@@ -270,6 +272,17 @@ export function Sidebar({
                 >
                   <Sparkles size={14} className="text-[var(--accent)] shrink-0" />
                   <span className="truncate">Directives</span>
+                </button>
+              )}
+              {onOpenEvolutionCentre && (
+                <button
+                  type="button"
+                  onClick={onOpenEvolutionCentre}
+                  className="btn btn-ghost py-2 px-2.5 justify-start text-[11px] font-semibold col-span-2"
+                  title="Open Autonomous Self-Evolution Centre"
+                >
+                  <FlaskConical size={14} className="text-[var(--accent)] shrink-0" />
+                  <span className="truncate">Evolution Centre</span>
                 </button>
               )}
               {onOpenLiveVoice && (

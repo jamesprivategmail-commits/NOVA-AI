@@ -5,10 +5,6 @@ export const AI_CONFIG = {
         "qwen/qwen3.8-27b",
         "openai/gpt-oss-120b",
         "openai/gpt-oss-20b",
-        "llama-3.3-70b-versatile",
-        "llama-3.1-8b-instant",
-        "meta-llama/llama-3.3-70b-instruct",
-        "qwen-2.5-32b",
         "allam-2-7b"
       ]
     },
@@ -31,8 +27,8 @@ export const AI_CONFIG = {
     gemini: {
       models: [
         "gemini-2.5-flash",
-        "gemini-2.0-flash",
-        "gemini-1.5-flash"
+        "gemini-2.5-pro",
+        "gemini-2.5-flash-lite"
       ]
     }
   },

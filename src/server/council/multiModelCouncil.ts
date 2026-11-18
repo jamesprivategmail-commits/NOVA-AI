@@ -12,6 +12,12 @@ import type {
   CouncilAgentDiscussion,
   CouncilWorkerTask,
 } from "../../models/types.js";
+import {
+  clampTokensForModel,
+  compactSystemPrompt,
+  isPermanentAuthKeyError,
+} from "../aiRouting.js";
+import { evolutionEngine } from "../evolution/evolutionEngine.js";
 
 export interface CouncilAgentSpec {
   id: string;
@@ -64,8 +70,7 @@ const DEFAULT_COUNCIL_AGENTS: CouncilAgentSpec[] = [
 const GROQ_DIVERSE_POOL = [
   "qwen/qwen3.8-27b",
   "openai/gpt-oss-120b",
-  "llama-3.3-70b-versatile",
-  "llama-3.1-8b-instant",
+  "openai/gpt-oss-20b",
 ];
 
 /**
@@ -156,6 +161,8 @@ async function runSingleCompletion(params: {
     signal,
   } = params;
 
+  const compactedSystem = compactSystemPrompt(systemPrompt, 4800);
+
   const tryOrder: Array<"groq" | "gemini" | "cohere" | "bazaarlink"> = [
     provider,
     ...(["groq", "gemini", "cohere", "bazaarlink"] as const).filter(
@@ -166,102 +173,165 @@ async function runSingleCompletion(params: {
   let lastErr: any = null;
 
   for (const p of tryOrder) {
+    const tStart = Date.now();
     try {
       if (p === "groq" && keys.groqKeys.length > 0) {
-        const apiKey = keys.groqKeys[keyOffset % keys.groqKeys.length];
-        const groq = new Groq({ apiKey });
+        const totalKeys = keys.groqKeys.length;
         const modelCandidates = [
-          model === "auto" || !model ? "llama-3.3-70b-versatile" : model,
-          "llama-3.3-70b-versatile",
+          model === "auto" || !model || model.includes("llama-3.3") || model.includes("llama-3.1")
+            ? "qwen/qwen3.8-27b"
+            : model,
           "qwen/qwen3.8-27b",
-          "llama-3.1-8b-instant",
+          "openai/gpt-oss-120b",
+          "openai/gpt-oss-20b",
         ];
         const uniqueModels = [...new Set(modelCandidates)];
-        for (const m of uniqueModels) {
-          try {
-            const completion = await groq.chat.completions.create(
-              {
-                model: m,
-                messages: [
-                  ...(systemPrompt ? [{ role: "system" as const, content: systemPrompt }] : []),
-                  ...messages.map((msg) => ({
-                    role: (msg.role === "user" ? "user" : "assistant") as "user" | "assistant",
-                    content: msg.text,
-                  })),
-                ],
-                max_tokens: maxTokens,
-                temperature,
-              },
-              { signal }
-            );
-            const text = completion.choices?.[0]?.message?.content?.trim() || "";
-            if (text) return { text, provider: "groq", modelUsed: m };
-          } catch (err: any) {
-            lastErr = err;
-            if (err?.name === "AbortError") throw err;
+
+        for (let kStep = 0; kStep < totalKeys; kStep++) {
+          const apiKey = keys.groqKeys[(keyOffset + kStep) % totalKeys];
+          const groq = new Groq({ apiKey });
+          for (const m of uniqueModels) {
+            try {
+              const clampedTokens = clampTokensForModel("groq", m, maxTokens);
+              const reqSignal = signal
+                ? AbortSignal.any([signal, AbortSignal.timeout(22000)])
+                : AbortSignal.timeout(22000);
+              const completion = await groq.chat.completions.create(
+                {
+                  model: m,
+                  messages: [
+                    ...(compactedSystem ? [{ role: "system" as const, content: compactedSystem }] : []),
+                    ...messages.map((msg) => ({
+                      role: (msg.role === "user" ? "user" : "assistant") as "user" | "assistant",
+                      content: msg.text,
+                    })),
+                  ],
+                  max_tokens: clampedTokens,
+                  temperature,
+                },
+                { signal: reqSignal }
+              );
+              const text = completion.choices?.[0]?.message?.content?.trim() || "";
+              if (text) {
+                evolutionEngine.recordTelemetry({
+                  route: "/api/council",
+                  provider: "groq",
+                  model: m,
+                  latencyMs: Date.now() - tStart,
+                  success: true,
+                });
+                return { text, provider: "groq", modelUsed: m };
+              }
+            } catch (err: any) {
+              lastErr = err;
+              if (err?.name === "AbortError" && signal?.aborted) throw err;
+              if (isPermanentAuthKeyError(err?.status, err?.message)) {
+                break; // Move directly to next API key
+              }
+            }
           }
         }
       } else if (p === "gemini" && keys.geminiKeys.length > 0) {
-        const apiKey = keys.geminiKeys[keyOffset % keys.geminiKeys.length];
-        const ai = new GoogleGenAI({
-          apiKey,
-          httpOptions: { headers: { "User-Agent": "aistudio-build" } },
-        });
-        const targetModel =
-          p === provider && model && model.startsWith("gemini-2.5")
-            ? model
-            : "gemini-2.5-flash";
-        const response = await ai.models.generateContent({
-          model: targetModel,
-          contents: messages.map((m) => ({
-            role: m.role === "user" ? "user" : "model",
-            parts: [{ text: m.text }],
-          })),
-          config: {
-            systemInstruction: systemPrompt || undefined,
-            maxOutputTokens: maxTokens,
-            temperature,
-          },
-        });
-        const text = response.text?.trim() || "";
-        if (text) return { text, provider: "gemini", modelUsed: targetModel };
-      } else if (p === "cohere" && keys.cohereKeys.length > 0) {
-        const apiKey = keys.cohereKeys[keyOffset % keys.cohereKeys.length];
-        const targetModel =
-          p === provider && model && model.includes("command")
-            ? model
-            : "command-r-08-2024";
-        const response = await fetch("https://api.cohere.com/v2/chat", {
-          method: "POST",
-          headers: {
-            Authorization: `Bearer ${apiKey}`,
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            model: targetModel,
-            messages: [
-              ...(systemPrompt ? [{ role: "system", content: systemPrompt }] : []),
-              ...messages.map((m) => ({
-                role: m.role === "user" ? "user" : "assistant",
-                content: m.text,
+        for (let kStep = 0; kStep < keys.geminiKeys.length; kStep++) {
+          try {
+            const apiKey = keys.geminiKeys[(keyOffset + kStep) % keys.geminiKeys.length];
+            const ai = new GoogleGenAI({
+              apiKey,
+              httpOptions: { headers: { "User-Agent": "aistudio-build" } },
+            });
+            const targetModel =
+              p === provider && model && model.startsWith("gemini-2.5")
+                ? model
+                : "gemini-2.5-flash";
+            const clampedTokens = clampTokensForModel("gemini", targetModel, maxTokens);
+            const response = await ai.models.generateContent({
+              model: targetModel,
+              contents: messages.map((m) => ({
+                role: m.role === "user" ? "user" : "model",
+                parts: [{ text: m.text }],
               })),
-            ],
-            max_tokens: maxTokens,
-            temperature: Math.max(0, Math.min(1, temperature)),
-          }),
-          signal,
-        });
-        if (response.ok) {
-          const data = (await response.json()) as any;
-          const text =
-            data?.message?.content?.[0]?.text?.trim() ||
-            data?.text?.trim() ||
-            "";
-          if (text) return { text, provider: "cohere", modelUsed: targetModel };
+              config: {
+                systemInstruction: compactedSystem || undefined,
+                maxOutputTokens: clampedTokens,
+                temperature,
+              },
+            });
+            const text = response.text?.trim() || "";
+            if (text) {
+              evolutionEngine.recordTelemetry({
+                route: "/api/council",
+                provider: "gemini",
+                model: targetModel,
+                latencyMs: Date.now() - tStart,
+                success: true,
+              });
+              return { text, provider: "gemini", modelUsed: targetModel };
+            }
+          } catch (gErr: any) {
+            lastErr = gErr;
+          }
+        }
+      } else if (p === "cohere" && keys.cohereKeys.length > 0) {
+        for (let kStep = 0; kStep < keys.cohereKeys.length; kStep++) {
+          try {
+            const apiKey = keys.cohereKeys[(keyOffset + kStep) % keys.cohereKeys.length];
+            const targetModel =
+              p === provider && model && model.includes("command")
+                ? model
+                : "command-r-08-2024";
+            const clampedTokens = clampTokensForModel("cohere", targetModel, maxTokens);
+            const reqSignal = signal
+              ? AbortSignal.any([signal, AbortSignal.timeout(25000)])
+              : AbortSignal.timeout(25000);
+            const response = await fetch("https://api.cohere.com/v2/chat", {
+              method: "POST",
+              headers: {
+                Authorization: `Bearer ${apiKey}`,
+                "Content-Type": "application/json",
+              },
+              body: JSON.stringify({
+                model: targetModel,
+                messages: [
+                  ...(compactedSystem ? [{ role: "system", content: compactedSystem }] : []),
+                  ...messages.map((m) => ({
+                    role: m.role === "user" ? "user" : "assistant",
+                    content: m.text,
+                  })),
+                ],
+                max_tokens: clampedTokens,
+                temperature: Math.max(0, Math.min(1, temperature)),
+              }),
+              signal: reqSignal,
+            });
+            if (response.ok) {
+              const data = (await response.json()) as any;
+              const text =
+                data?.message?.content?.[0]?.text?.trim() ||
+                data?.text?.trim() ||
+                "";
+              if (text) {
+                evolutionEngine.recordTelemetry({
+                  route: "/api/council",
+                  provider: "cohere",
+                  model: targetModel,
+                  latencyMs: Date.now() - tStart,
+                  success: true,
+                });
+                return { text, provider: "cohere", modelUsed: targetModel };
+              }
+            }
+          } catch (cErr: any) {
+            lastErr = cErr;
+            if (cErr?.name === "AbortError" && signal?.aborted) throw cErr;
+          }
         }
       } else if (p === "bazaarlink" && keys.bazaarLinkKeys.length > 0) {
         const apiKey = keys.bazaarLinkKeys[keyOffset % keys.bazaarLinkKeys.length];
         const targetModel = AI_CONFIG.providers.bazaarlink.models[0] || "bazaarlink-fast";
+        const clampedTokens = clampTokensForModel("bazaarlink", targetModel, maxTokens);
+        const reqSignal = signal
+          ? AbortSignal.any([signal, AbortSignal.timeout(8000)])
+          : AbortSignal.timeout(8000);
         const response = await fetch(
           `${AI_CONFIG.providers.bazaarlink.baseUrl}/chat/completions`,
           {
@@ -273,16 +343,16 @@ async function runSingleCompletion(params: {
             body: JSON.stringify({
               model: targetModel,
               messages: [
-                ...(systemPrompt ? [{ role: "system", content: systemPrompt }] : []),
+                ...(compactedSystem ? [{ role: "system", content: compactedSystem }] : []),
                 ...messages.map((m) => ({
                   role: m.role === "user" ? "user" : "assistant",
                   content: m.text,
                 })),
               ],
-              max_tokens: maxTokens,
+              max_tokens: clampedTokens,
               temperature,
             }),
-            signal,
+            signal: reqSignal,
           }
         );
         if (response.ok) {
@@ -293,10 +363,18 @@ async function runSingleCompletion(params: {
       }
     } catch (err: any) {
       lastErr = err;
-      if (err?.name === "AbortError") throw err;
+      if (err?.name === "AbortError" && signal?.aborted) throw err;
     }
   }
 
+  evolutionEngine.recordTelemetry({
+    route: "/api/council",
+    provider,
+    model,
+    latencyMs: 0,
+    success: false,
+    error: lastErr?.message || "Council single completion failed",
+  });
   throw lastErr || new Error("No healthy AI provider keys available for council agent");
 }
 
@@ -311,6 +389,7 @@ async function streamLeadSynthesis(params: {
   signal?: AbortSignal;
 }): Promise<string> {
   const { leadAgent, systemPrompt, synthesisPrompt, maxTokens, temperature, keys, onChunk, signal } = params;
+  const compactedSystem = compactSystemPrompt(systemPrompt, 4800);
 
   const tryOrder: Array<"groq" | "gemini" | "cohere" | "bazaarlink"> = [
     leadAgent.provider,
@@ -320,61 +399,84 @@ async function streamLeadSynthesis(params: {
   for (const p of tryOrder) {
     try {
       if (p === "groq" && keys.groqKeys.length > 0) {
-        const groq = new Groq({ apiKey: keys.groqKeys[0] });
         const model =
-          leadAgent.provider === "groq" && leadAgent.modelId && leadAgent.modelId !== "auto"
+          leadAgent.provider === "groq" &&
+          leadAgent.modelId &&
+          leadAgent.modelId !== "auto" &&
+          !leadAgent.modelId.includes("llama-3.3") &&
+          !leadAgent.modelId.includes("llama-3.1")
             ? leadAgent.modelId
-            : "llama-3.3-70b-versatile";
-        const stream = await groq.chat.completions.create(
-          {
-            model,
-            messages: [
-              ...(systemPrompt ? [{ role: "system" as const, content: systemPrompt }] : []),
-              { role: "user", content: synthesisPrompt },
-            ],
-            max_tokens: maxTokens,
-            temperature,
-            stream: true,
-          },
-          { signal }
-        );
-        let full = "";
-        for await (const chunk of stream) {
-          const delta = chunk.choices?.[0]?.delta?.content || "";
-          if (delta) {
-            full += delta;
-            onChunk(delta);
+            : "qwen/qwen3.8-27b";
+        const clampedTokens = clampTokensForModel("groq", model, maxTokens);
+
+        for (const apiKey of keys.groqKeys) {
+          try {
+            const groq = new Groq({ apiKey });
+            const reqSignal = signal
+              ? AbortSignal.any([signal, AbortSignal.timeout(45000)])
+              : AbortSignal.timeout(45000);
+            const stream = await groq.chat.completions.create(
+              {
+                model,
+                messages: [
+                  ...(compactedSystem ? [{ role: "system" as const, content: compactedSystem }] : []),
+                  { role: "user", content: synthesisPrompt },
+                ],
+                max_tokens: clampedTokens,
+                temperature,
+                stream: true,
+              },
+              { signal: reqSignal }
+            );
+            let full = "";
+            for await (const chunk of stream) {
+              const delta = chunk.choices?.[0]?.delta?.content || "";
+              if (delta) {
+                full += delta;
+                onChunk(delta);
+              }
+            }
+            if (full) return full;
+          } catch (gErr: any) {
+            if (gErr?.name === "AbortError" && signal?.aborted) throw gErr;
+            continue;
           }
         }
-        if (full) return full;
       } else if (p === "gemini" && keys.geminiKeys.length > 0) {
-        const ai = new GoogleGenAI({
-          apiKey: keys.geminiKeys[0],
-          httpOptions: { headers: { "User-Agent": "aistudio-build" } },
-        });
-        const stream = await ai.models.generateContentStream({
-          model: "gemini-2.5-flash",
-          contents: [{ role: "user", parts: [{ text: synthesisPrompt }] }],
-          config: {
-            systemInstruction: systemPrompt || undefined,
-            maxOutputTokens: maxTokens,
-            temperature,
-          },
-        });
-        let full = "";
-        for await (const chunk of stream) {
-          const delta = chunk.text || "";
-          if (delta) {
-            full += delta;
-            onChunk(delta);
+        for (const apiKey of keys.geminiKeys) {
+          try {
+            const ai = new GoogleGenAI({
+              apiKey,
+              httpOptions: { headers: { "User-Agent": "aistudio-build" } },
+            });
+            const clampedTokens = clampTokensForModel("gemini", "gemini-2.5-flash", maxTokens);
+            const stream = await ai.models.generateContentStream({
+              model: "gemini-2.5-flash",
+              contents: [{ role: "user", parts: [{ text: synthesisPrompt }] }],
+              config: {
+                systemInstruction: compactedSystem || undefined,
+                maxOutputTokens: clampedTokens,
+                temperature,
+              },
+            });
+            let full = "";
+            for await (const chunk of stream) {
+              const delta = chunk.text || "";
+              if (delta) {
+                full += delta;
+                onChunk(delta);
+              }
+            }
+            if (full) return full;
+          } catch {
+            continue;
           }
         }
-        if (full) return full;
       } else {
         const fallback = await runSingleCompletion({
           provider: p,
           model: leadAgent.modelId,
-          systemPrompt,
+          systemPrompt: compactedSystem,
           messages: [{ role: "user", text: synthesisPrompt }],
           maxTokens,
           temperature,
@@ -385,7 +487,7 @@ async function streamLeadSynthesis(params: {
         return fallback.text;
       }
     } catch (err: any) {
-      if (err?.name === "AbortError") throw err;
+      if (err?.name === "AbortError" && signal?.aborted) throw err;
     }
   }
 

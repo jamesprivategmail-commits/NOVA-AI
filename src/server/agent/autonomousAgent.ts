@@ -6,6 +6,7 @@ import { terminalService } from '../terminal/terminalService';
 import { workspaceService } from '../workspace/workspaceService';
 import { processManager } from '../process/processManager';
 import { AI_CONFIG } from '../../config/ai';
+import { clampTokensForModel, compactSystemPrompt, isPermanentAuthKeyError } from '../aiRouting.js';
 
 export interface AutonomousAgentOptions {
   userId: string;
@@ -360,11 +361,12 @@ SELF-CORRECTION & TASK COMPLETION PRINCIPLES:
       provider,
       ...['groq', 'gemini', 'cohere', 'bazaarlink'].filter(p => p !== provider),
     ];
+    const compactedPrompt = compactSystemPrompt(systemPrompt, 6800);
 
     for (const p of providersToTry) {
       try {
         if (p === 'groq' && keys.groqKeys.length > 0) {
-          const strongDefaults = ['openai/gpt-oss-120b', 'llama-3.3-70b-versatile', 'qwen/qwen3.8-27b', 'openai/gpt-oss-20b'];
+          const strongDefaults = ['openai/gpt-oss-120b', 'qwen/qwen3.8-27b', 'openai/gpt-oss-20b', 'allam-2-7b'];
           const candidateModels = model && model !== 'auto'
             ? [model, ...strongDefaults.filter(m => m !== model)]
             : strongDefaults;
@@ -376,19 +378,23 @@ SELF-CORRECTION & TASK COMPLETION PRINCIPLES:
               let truncated = false;
               for (const groqModel of candidateModels) {
                 try {
-                  const stream = await client.chat.completions.create({
-                    model: groqModel,
-                    messages: [
-                      { role: 'system', content: systemPrompt },
-                      ...messages.map((m: any) => ({
-                        role: (m.role === 'model' || m.role === 'assistant' ? 'assistant' : 'user') as 'assistant' | 'user',
-                        content: String(m.text || m.content || ''),
-                      })),
-                    ],
-                    max_tokens: maxTokens,
-                    temperature,
-                    stream: true,
-                  });
+                  const clampedTokens = clampTokensForModel('groq', groqModel, maxTokens);
+                  const stream = await client.chat.completions.create(
+                    {
+                      model: groqModel,
+                      messages: [
+                        { role: 'system', content: compactedPrompt },
+                        ...messages.map((m: any) => ({
+                          role: (m.role === 'model' || m.role === 'assistant' ? 'assistant' : 'user') as 'assistant' | 'user',
+                          content: String(m.text || m.content || ''),
+                        })),
+                      ],
+                      max_tokens: clampedTokens,
+                      temperature,
+                      stream: true,
+                    },
+                    { signal: AbortSignal.timeout(45000) }
+                  );
 
                   for await (const chunk of stream) {
                     const text = chunk.choices[0]?.delta?.content || '';
@@ -400,7 +406,7 @@ SELF-CORRECTION & TASK COMPLETION PRINCIPLES:
                   stepSucceeded = true;
                   break;
                 } catch (mErr: any) {
-                  if (mErr.status === 401) throw mErr;
+                  if (isPermanentAuthKeyError(mErr?.status, mErr?.message)) throw mErr;
                   continue;
                 }
               }
@@ -419,8 +425,9 @@ SELF-CORRECTION & TASK COMPLETION PRINCIPLES:
               const client = new CohereClient({ token });
               const stream = await client.chatStream({
                 message: messages[messages.length - 1]?.text || messages[messages.length - 1]?.content || 'proceed',
-                preamble: systemPrompt,
+                preamble: compactedPrompt,
                 model: cohereModel,
+                maxTokens: clampTokensForModel('cohere', cohereModel, maxTokens),
                 temperature,
                 chatHistory: messages.slice(0, -1).map((m: any) => ({
                   role: m.role === 'model' || m.role === 'assistant' ? 'CHATBOT' : 'USER',
@@ -446,13 +453,17 @@ SELF-CORRECTION & TASK COMPLETION PRINCIPLES:
 
           for (const apiKey of keys.geminiKeys) {
             try {
-              const ai = new GoogleGenAI({ apiKey });
+              const ai = new GoogleGenAI({
+                apiKey,
+                httpOptions: { headers: { 'User-Agent': 'aistudio-build' } },
+              });
+              const geminiModel = model && model !== 'auto' ? model : 'gemini-2.5-flash';
               const response = await ai.models.generateContentStream({
-                model: model && model !== 'auto' ? model : 'gemini-2.5-flash',
+                model: geminiModel,
                 contents,
                 config: {
-                  systemInstruction: systemPrompt,
-                  maxOutputTokens: maxTokens,
+                  systemInstruction: compactedPrompt,
+                  maxOutputTokens: clampTokensForModel('gemini', geminiModel, maxTokens),
                   temperature,
                 },
               });

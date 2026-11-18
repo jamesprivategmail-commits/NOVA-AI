@@ -12,7 +12,7 @@ import { EmailCampaignGenerator } from '../components/EmailCampaignGenerator';
 import { LiveVoiceModal } from '../components/LiveVoiceModal';
 import { TelegramModal } from './TelegramModal';
 import { BrainPanel } from '../components/BrainPanel';
-import { EvolutionPanel } from '../components/EvolutionPanel';
+import { EvolutionCentre } from '../components/EvolutionCentre';
 import { ApiKeyModal } from '../components/ApiKeyModal';
 import { GitHubModal } from '../components/GitHubModal';
 import { 
@@ -909,6 +909,7 @@ export function ChatScreen({ userId }: ChatScreenProps) {
         onOpenSettings={() => setShowSettings(true)}
         onOpenGitHub={() => setShowGitHubModal(true)}
         onOpenPromptStudio={() => setShowPromptStudio(true)}
+        onOpenEvolutionCentre={() => setShowEvolutionPanel(true)}
         onOpenSupport={() => setShowSupport(true)}
         onOpenSubscription={() => setShowSubscription(true)}
         onOpenAdmin={() => setShowAdminPanel(true)}
@@ -971,7 +972,10 @@ export function ChatScreen({ userId }: ChatScreenProps) {
                 <Menu size={17} />
               </button>
 
-              <span className="font-display font-semibold text-base tracking-tight text-[var(--text-primary)] whitespace-nowrap hidden sm:inline shrink-0">
+              <span className={clsx(
+                'font-display font-semibold text-base tracking-tight text-[var(--text-primary)] whitespace-nowrap shrink-0',
+                isSidebarOpen ? 'hidden 2xl:inline' : 'hidden sm:inline'
+              )}>
                 NOVA <span className="text-gradient text-gradient-animated">Muse</span>
               </span>
 
@@ -987,7 +991,10 @@ export function ChatScreen({ userId }: ChatScreenProps) {
             {/* Zone 2: Muse Presence Mode Switcher (Stage | PiP | Voice | Face) */}
             <nav
               aria-label="Muse companion mode"
-              className="hidden md:flex items-center gap-0.5 p-1 rounded-full glass-subtle shrink-0"
+              className={clsx(
+                'items-center gap-0.5 p-1 rounded-full glass-subtle shrink-0',
+                isSidebarOpen ? 'hidden 2xl:flex' : 'hidden xl:flex'
+              )}
             >
               {([
                 { id: 'stage', label: 'Stage' },
@@ -1055,7 +1062,7 @@ export function ChatScreen({ userId }: ChatScreenProps) {
               <button
                 type="button"
                 onClick={() => setShowCommandPalette(true)}
-                className="btn btn-ghost h-9 px-2.5 rounded-full text-xs whitespace-nowrap"
+                className="btn btn-ghost h-9 px-2.5 rounded-full text-xs whitespace-nowrap hidden sm:inline-flex"
                 title="Command Palette (⌘K)"
               >
                 <Command size={13} style={{ color: 'var(--accent)' }} />
@@ -1066,7 +1073,7 @@ export function ChatScreen({ userId }: ChatScreenProps) {
                 type="button"
                 onClick={() => setShowWorkspace(!showWorkspace)}
                 className={clsx(
-                  'btn h-9 px-2.5 sm:px-3 rounded-full text-xs whitespace-nowrap',
+                  'btn h-9 px-2.5 sm:px-3 rounded-full text-xs whitespace-nowrap hidden sm:inline-flex',
                   showWorkspace ? 'btn-primary' : 'btn-ghost'
                 )}
                 title="Toggle Code Workspace & Terminal (⌘E)"
@@ -1509,16 +1516,30 @@ export function ChatScreen({ userId }: ChatScreenProps) {
 
       {/* Nova Core Brain Panel */}
       {showBrainPanel && (
-        <div className="fixed inset-0 z-[60] overflow-y-auto">
-          <BrainPanel />
+        <div
+          className="fixed inset-0 z-[70] flex items-center justify-center p-4 bg-black/55 backdrop-blur-md"
+          onClick={() => setShowBrainPanel(false)}
+        >
+          <div
+            className="relative w-full max-w-2xl max-h-[85vh] overflow-y-auto rounded-2xl shadow-2xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <button
+              type="button"
+              onClick={() => setShowBrainPanel(false)}
+              aria-label="Close Nova Core Brain"
+              className="absolute top-3 right-3 z-10 w-8 h-8 rounded-lg bg-black/40 hover:bg-black/70 text-white flex items-center justify-center cursor-pointer"
+            >
+              <X size={15} />
+            </button>
+            <BrainPanel />
+          </div>
         </div>
       )}
 
-      {/* Self-Evolution Panel */}
+      {/* Evolution Centre */}
       {showEvolutionPanel && (
-        <div className="fixed inset-0 z-[60] overflow-y-auto">
-          <EvolutionPanel />
-        </div>
+        <EvolutionCentre onClose={() => setShowEvolutionPanel(false)} />
       )}
 
       {/* Telegram AI Bot Modal */}
@@ -1595,6 +1616,10 @@ export function ChatScreen({ userId }: ChatScreenProps) {
           }}
           onOpenPromptStudio={() => {
             setShowPromptStudio(true);
+            setShowCommandPalette(false);
+          }}
+          onOpenEvolutionCentre={() => {
+            setShowEvolutionPanel(true);
             setShowCommandPalette(false);
           }}
           onOpenLiveVoice={() => {

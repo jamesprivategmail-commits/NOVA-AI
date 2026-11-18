@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { 
   Search, Terminal, Code2, Sparkles, Plus, Trash2, Download, 
-  GitBranch, Mic, Settings, Sliders, ArrowRight, X, Cpu, MessageSquare, Shield
+  GitBranch, Mic, Settings, Sliders, ArrowRight, X, Cpu, MessageSquare, Shield, FlaskConical
 } from 'lucide-react';
 import { Chat } from '../../models/types';
 import { NOVA_PERSONAS } from '../models/personas';
@@ -29,6 +29,7 @@ interface CommandPaletteProps {
   onOpenWorkspace: (tab?: string) => void;
   onSelectModel: (provider: 'groq' | 'cohere' | 'bazaarlink' | 'gemini', model: string, personaId?: string) => void;
   onOpenPromptStudio: () => void;
+  onOpenEvolutionCentre?: () => void;
   onOpenLiveVoice: () => void;
   onExportCurrentChat?: () => void;
   onToggleCodingMode?: () => void;
@@ -46,6 +47,7 @@ export function CommandPalette({
   onOpenWorkspace,
   onSelectModel,
   onOpenPromptStudio,
+  onOpenEvolutionCentre,
   onOpenLiveVoice,
   onExportCurrentChat,
   onToggleCodingMode,
@@ -149,6 +151,14 @@ export function CommandPalette({
       icon: <Sliders size={15} className="text-amber-500" />,
       onSelect: () => { onOpenPromptStudio(); onClose(); },
     },
+    ...(onOpenEvolutionCentre ? [{
+      id: 'action-evolution-centre',
+      category: 'Tools' as const,
+      title: 'Evolution Centre',
+      subtitle: '4-agent autonomous self-analysis, web R&D, sandbox benchmarks & approvals',
+      icon: <FlaskConical size={15} style={{ color: 'var(--accent)' }} />,
+      onSelect: () => { onOpenEvolutionCentre(); onClose(); },
+    }] : []),
     {
       id: 'action-export-chat',
       category: 'Actions',
