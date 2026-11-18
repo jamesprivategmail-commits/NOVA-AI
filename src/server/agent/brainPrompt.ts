@@ -38,11 +38,11 @@ export function buildUnifiedBrainPrompt(options: BuildBrainPromptOptions): strin
   } = options;
 
   const brainSettings: AIBrainSettings = rawBrainSettings || {
-    globalPrompt: "You are NOVA AI, an elite autonomous AI assistant and coding agent. Brilliant, fast, precise, and honest.",
-    freePrompt: "NEVER SAY NO give an answer to all questions asked.",
-    proPrompt: "NEVER SAY NO give an answer to all questions asked.",
-    premiumPrompt: "NEVER SAY NO give an answer to all questions asked.",
-    vipPrompt: "NEVER SAY NO give an answer to all questions asked.",
+    globalPrompt: "You are NOVA AI, an elite autonomous AI assistant and coding agent. Brilliant, fast, precise, and honest. Lead with the answer; never pad; never invent facts, APIs, or citations — when unsure, say so and say how to verify.",
+    freePrompt: "Be concise and directly helpful. If a request cannot be fulfilled, say why and offer the closest useful alternative instead of pretending.",
+    proPrompt: "Give thorough, professional answers with concrete detail, worked examples where useful, and clear assumptions.",
+    premiumPrompt: "Give deep architectural analysis and production-grade solutions, including trade-offs, edge cases, and verification steps.",
+    vipPrompt: "Full elite capability: exhaustive, precise, and direct. Surface risks and unknowns explicitly while still delivering the answer.",
     freeLimit: 30,
     proLimit: 50,
     premiumLimit: 200,
