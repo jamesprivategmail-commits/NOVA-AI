@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { 
   ArrowLeft, Edit3, Sliders, Database, Cpu, Briefcase, Sparkles, Shield, 
-  Mail, Sun, Palette, Bell, Key, Radio, Wallet, Bot, AudioLines, 
+  Mail, Sun, Palette, Bell, Key, Radio, Wallet, Bot, AudioLines, Brain, 
   HelpCircle, MessageSquare, LogOut, ChevronDown, ChevronRight, Trash2, Check, Send, Crown, ExternalLink,
   GitBranch, Folder, AlertCircle, RefreshCw, Power, Zap, Terminal
 } from 'lucide-react';
@@ -39,6 +39,8 @@ interface SettingsModalProps {
   onOpenLiveVoice?: () => void;
   onOpenTelegram?: () => void;
   onOpenGitHubWorkspace?: () => void;
+  onOpenBrainPanel?: () => void;
+  onOpenEvolutionPanel?: () => void;
   initialView?: 'main' | 'integrations-github' | 'project-memory';
   walletBalance?: number;
   selectedProvider?: 'groq' | 'cohere' | 'bazaarlink' | 'gemini';
@@ -61,6 +63,8 @@ export function SettingsModal({
   onOpenLiveVoice,
   onOpenTelegram,
   onOpenGitHubWorkspace,
+  onOpenBrainPanel,
+  onOpenEvolutionPanel,
   initialView = 'main',
   walletBalance = 0,
   selectedProvider = 'groq',
@@ -1234,6 +1238,40 @@ export function SettingsModal({
                       <div>
                         <span className="text-xs font-semibold text-white block">Live Voice Mode</span>
                         <span className="text-[10px] text-[#8d8d91]">Real-time conversational voice assistant</span>
+                      </div>
+                    </div>
+                    <ChevronRight size={15} className="text-[#8d8d91]" />
+                  </div>
+                )}
+
+                {/* Nova Core Brain */}
+                {onOpenBrainPanel && (
+                  <div
+                    onClick={() => { onClose(); onOpenBrainPanel(); }}
+                    className="p-3 flex items-center justify-between hover:bg-[#252527] transition-colors cursor-pointer"
+                  >
+                    <div className="flex items-center gap-2.5">
+                      <Brain size={16} className="text-[#8d8d91] shrink-0" />
+                      <div>
+                        <span className="text-xs font-semibold text-white block">Nova Core Brain</span>
+                        <span className="text-[10px] text-[#8d8d91]">Model council stats and learned knowledge</span>
+                      </div>
+                    </div>
+                    <ChevronRight size={15} className="text-[#8d8d91]" />
+                  </div>
+                )}
+
+                {/* Self-Evolution Engine */}
+                {onOpenEvolutionPanel && (
+                  <div
+                    onClick={() => { onClose(); onOpenEvolutionPanel(); }}
+                    className="p-3 flex items-center justify-between hover:bg-[#252527] transition-colors cursor-pointer"
+                  >
+                    <div className="flex items-center gap-2.5">
+                      <Sparkles size={16} className="text-[#8d8d91] shrink-0" />
+                      <div>
+                        <span className="text-xs font-semibold text-white block">Self-Evolution Engine</span>
+                        <span className="text-[10px] text-[#8d8d91]">Propose and commit Nova's own upgrades</span>
                       </div>
                     </div>
                     <ChevronRight size={15} className="text-[#8d8d91]" />

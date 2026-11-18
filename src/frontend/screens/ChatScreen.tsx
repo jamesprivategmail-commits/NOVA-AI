@@ -11,6 +11,8 @@ import { FullPageSupportDesk } from './FullPageSupportDesk';
 import { EmailCampaignGenerator } from '../components/EmailCampaignGenerator';
 import { LiveVoiceModal } from '../components/LiveVoiceModal';
 import { TelegramModal } from './TelegramModal';
+import { BrainPanel } from '../components/BrainPanel';
+import { EvolutionPanel } from '../components/EvolutionPanel';
 import { ApiKeyModal } from '../components/ApiKeyModal';
 import { GitHubModal } from '../components/GitHubModal';
 import { 
@@ -174,6 +176,8 @@ export function ChatScreen({ userId }: ChatScreenProps) {
   const [showCampaignGenerator, setShowCampaignGenerator] = useState(false);
   const [showLiveVoice, setShowLiveVoice] = useState(false);
   const [showTelegramModal, setShowTelegramModal] = useState(false);
+  const [showBrainPanel, setShowBrainPanel] = useState(false);
+  const [showEvolutionPanel, setShowEvolutionPanel] = useState(false);
   const [showApiKeyModal, setShowApiKeyModal] = useState(false);
   const [showGitHubModal, setShowGitHubModal] = useState(false);
   const [activeRepo, setActiveRepo] = useState<ActiveRepoState | null>(() => getStoredActiveRepo());
@@ -1008,6 +1012,8 @@ export function ChatScreen({ userId }: ChatScreenProps) {
           onOpenSupport={() => setShowSupport(true)}
           onOpenAdmin={() => setShowAdminPanel(true)}
           onOpenCampaignGenerator={() => setShowCampaignGenerator(true)}
+          onOpenBrainPanel={() => setShowBrainPanel(true)}
+          onOpenEvolutionPanel={() => setShowEvolutionPanel(true)}
           onOpenLiveVoice={() => setShowLiveVoice(true)}
           onOpenTelegram={() => setShowTelegramModal(true)}
           onOpenGitHubWorkspace={() => setShowGitHubModal(true)}
@@ -1047,6 +1053,20 @@ export function ChatScreen({ userId }: ChatScreenProps) {
           isSupportStaff={profile.isSupportStaff || false}
           onClose={() => setShowSupport(false)}
         />
+      )}
+
+      {/* Nova Core Brain Panel */}
+      {showBrainPanel && (
+        <div className="fixed inset-0 z-[60] overflow-y-auto">
+          <BrainPanel />
+        </div>
+      )}
+
+      {/* Self-Evolution Panel */}
+      {showEvolutionPanel && (
+        <div className="fixed inset-0 z-[60] overflow-y-auto">
+          <EvolutionPanel />
+        </div>
       )}
 
       {/* Telegram AI Bot Modal */}

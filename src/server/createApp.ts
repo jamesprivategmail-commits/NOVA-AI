@@ -4,6 +4,8 @@ import fs from "fs";
 import Groq from "groq-sdk";
 import helmet from "helmet";
 import rateLimit from "express-rate-limit";
+import { coreBrain } from "./brain/coreBrain";
+import { evolutionEngine, type EvolutionProposal } from "./evolution/evolutionEngine";
 import dotenv from "dotenv";
 import { doc, getDoc, setDoc, deleteDoc, collection, query, where, getDocs, onSnapshot } from "firebase/firestore";
 import { db } from "../config/firebase.js";
@@ -1067,11 +1069,26 @@ export function createApp(): express.Express {
     next();
   });
 
+  const isProd = process.env.NODE_ENV === 'production';
   app.use(helmet({
-    contentSecurityPolicy: false,
+    contentSecurityPolicy: {
+      useDefaults: true,
+      directives: {
+        defaultSrc: ["'self'"],
+        scriptSrc: ["'self'", "'unsafe-inline'", "'unsafe-eval'", "https://apis.google.com", "https://www.gstatic.com"],
+        styleSrc: ["'self'", "'unsafe-inline'"],
+        imgSrc: ["'self'", "data:", "blob:", "https:"],
+        connectSrc: ["'self'", "https:", "wss:"],
+        fontSrc: ["'self'", "data:"],
+        frameSrc: ["'self'", "https://*.firebaseapp.com", "https://*.web.app"],
+        upgradeInsecureRequests: isProd ? [] : null
+      }
+    },
     crossOriginEmbedderPolicy: false,
-    crossOriginOpenerPolicy: false,
-    crossOriginResourcePolicy: false,
+    crossOriginOpenerPolicy: { policy: 'same-origin-allow-popups' },
+    crossOriginResourcePolicy: { policy: 'cross-origin' },
+    hsts: isProd ? { maxAge: 31536000, includeSubDomains: true } : false,
+    
     xFrameOptions: false
   }));
   app.use((req, res, next) => {
@@ -1079,7 +1096,7 @@ export function createApp(): express.Express {
     next();
   });
   app.use(express.static(path.join(process.cwd(), "public")));
-  app.use(express.json({ limit: '20mb' }));
+  app.use(express.json({ limit: '10mb' }));
 
   // Normalize POST requests hitting /api, /, or /api/ to /api/chat after body is parsed
   app.use((req, res, next) => {
@@ -1119,6 +1136,22 @@ export function createApp(): express.Express {
   });
 
   app.use("/api/", apiLimiter);
+
+  // Stricter limiter for auth and admin endpoints (brute-force protection)
+  const authLimiter = rateLimit({
+    windowMs: 10 * 60 * 1000,
+    max: 30,
+    validate: false,
+    keyGenerator: (req) => {
+      const forwarded = req.headers['x-forwarded-for'];
+      if (typeof forwarded === 'string') return forwarded.split(',')[0].trim();
+      return req.ip || '127.0.0.1';
+    },
+    standardHeaders: true,
+    legacyHeaders: false,
+    message: { error: "Too many attempts. Try again in a few minutes." }
+  });
+  app.use(["/api/auth", "/api/admin", "/api/github/oauth", "/auth"], authLimiter);
 
   // Core streaming AI completion route (supports /api/chat, /chat, and POST /api)
   app.post(["/api/chat", "/chat", "/api", "/api/chat.ts", "/chat.ts"], async (req, res) => {
@@ -1204,7 +1237,7 @@ export function createApp(): express.Express {
       }
 
       // Shared authoritative brain prompt builder across all integrations
-      const combinedSystemPrompt = buildUnifiedBrainPrompt({
+      const combinedSystemPrompt = coreBrain.buildNovaSystemPrompt(buildUnifiedBrainPrompt({
         tier,
         brainSettings,
         githubContext,
@@ -1222,7 +1255,7 @@ export function createApp(): express.Express {
           connectedUser: githubContext?.user
         },
         extraSystemPrompt: systemPrompt
-      });
+      }));
 
       // ── Attachment Processing (Image / File) ──────────────────────
       let imageDataUrl: string | undefined;
@@ -2256,6 +2289,69 @@ export function createApp(): express.Express {
   });
 
   // ── Authoritative Tool Capabilities Endpoint ────────────────────────
+  // ── Nova Core Brain routes ─────────────────────────────────────
+  app.get(["/api/brain/stats", "/brain/stats"], (_req, res) => {
+    res.json(coreBrain.getBrainStats());
+  });
+
+  app.get(["/api/brain/learnings", "/brain/learnings"], (_req, res) => {
+    res.json({ learnings: coreBrain.getLearnings().slice(0, 100) });
+  });
+
+  app.post(["/api/brain/learnings", "/brain/learnings"], async (req, res) => {
+    try {
+      const { insight, provider, context } = req.body || {};
+      if (!insight || typeof insight !== "string") return res.status(400).json({ error: "insight required" });
+      const entry = coreBrain.recordLearning({ insights: [insight], winner: provider || "user", reason: context || "manual" });
+      res.json({ ok: true, entry });
+    } catch (err: any) {
+      res.status(500).json({ error: err?.message || "failed" });
+    }
+  });
+
+  app.post(["/api/brain/distill", "/brain/distill"], (_req, res) => {
+    res.json({ ok: true, summary: coreBrain.distill() });
+  });
+
+  // ── Self-Evolution routes ──────────────────────────────────────
+  app.get(["/api/evolution/stats", "/evolution/stats"], (_req, res) => {
+    res.json(evolutionEngine.getEvolutionStats());
+  });
+
+  app.get(["/api/evolution/proposals", "/evolution/proposals"], (_req, res) => {
+    res.json({ proposals: evolutionEngine.listProposals() });
+  });
+
+  app.post(["/api/evolution/proposals", "/evolution/proposals"], (req, res) => {
+    try {
+      const { idea, area, file } = req.body || {};
+      const proposal = evolutionEngine.generateProposal(
+        typeof idea === "string" && idea.trim() ? idea : undefined,
+        area || "ui",
+        file
+      );
+      res.json({ ok: true, proposal });
+    } catch (err: any) {
+      res.status(500).json({ error: err?.message || "failed" });
+    }
+  });
+
+  app.post(["/api/evolution/apply", "/evolution/apply"], async (req, res) => {
+    try {
+      const { proposal, token, owner, repo, branch } = req.body || {};
+      if (!proposal) return res.status(400).json({ error: "proposal required" });
+      if (!token) return res.status(401).json({ error: "GitHub token required" });
+      const updated = await evolutionEngine.applyProposal(proposal as EvolutionProposal, token, {
+        owner: owner || "jamesprivategmail-commits",
+        repo: repo || "NOVA-AI",
+        branch: branch || "main"
+      });
+      res.json({ ok: true, proposal: updated });
+    } catch (err: any) {
+      res.status(500).json({ error: err?.message || "apply failed" });
+    }
+  });
+
   app.get(["/api/tools/capabilities", "/tools/capabilities"], (req, res) => {
     try {
       const hasGithubToken = Boolean(req.query.token);
