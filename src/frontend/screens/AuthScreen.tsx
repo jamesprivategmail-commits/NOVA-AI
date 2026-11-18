@@ -136,7 +136,7 @@ export function AuthScreen() {
           NOVA <span className="text-gradient">Muse</span>
         </h1>
         <p className="text-xs font-medium text-[var(--text-muted)] tracking-[0.18em] uppercase mb-5">
-          Personal Liquid Glass Companion
+          LARGE AI CODING AGENT
         </p>
 
         {/* Security Shield Notice */}

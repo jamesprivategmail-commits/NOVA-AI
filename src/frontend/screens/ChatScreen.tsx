@@ -26,7 +26,17 @@ import {
   GitHubUser 
 } from '../utils/github';
 import { terminalManager } from '../utils/terminalManager';
-import { Chat, Message, UserProfile, BroadcastMessage, AIBrainSettings, AgentState, type CouncilData } from '../../models/types';
+import {
+  Chat,
+  Message,
+  UserProfile,
+  BroadcastMessage,
+  AIBrainSettings,
+  AgentState,
+  ArtifactRecord,
+  MessageAttachmentMeta,
+  type CouncilData,
+} from '../../models/types';
 import {
   createChat,
   getUserChats,
@@ -40,6 +50,7 @@ import {
   incrementMessageCount,
   deleteMessage,
   updateMessage,
+  updateMessageArtifacts,
   sendSupportMessage,
   getAIBrainSettings,
   listenToAIBrainSettings,
@@ -48,7 +59,16 @@ import {
   toggleStarMessage,
   listenToSystemAPIKeys
 } from '../../database/db';
-import { sendMessageToGroq, sendCouncilMessage, setClientSystemKeys } from '../../api/client';
+import {
+  sendMessageToGroq,
+  sendCouncilMessage,
+  setClientSystemKeys,
+  commitResponseArtifactsApi,
+  listConversationArtifacts,
+  rebindArtifactsApi,
+} from '../../api/client';
+import { parseArtifactsFromResponse } from '../../utils/artifactParser';
+import { ConversationArtifactsDrawer } from '../components/artifacts/ConversationArtifactsDrawer';
 import { memoryManager } from '../../memory/context';
 import { CommandPalette } from '../components/CommandPalette';
 import { AppearanceMenu } from '../components/AppearanceMenu';
@@ -64,7 +84,7 @@ import { LiveHtmlPreviewModal } from '../components/workspace/LiveHtmlPreviewMod
 import { ZipInspectorModal } from '../components/workspace/ZipInspectorModal';
 import { ParsedZipResult } from '../utils/zipParser';
 import { offlineCache } from '../utils/offlineQueue';
-import { Menu, ArrowDown, Code2, Radio, X, Sliders, Command, Check, Phone, Video, Users, Globe } from 'lucide-react';
+import { Menu, ArrowDown, Code2, Radio, X, Sliders, Command, Check, Phone, Video, Users, Globe, Layers } from 'lucide-react';
 import { getAuth, signOut } from 'firebase/auth';
 import { clsx } from 'clsx';
 
@@ -225,9 +245,12 @@ export function ChatScreen({ userId }: ChatScreenProps) {
     return () => window.removeEventListener('void_ai_open_workspace_file', handleOpenWorkspaceFile);
   }, []);
 
-  // 2026 Interactive HTML Sandbox & ZIP Inspector modals
+  // 2026 Interactive HTML Sandbox, ZIP Inspector & Persistent Artifact Engine
   const [previewHtmlData, setPreviewHtmlData] = useState<{ html: string; title: string } | null>(null);
   const [inspectZipData, setInspectZipData] = useState<ParsedZipResult | null>(null);
+  const [conversationArtifacts, setConversationArtifacts] = useState<ArtifactRecord[]>([]);
+  const [showArtifactsDrawer, setShowArtifactsDrawer] = useState(false);
+  const [activeProjectId, setActiveProjectId] = useState<string | null>(null);
 
   useEffect(() => {
     const handlePreviewHtml = (e: any) => {
@@ -349,10 +372,19 @@ export function ChatScreen({ userId }: ChatScreenProps) {
     if (currentChatId) {
       userScrolledUpRef.current = false;
       loadMessages(currentChatId);
+      listConversationArtifacts(userId, currentChatId)
+        .then((arts) => {
+          setConversationArtifacts(arts);
+          const latestProjectZip = arts.find((a) => a.sourceProjectId);
+          setActiveProjectId(latestProjectZip?.sourceProjectId || null);
+        })
+        .catch(() => {});
     } else {
       setMessages([]);
+      setConversationArtifacts([]);
+      setActiveProjectId(null);
     }
-  }, [currentChatId]);
+  }, [currentChatId, userId]);
 
   // Ultra-fast auto-scroll: zero layout thrashing
   useEffect(() => {
@@ -411,6 +443,20 @@ export function ChatScreen({ userId }: ChatScreenProps) {
     const chatMsgs = await getChatMessages(chatId);
     setMessages(chatMsgs);
     offlineCache.saveMessages(chatId, chatMsgs);
+
+    const embeddedArts = chatMsgs.flatMap((m) => m.artifacts || []);
+    if (embeddedArts.length > 0) {
+      setConversationArtifacts((prev) => {
+        const byId = new Map<string, ArtifactRecord>();
+        for (const a of prev) byId.set(a.id, a);
+        for (const a of embeddedArts) if (!byId.has(a.id)) byId.set(a.id, a);
+        return Array.from(byId.values()).sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
+      });
+      const proj = embeddedArts.find((a) => a.sourceProjectId);
+      if (proj?.sourceProjectId) {
+        setActiveProjectId((curr) => curr || proj.sourceProjectId || null);
+      }
+    }
   };
 
   const handleTogglePin = async (chatId: string, isPinned: boolean) => {
@@ -455,6 +501,8 @@ export function ChatScreen({ userId }: ChatScreenProps) {
     setCurrentChatId(null);
     setMessages([]);
     setStreamingMessage('');
+    setConversationArtifacts([]);
+    setActiveProjectId(null);
   };
 
   const handleDeleteChat = async (id: string) => {
@@ -626,26 +674,121 @@ export function ChatScreen({ userId }: ChatScreenProps) {
     }
   };
 
-  const handleSend = async (text: string, attachment?: ChatAttachment) => {
+  const persistAndAttachArtifacts = async (
+    activeChatId: string,
+    modelMsg: Message,
+    fullResponse: string,
+    priorMessages: Message[],
+    sourceProjId?: string
+  ): Promise<Message> => {
+    try {
+      const detected = parseArtifactsFromResponse(fullResponse, false);
+      if (detected.files.length === 0) {
+        return modelMsg;
+      }
+
+      const committed = await commitResponseArtifactsApi({
+        userId,
+        conversationId: activeChatId,
+        messageId: modelMsg.id,
+        rawText: fullResponse,
+        sourceProjectId: sourceProjId || activeProjectId || undefined,
+        projectName: detected.projectName,
+      });
+
+      const combinedArtifacts: ArtifactRecord[] = [
+        ...(committed.artifacts || []),
+        ...(committed.zipArtifact ? [committed.zipArtifact] : []),
+      ];
+
+      if (combinedArtifacts.length === 0) {
+        return modelMsg;
+      }
+
+      await updateMessageArtifacts(
+        activeChatId,
+        modelMsg.id,
+        combinedArtifacts,
+        committed.projectGroup
+      ).catch((err) => console.warn('Failed updating message artifacts in Firestore:', err));
+
+      const hydratedMsg: Message = {
+        ...modelMsg,
+        artifacts: combinedArtifacts,
+        projectGroup: committed.projectGroup || modelMsg.projectGroup,
+      };
+
+      const hydratedList = [...priorMessages, hydratedMsg];
+      setMessages(hydratedList);
+      offlineCache.saveMessages(activeChatId, hydratedList);
+
+      setConversationArtifacts((prev) => {
+        const byId = new Map<string, ArtifactRecord>();
+        for (const item of combinedArtifacts) byId.set(item.id, item);
+        for (const item of prev) {
+          if (!byId.has(item.id)) byId.set(item.id, item);
+        }
+        return Array.from(byId.values()).sort((a, b) => b.createdAt - a.createdAt);
+      });
+
+      if (committed.zipArtifact?.sourceProjectId || committed.projectGroup?.sourceProjectId) {
+        setActiveProjectId(committed.zipArtifact?.sourceProjectId || committed.projectGroup?.sourceProjectId || null);
+      }
+
+      return hydratedMsg;
+    } catch (err) {
+      console.warn('Artifact persistence failed gracefully:', err);
+      return modelMsg;
+    }
+  };
+
+  const handleSend = async (
+    text: string,
+    attachment?: ChatAttachment,
+    attachmentsList?: ChatAttachment[]
+  ) => {
     if (!checkLimitations()) return;
 
     let activeChatId = currentChatId;
+    const allAttachments =
+      attachmentsList && attachmentsList.length > 0
+        ? attachmentsList
+        : attachment
+        ? [attachment]
+        : [];
+    const primaryAttachment = allAttachments[0];
 
-    // Build display text (with embedded image/file indicator for chat history)
+    // Build display text & structured attachment metadata
     let displayText = text;
-    if (attachment) {
-      if (attachment.kind === 'image') {
-        displayText = `![${attachment.name}](${attachment.data})\n\n${text}`.trim();
-      } else if (attachment.kind === 'zip') {
-        displayText = `📦 **ZIP Archive: \`${attachment.name}\`** (${attachment.zipStats?.fileCount || 0} files unpacked · ${((attachment.zipStats?.totalSize || 0) / 1024).toFixed(1)} KB)\n\n${text}`.trim();
-      } else {
-        displayText = `📎 **${attachment.name}**\n\n${text}`.trim();
-      }
+    if (allAttachments.length === 1 && primaryAttachment?.kind === 'image') {
+      displayText = `![${primaryAttachment.name}](${primaryAttachment.data})\n\n${text}`.trim();
+    } else if (allAttachments.length > 0 && !text.trim()) {
+      displayText = `Attached ${allAttachments.map((a) => a.name).join(', ')}`;
+    }
+
+    const attachmentsMeta: MessageAttachmentMeta[] = allAttachments.map((att, idx) => ({
+      id: att.artifactId || att.id || `att-${Date.now()}-${idx}`,
+      artifactId: att.artifactId,
+      projectId: att.projectId,
+      kind: att.kind,
+      name: att.name,
+      extension: att.extension || att.name.split('.').pop()?.toLowerCase() || 'txt',
+      mimeType: att.mimeType,
+      size: att.size || (att.data ? att.data.length : 0),
+      fileCount: att.zipStats?.fileCount,
+      downloadUrl: att.downloadUrl,
+      previewUrl: att.previewUrl,
+      extractedPreview: att.kind !== 'image' ? att.data.slice(0, 600) : undefined,
+    }));
+
+    const attachedProjectId = allAttachments.find((a) => a.projectId)?.projectId || activeProjectId || undefined;
+    if (attachedProjectId) {
+      setActiveProjectId(attachedProjectId);
     }
 
     // Create new chat if none selected
     if (!activeChatId) {
-      const titleText = text || (attachment ? attachment.name : 'New Chat');
+      const titleText = text || (primaryAttachment ? primaryAttachment.name : 'New Chat');
       const chat = await createChat(userId, titleText.slice(0, 32) + (titleText.length > 32 ? '...' : ''));
       setChats([chat, ...chats]);
       activeChatId = chat.id;
@@ -653,10 +796,25 @@ export function ChatScreen({ userId }: ChatScreenProps) {
     } else if (messages.length === 0) {
       const chat = chats.find((c) => c.id === activeChatId);
       if (chat && chat.title === 'New Chat') {
-        const titleText = text || (attachment ? attachment.name : 'New Chat');
+        const titleText = text || (primaryAttachment ? primaryAttachment.name : 'New Chat');
         const newTitle = titleText.slice(0, 32) + (titleText.length > 32 ? '...' : '');
         await handleRenameChat(activeChatId, newTitle);
       }
+    }
+
+    // Include newly uploaded artifacts in current conversation drawer immediately & rebind pending-chat uploads
+    const uploadedArts = allAttachments.map((a) => a.artifact).filter(Boolean) as ArtifactRecord[];
+    if (uploadedArts.length > 0) {
+      const pendingIds = uploadedArts.filter((a) => a.conversationId === 'pending-chat').map((a) => a.id);
+      if (pendingIds.length > 0) {
+        rebindArtifactsApi({ userId, artifactIds: pendingIds, conversationId: activeChatId }).catch(() => {});
+      }
+      setConversationArtifacts((prev) => {
+        const byId = new Map<string, ArtifactRecord>();
+        for (const a of uploadedArts) byId.set(a.id, { ...a, conversationId: activeChatId! });
+        for (const a of prev) if (!byId.has(a.id)) byId.set(a.id, a);
+        return Array.from(byId.values()).sort((a, b) => b.createdAt - a.createdAt);
+      });
     }
 
     // Optimistic user message for 0ms input lag
@@ -666,14 +824,17 @@ export function ChatScreen({ userId }: ChatScreenProps) {
       chatId: activeChatId,
       role: 'user',
       text: displayText,
-      createdAt: Date.now()
+      attachments: attachmentsMeta.length > 0 ? attachmentsMeta : undefined,
+      createdAt: Date.now(),
     };
 
     const currentMessages = [...messages, optimisticUserMsg];
     setMessages(currentMessages);
 
     // Persist user message to db asynchronously
-    saveMessage(activeChatId, 'user', displayText).catch((err) => console.error('Failed async message save:', err));
+    saveMessage(activeChatId, 'user', displayText, {
+      attachments: attachmentsMeta.length > 0 ? attachmentsMeta : undefined,
+    }).catch((err) => console.error('Failed async message save:', err));
 
     setIsLoading(true);
     setStreamingMessage('');
@@ -720,7 +881,7 @@ export function ChatScreen({ userId }: ChatScreenProps) {
         .join('\n\n');
 
       let pendingUpdate = false;
-      const shouldUseSquad = squadMode && attachment?.kind !== 'image';
+      const shouldUseSquad = squadMode && primaryAttachment?.kind !== 'image';
 
       if (shouldUseSquad) {
         const effectiveSquad = squadPersonas.length >= 4 ? squadPersonas.slice(0, 4) : NOVA_PERSONAS.slice(0, 4);
@@ -737,7 +898,9 @@ export function ChatScreen({ userId }: ChatScreenProps) {
           })),
           webResearch: webResearchEnabled ? true : 'auto',
           userId,
-          attachment,
+          attachment: primaryAttachment,
+          attachments: allAttachments,
+          conversationId: activeChatId,
           githubContext,
           temperature,
           earlierSummary: builtContext.earlierSummary,
@@ -772,6 +935,7 @@ export function ChatScreen({ userId }: ChatScreenProps) {
           const updatedMsgs = [...currentMessages, modelMsg];
           setMessages(updatedMsgs);
           offlineCache.saveMessages(activeChatId, updatedMsgs);
+          await persistAndAttachArtifacts(activeChatId, modelMsg, fullResponse, currentMessages, attachedProjectId);
         }
         setStreamingCouncil(null);
         setStreamingMessage('');
@@ -794,7 +958,7 @@ export function ChatScreen({ userId }: ChatScreenProps) {
           userTier,
           selectedProvider,
           selectedModel,
-          attachment,
+          primaryAttachment,
           githubContext,
           undefined,
           {
@@ -804,6 +968,8 @@ export function ChatScreen({ userId }: ChatScreenProps) {
             characterDirective: activePersona.systemDirective,
             earlierSummary: builtContext.earlierSummary,
             webResearch: webResearchEnabled ? true : 'auto',
+            conversationId: activeChatId,
+            attachments: allAttachments,
           }
         );
 
@@ -824,6 +990,7 @@ export function ChatScreen({ userId }: ChatScreenProps) {
           const updatedMsgs = [...currentMessages, modelMsg];
           setMessages(updatedMsgs);
           offlineCache.saveMessages(activeChatId, updatedMsgs);
+          await persistAndAttachArtifacts(activeChatId, modelMsg, fullResponse, currentMessages, attachedProjectId);
         }
         setStreamingMessage('');
       }
@@ -1067,6 +1234,24 @@ export function ChatScreen({ userId }: ChatScreenProps) {
               >
                 <Command size={13} style={{ color: 'var(--accent)' }} />
                 <kbd className="kbd hidden sm:inline-block">⌘K</kbd>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setShowArtifactsDrawer(true)}
+                className={clsx(
+                  'btn h-9 px-2.5 sm:px-3 rounded-full text-xs whitespace-nowrap',
+                  showArtifactsDrawer ? 'btn-primary' : 'btn-ghost'
+                )}
+                title="View persistent conversation artifacts & downloads"
+              >
+                <Layers size={14} style={showArtifactsDrawer ? undefined : { color: 'var(--accent)' }} />
+                <span className="hidden sm:inline">Artifacts</span>
+                {conversationArtifacts.length > 0 && (
+                  <span className="ml-0.5 text-[10px] font-mono tabular-nums opacity-85">
+                    ({conversationArtifacts.length})
+                  </span>
+                )}
               </button>
 
               <button
@@ -1329,6 +1514,14 @@ export function ChatScreen({ userId }: ChatScreenProps) {
                   codingModeEnabled={codingMode}
                   persona={activePersona}
                   onEnableCodingMode={handleEnableCodingMode}
+                  onInspectZip={(zipData) => setInspectZipData(zipData)}
+                  onOpenInWorkspace={(path, content) => {
+                    setWorkspaceFilePath(path);
+                    setWorkspaceFileContent(content);
+                    setWorkspaceTab('editor');
+                    setShowWorkspace(true);
+                  }}
+                  userId={userId}
                 />
               ))}
 
@@ -1351,6 +1544,14 @@ export function ChatScreen({ userId }: ChatScreenProps) {
                     setCodingMode(true);
                     setStoredGitHubCodingMode(true);
                   }}
+                  onInspectZip={(zipData) => setInspectZipData(zipData)}
+                  onOpenInWorkspace={(path, content) => {
+                    setWorkspaceFilePath(path);
+                    setWorkspaceFileContent(content);
+                    setWorkspaceTab('editor');
+                    setShowWorkspace(true);
+                  }}
+                  userId={userId}
                 />
               )}
 
@@ -1408,6 +1609,8 @@ export function ChatScreen({ userId }: ChatScreenProps) {
               webResearchEnabled={webResearchEnabled}
               onToggleWebResearch={handleToggleWebResearch}
               squadMode={squadMode}
+              userId={userId}
+              conversationId={currentChatId}
             />
             <div className="text-[10px] text-[var(--text-muted)] text-center px-2 pt-1 select-none">
               {squadMode
@@ -1706,6 +1909,27 @@ export function ChatScreen({ userId }: ChatScreenProps) {
           onClose={() => setShowSquadRoster(false)}
         />
       )}
+
+      {/* Persistent Conversation Artifacts Drawer */}
+      <ConversationArtifactsDrawer
+        isOpen={showArtifactsDrawer}
+        onClose={() => setShowArtifactsDrawer(false)}
+        artifacts={conversationArtifacts}
+        userId={userId}
+        conversationId={currentChatId || 'pending-chat'}
+        onArtifactDeleted={(deletedId) => {
+          setConversationArtifacts((prev) => prev.filter((a) => a.id !== deletedId));
+        }}
+        onZipCreated={(zipArt) => {
+          setConversationArtifacts((prev) => [zipArt, ...prev]);
+        }}
+        onOpenInWorkspace={(path, content) => {
+          setWorkspaceFilePath(path);
+          setWorkspaceFileContent(content);
+          setWorkspaceTab('editor');
+          setShowWorkspace(true);
+        }}
+      />
     </div>
   );
 }

@@ -207,6 +207,9 @@ export async function saveMessage(
     thinking?: string; 
     isToolEvent?: boolean;
     councilData?: Message['councilData'];
+    artifacts?: Message['artifacts'];
+    attachments?: Message['attachments'];
+    projectGroup?: Message['projectGroup'];
   }
 ): Promise<Message> {
   const messageId = uuidv4();
@@ -232,6 +235,20 @@ export async function saveMessage(
   }
   if (options?.isToolEvent !== undefined) {
     message.isToolEvent = options.isToolEvent;
+  }
+  if (options?.artifacts && options.artifacts.length > 0) {
+    // Strip oversized base64 payloads from message subdoc (artifact collection & disk retain full bytes)
+    message.artifacts = options.artifacts.map((a) => ({
+      ...a,
+      base64Data: a.base64Data && a.base64Data.length <= 120000 ? a.base64Data : undefined,
+      content: a.content && a.content.length <= 200000 ? a.content : a.content?.slice(0, 200000),
+    }));
+  }
+  if (options?.attachments && options.attachments.length > 0) {
+    message.attachments = options.attachments;
+  }
+  if (options?.projectGroup) {
+    message.projectGroup = options.projectGroup;
   }
   if (options && 'latencyMs' in options && (options as any).latencyMs) {
     message.latencyMs = (options as any).latencyMs;
@@ -259,6 +276,27 @@ export async function saveMessage(
   await setDoc(chatRef, { updatedAt: now }, { merge: true });
   
   return message;
+}
+
+export async function updateMessageArtifacts(
+  chatId: string,
+  messageId: string,
+  artifacts: Message['artifacts'],
+  projectGroup?: Message['projectGroup']
+): Promise<void> {
+  const msgRef = doc(db, `chats/${chatId}/messages`, messageId);
+  const payload: Record<string, any> = {};
+  if (artifacts) {
+    payload.artifacts = artifacts.map((a) => ({
+      ...a,
+      base64Data: a.base64Data && a.base64Data.length <= 120000 ? a.base64Data : undefined,
+      content: a.content && a.content.length <= 200000 ? a.content : a.content?.slice(0, 200000),
+    }));
+  }
+  if (projectGroup) {
+    payload.projectGroup = projectGroup;
+  }
+  await setDoc(msgRef, payload, { merge: true });
 }
 
 export async function togglePinChat(chatId: string, isPinned: boolean): Promise<void> {

@@ -1,15 +1,49 @@
 import React, { useState, useRef } from 'react';
-import { Send, Square, X, Image as ImageIcon, FileText, Plus, AudioLines, Mic, MicOff, Archive, Play, Loader2, Globe } from 'lucide-react';
+import {
+  Send,
+  Square,
+  X,
+  Image as ImageIcon,
+  Plus,
+  AudioLines,
+  Mic,
+  MicOff,
+  Archive,
+  Play,
+  Loader2,
+  Globe,
+  Download,
+  AlertCircle,
+} from 'lucide-react';
 import { clsx } from 'clsx';
+import { ArtifactRecord } from '../../models/types';
 import { parseZipArchive, ParsedZipResult } from '../utils/zipParser';
+import {
+  formatFileSize,
+  getArtifactKindForExtension,
+  getExtensionFromName,
+  getMimeTypeForExtension,
+  isBinaryExtension,
+} from '../../utils/artifactParser';
+import { uploadArtifactFile, uploadZipProjectArchive } from '../../api/client';
+import { getArtifactVisualMeta, triggerArtifactDownload } from './artifacts/artifactUiHelpers';
+import { ArtifactViewerModal } from './artifacts/ArtifactViewerModal';
 import { LiveHtmlPreviewModal } from './workspace/LiveHtmlPreviewModal';
 import { ZipInspectorModal } from './workspace/ZipInspectorModal';
 
 export interface ChatAttachment {
+  id?: string;
   kind: 'image' | 'file' | 'zip';
   data: string;
   name: string;
+  extension?: string;
+  size?: number;
   mimeType: string;
+  artifactId?: string;
+  projectId?: string;
+  downloadUrl?: string;
+  previewUrl?: string;
+  artifact?: ArtifactRecord;
   zipStats?: {
     fileCount: number;
     totalSize: number;
@@ -21,7 +55,7 @@ export interface ChatAttachment {
 }
 
 interface InputAreaProps {
-  onSend: (text: string, attachment?: ChatAttachment) => void;
+  onSend: (text: string, attachment?: ChatAttachment, attachments?: ChatAttachment[]) => void;
   isLoading: boolean;
   onStop?: () => void;
   onOpenLiveVoice?: () => void;
@@ -31,27 +65,45 @@ interface InputAreaProps {
   webResearchEnabled?: boolean;
   onToggleWebResearch?: () => void;
   squadMode?: boolean;
+  userId?: string;
+  conversationId?: string | null;
 }
 
-export const InputArea = React.memo(function InputArea({ 
-  onSend, 
-  isLoading, 
-  onStop, 
-  onOpenLiveVoice, 
+const MAX_SINGLE_FILE_BYTES = 25 * 1024 * 1024;
+const MAX_ZIP_BYTES = 50 * 1024 * 1024;
+
+function readFileAsDataUrl(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result || ''));
+    reader.onerror = () => reject(new Error(`Failed to read ${file.name}`));
+    reader.readAsDataURL(file);
+  });
+}
+
+export const InputArea = React.memo(function InputArea({
+  onSend,
+  isLoading,
+  onStop,
+  onOpenLiveVoice,
   onImageGenerate,
   activeCharacterName = 'Shii',
   onActivityChange,
   webResearchEnabled = false,
   onToggleWebResearch,
   squadMode = false,
+  userId = 'workspace-default',
+  conversationId,
 }: InputAreaProps) {
   const [text, setText] = useState('');
-  const [attachment, setAttachment] = useState<ChatAttachment | null>(null);
+  const [attachments, setAttachments] = useState<ChatAttachment[]>([]);
   const [isProcessingFile, setIsProcessingFile] = useState(false);
+  const [uploadError, setUploadError] = useState<string | null>(null);
   const [imageMode, setImageMode] = useState(false);
   const [isDictating, setIsDictating] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
-  const [previewingHtml, setPreviewingHtml] = useState<string | null>(null);
+  const [previewingHtml, setPreviewingHtml] = useState<{ html: string; title: string } | null>(null);
+  const [previewingArtifact, setPreviewingArtifact] = useState<ArtifactRecord | null>(null);
   const [inspectingZip, setInspectingZip] = useState<ParsedZipResult | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -85,7 +137,7 @@ export const InputArea = React.memo(function InputArea({
           transcript += event.results[i][0].transcript;
         }
         if (transcript) {
-          setText(prev => (prev ? `${prev.trim()} ${transcript.trim()}` : transcript.trim()));
+          setText((prev) => (prev ? `${prev.trim()} ${transcript.trim()}` : transcript.trim()));
         }
       };
       recognition.onerror = () => setIsDictating(false);
@@ -107,70 +159,175 @@ export const InputArea = React.memo(function InputArea({
     textarea.style.height = `${newHeight}px`;
   }, [text]);
 
-  const processSelectedFile = async (file: File) => {
-    if (!file) return;
-    setIsProcessingFile(true);
+  const processSingleFile = async (file: File): Promise<ChatAttachment | null> => {
+    const ext = getExtensionFromName(file.name);
+    const mime = file.type || getMimeTypeForExtension(ext);
+    const activeConvId = conversationId || 'pending-chat';
 
-    try {
-      const lowerName = file.name.toLowerCase();
-
-      if (lowerName.endsWith('.zip') || file.type === 'application/zip' || file.type === 'application/x-zip-compressed') {
-        const parsed = await parseZipArchive(file);
-        setAttachment({
-          kind: 'zip',
-          data: parsed.aiPromptSnippet,
-          name: file.name,
-          mimeType: 'application/zip',
-          zipStats: {
-            fileCount: parsed.totalFiles,
-            totalSize: parsed.totalSize,
-            hasHtml: parsed.hasHtmlEntry,
-            htmlContent: parsed.htmlEntryContent
-          },
-          htmlContent: parsed.htmlEntryContent,
-          parsedZip: parsed
-        });
-        return;
+    if (ext === 'zip' || mime === 'application/zip' || mime === 'application/x-zip-compressed') {
+      if (file.size > MAX_ZIP_BYTES) {
+        throw new Error(`${file.name} exceeds the 50 MB ZIP limit.`);
       }
+      const [parsedLocal, dataUrl] = await Promise.all([
+        parseZipArchive(file),
+        readFileAsDataUrl(file),
+      ]);
+      const backendZip = await uploadZipProjectArchive({
+        userId,
+        conversationId: activeConvId,
+        filename: file.name,
+        base64Data: dataUrl,
+      });
 
-      if (file.type.startsWith('image/')) {
-        const reader = new FileReader();
-        reader.onload = () => {
-          setAttachment({
-            kind: 'image',
-            data: reader.result as string,
-            name: file.name,
-            mimeType: file.type,
-          });
-        };
-        reader.readAsDataURL(file);
-        return;
-      }
-
-      const reader = new FileReader();
-      reader.onload = () => {
-        const content = reader.result as string;
-        const isHtml = lowerName.endsWith('.html') || lowerName.endsWith('.htm') || file.type === 'text/html';
-        setAttachment({
-          kind: 'file',
-          data: content.slice(0, 48000),
-          name: file.name,
-          mimeType: file.type || 'text/plain',
-          htmlContent: isHtml ? content : undefined
-        });
+      const mergedParsedZip: ParsedZipResult = {
+        ...parsedLocal,
+        extractedFiles:
+          backendZip.extractedFiles && backendZip.extractedFiles.length > 0
+            ? backendZip.extractedFiles.map((f) => ({
+                ...f,
+                extension: getExtensionFromName(f.name),
+              }))
+            : parsedLocal.extractedFiles,
+        aiPromptSnippet: backendZip.aiPromptSnippet || parsedLocal.aiPromptSnippet,
       };
-      reader.readAsText(file);
-    } catch (err: any) {
-      console.error('File parsing error:', err);
-    } finally {
-      setIsProcessingFile(false);
+
+      return {
+        id: backendZip.artifact.id,
+        kind: 'zip',
+        data: backendZip.aiPromptSnippet || parsedLocal.aiPromptSnippet,
+        name: file.name,
+        extension: 'zip',
+        size: file.size,
+        mimeType: 'application/zip',
+        artifactId: backendZip.artifact.id,
+        projectId: backendZip.projectId,
+        downloadUrl: backendZip.artifact.downloadUrl,
+        previewUrl: backendZip.artifact.previewUrl,
+        artifact: backendZip.artifact,
+        zipStats: {
+          fileCount: backendZip.fileTree?.length || parsedLocal.totalFiles,
+          totalSize: parsedLocal.totalSize || file.size,
+          hasHtml: backendZip.hasHtmlEntry || parsedLocal.hasHtmlEntry,
+          htmlContent: backendZip.htmlEntryContent || parsedLocal.htmlEntryContent,
+        },
+        htmlContent: backendZip.htmlEntryContent || parsedLocal.htmlEntryContent,
+        parsedZip: mergedParsedZip,
+      };
     }
+
+    if (file.size > MAX_SINGLE_FILE_BYTES) {
+      throw new Error(`${file.name} exceeds the 25 MB single file limit.`);
+    }
+
+    // Raster image (PNG, JPG, GIF, WEBP)
+    if (file.type.startsWith('image/') && ext !== 'svg') {
+      const dataUrl = await readFileAsDataUrl(file);
+      const artifact = await uploadArtifactFile({
+        userId,
+        conversationId: activeConvId,
+        filename: file.name,
+        base64Data: dataUrl,
+        mimeType: mime,
+      });
+      return {
+        id: artifact.id,
+        kind: 'image',
+        data: dataUrl,
+        name: file.name,
+        extension: ext,
+        size: file.size,
+        mimeType: mime,
+        artifactId: artifact.id,
+        downloadUrl: artifact.downloadUrl,
+        previewUrl: artifact.previewUrl,
+        artifact,
+      };
+    }
+
+    // Binary office / PDF formats (PDF, XLSX, DOCX)
+    if (isBinaryExtension(ext)) {
+      const dataUrl = await readFileAsDataUrl(file);
+      const artifact = await uploadArtifactFile({
+        userId,
+        conversationId: activeConvId,
+        filename: file.name,
+        base64Data: dataUrl,
+        mimeType: mime,
+      });
+      return {
+        id: artifact.id,
+        kind: 'file',
+        data: (artifact.extractedPreview || artifact.content || `[Uploaded binary file: ${file.name}, ${formatFileSize(file.size)}]`).slice(0, 48000),
+        name: file.name,
+        extension: ext,
+        size: file.size,
+        mimeType: mime,
+        artifactId: artifact.id,
+        downloadUrl: artifact.downloadUrl,
+        previewUrl: artifact.previewUrl,
+        artifact,
+      };
+    }
+
+    // Text, code, SVG, CSV, Markdown, HTML, JSON, JSX, TSX
+    const textContent = await file.text();
+    const artifact = await uploadArtifactFile({
+      userId,
+      conversationId: activeConvId,
+      filename: file.name,
+      content: textContent,
+      mimeType: mime,
+    });
+    const isHtml = ext === 'html' || ext === 'htm' || mime === 'text/html';
+
+    return {
+      id: artifact.id,
+      kind: 'file',
+      data: textContent.slice(0, 48000),
+      name: file.name,
+      extension: ext,
+      size: file.size,
+      mimeType: mime,
+      artifactId: artifact.id,
+      downloadUrl: artifact.downloadUrl,
+      previewUrl: artifact.previewUrl,
+      artifact,
+      htmlContent: isHtml ? textContent : undefined,
+    };
+  };
+
+  const processSelectedFiles = async (fileList: FileList | File[]) => {
+    const files = Array.from(fileList || []);
+    if (files.length === 0) return;
+
+    setIsProcessingFile(true);
+    setUploadError(null);
+
+    const processed: ChatAttachment[] = [];
+    const errors: string[] = [];
+
+    for (const file of files) {
+      try {
+        const result = await processSingleFile(file);
+        if (result) processed.push(result);
+      } catch (err: any) {
+        console.error('File processing error:', err);
+        errors.push(err?.message || `Failed to process ${file.name}`);
+      }
+    }
+
+    if (processed.length > 0) {
+      setAttachments((prev) => [...prev, ...processed]);
+    }
+    if (errors.length > 0) {
+      setUploadError(errors[0]);
+    }
+    setIsProcessingFile(false);
   };
 
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      processSelectedFile(file);
+    if (e.target.files && e.target.files.length > 0) {
+      processSelectedFiles(e.target.files);
     }
     e.target.value = '';
   };
@@ -191,15 +348,51 @@ export const InputArea = React.memo(function InputArea({
     e.preventDefault();
     e.stopPropagation();
     setIsDragging(false);
-    const file = e.dataTransfer.files?.[0];
-    if (file) {
-      processSelectedFile(file);
+    if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+      processSelectedFiles(e.dataTransfer.files);
     }
+  };
+
+  const removeAttachment = (index: number) => {
+    setAttachments((prev) => prev.filter((_, i) => i !== index));
+  };
+
+  const openAttachmentPreview = (att: ChatAttachment) => {
+    if (att.parsedZip) {
+      setInspectingZip(att.parsedZip);
+      return;
+    }
+    if (att.artifact) {
+      setPreviewingArtifact(att.artifact);
+      return;
+    }
+    if (att.htmlContent) {
+      setPreviewingHtml({ html: att.htmlContent, title: att.name });
+      return;
+    }
+    const ext = att.extension || getExtensionFromName(att.name);
+    setPreviewingArtifact({
+      id: att.artifactId || `draft-upload-${att.name}`,
+      filename: att.name,
+      path: att.name,
+      mimeType: att.mimeType,
+      extension: ext,
+      kind: getArtifactKindForExtension(ext),
+      size: att.size || att.data.length,
+      content: att.kind === 'image' ? undefined : att.data,
+      base64Data: att.kind === 'image' ? att.data : undefined,
+      storageRef: '',
+      downloadUrl: att.downloadUrl || '',
+      previewUrl: att.previewUrl,
+      createdAt: Date.now(),
+      conversationId: conversationId || '',
+      userId,
+    });
   };
 
   const handleSend = () => {
     const trimmed = text.trim();
-    if ((trimmed || attachment) && !isLoading && !isProcessingFile) {
+    if ((trimmed || attachments.length > 0) && !isLoading && !isProcessingFile) {
       if (imageMode && onImageGenerate && trimmed) {
         onImageGenerate(trimmed);
         setText('');
@@ -207,9 +400,10 @@ export const InputArea = React.memo(function InputArea({
         if (textareaRef.current) textareaRef.current.style.height = '36px';
         return;
       }
-      onSend(trimmed, attachment || undefined);
+      onSend(trimmed, attachments[0], attachments);
       setText('');
-      setAttachment(null);
+      setAttachments([]);
+      setUploadError(null);
       if (textareaRef.current) textareaRef.current.style.height = '36px';
     }
   };
@@ -223,7 +417,7 @@ export const InputArea = React.memo(function InputArea({
   };
 
   return (
-    <div 
+    <div
       className="w-full max-w-3xl mx-auto px-2 pb-1 relative"
       onDragOver={handleDragOver}
       onDragLeave={handleDragLeave}
@@ -231,9 +425,16 @@ export const InputArea = React.memo(function InputArea({
     >
       {previewingHtml && (
         <LiveHtmlPreviewModal
-          initialHtml={previewingHtml}
-          title={attachment?.name || 'Live HTML Sandbox'}
+          initialHtml={previewingHtml.html}
+          title={previewingHtml.title}
           onClose={() => setPreviewingHtml(null)}
+        />
+      )}
+
+      {previewingArtifact && (
+        <ArtifactViewerModal
+          artifact={previewingArtifact}
+          onClose={() => setPreviewingArtifact(null)}
         />
       )}
 
@@ -241,9 +442,9 @@ export const InputArea = React.memo(function InputArea({
         <ZipInspectorModal
           zipData={inspectingZip}
           onClose={() => setInspectingZip(null)}
-          onOpenInHtmlPreview={(html) => {
+          onOpenInHtmlPreview={(html, title) => {
             setInspectingZip(null);
-            setPreviewingHtml(html);
+            setPreviewingHtml({ html, title: title || inspectingZip.fileName });
           }}
           onSendToChat={(prompt) => {
             setInspectingZip(null);
@@ -256,7 +457,24 @@ export const InputArea = React.memo(function InputArea({
       {isDragging && (
         <div className="absolute inset-x-2 -top-12 bottom-1 glass-thick border-2 border-dashed border-[var(--accent-muted)] rounded-2xl z-30 flex items-center justify-center gap-3 text-[var(--text-primary)] text-xs font-semibold animate-fadeIn">
           <Archive size={20} className="animate-bounce" style={{ color: 'var(--accent)' }} />
-          <span>Drop ZIP archive, HTML, image, or code file</span>
+          <span>Drop files, documents, images, or ZIP archives</span>
+        </div>
+      )}
+
+      {/* Inline Upload Validation Error */}
+      {uploadError && (
+        <div className="mb-1.5 p-2 px-3 rounded-xl bg-rose-500/12 border border-rose-500/35 flex items-center justify-between gap-2 text-xs text-rose-700 dark:text-rose-200 animate-fadeIn">
+          <div className="flex items-center gap-2 min-w-0">
+            <AlertCircle size={14} className="shrink-0 text-rose-500" />
+            <span className="truncate">{uploadError}</span>
+          </div>
+          <button
+            type="button"
+            onClick={() => setUploadError(null)}
+            className="p-1 rounded hover:bg-rose-500/20 cursor-pointer"
+          >
+            <X size={12} />
+          </button>
         </div>
       )}
 
@@ -264,94 +482,105 @@ export const InputArea = React.memo(function InputArea({
       {isProcessingFile && (
         <div className="mb-1.5 p-2 px-3 glass-strong rounded-xl flex items-center gap-2.5 text-xs text-[var(--text-secondary)] animate-fadeIn">
           <Loader2 size={14} className="animate-spin" style={{ color: 'var(--accent)' }} />
-          <span>Unpacking file contents for {activeCharacterName}...</span>
+          <span>Uploading and indexing files for {activeCharacterName}...</span>
         </div>
       )}
 
-      {/* Attachment Preview Card */}
-      {attachment && !isProcessingFile && (
-        <div className="mb-2 p-2 px-3 glass-strong rounded-2xl flex items-center justify-between gap-3 text-xs text-[var(--text-primary)] animate-fadeIn">
-          {attachment.kind === 'image' ? (
-            <div className="flex items-center gap-2.5 truncate">
-              <img src={attachment.data} alt={attachment.name} className="w-8 h-8 rounded-xl object-cover shrink-0 border border-[var(--line)]" />
-              <div className="min-w-0">
-                <span className="truncate text-xs font-semibold text-[var(--text-primary)] block">{attachment.name}</span>
-                <span className="text-[10px] text-[var(--text-muted)]">Image ready to analyze</span>
-              </div>
-            </div>
-          ) : attachment.kind === 'zip' ? (
-            <div className="flex items-center gap-2.5 truncate">
-              <div className="w-8 h-8 rounded-xl bg-amber-500/15 border border-amber-500/35 text-amber-600 dark:text-amber-300 flex items-center justify-center shrink-0">
-                <Archive size={15} />
-              </div>
-              <div className="min-w-0">
-                <span className="truncate text-xs font-semibold text-[var(--text-primary)] block">{attachment.name}</span>
-                <span className="text-[10px] text-amber-700 dark:text-amber-300 font-mono">
-                  {attachment.zipStats?.fileCount || 0} files · {((attachment.zipStats?.totalSize || 0) / 1024).toFixed(1)} KB
-                </span>
-              </div>
-            </div>
-          ) : (
-            <div className="flex items-center gap-2.5 truncate">
-              <div className="w-8 h-8 rounded-xl border flex items-center justify-center shrink-0" style={{ background: 'var(--accent-soft)', borderColor: 'var(--accent-muted)', color: 'var(--accent)' }}>
-                <FileText size={15} />
-              </div>
-              <div className="min-w-0">
-                <span className="truncate text-xs font-semibold text-[var(--text-primary)] block">{attachment.name}</span>
-                <span className="text-[10px] text-[var(--text-muted)] font-mono">
-                  {attachment.mimeType} · {attachment.data.length} chars
-                </span>
-              </div>
-            </div>
-          )}
-
-          <div className="flex items-center gap-1.5 shrink-0">
-            {attachment.parsedZip && (
-              <button
-                type="button"
-                onClick={() => setInspectingZip(attachment.parsedZip!)}
-                className="px-2.5 py-1 bg-amber-500/15 hover:bg-amber-500/25 border border-amber-500/40 text-amber-800 dark:text-amber-200 rounded-lg text-[11px] font-semibold flex items-center gap-1 transition-colors cursor-pointer"
-                title="Browse archive files"
+      {/* Multi-File Attachment Cards */}
+      {attachments.length > 0 && !isProcessingFile && (
+        <div className="mb-2 space-y-1.5 max-h-48 overflow-y-auto">
+          {attachments.map((att, idx) => {
+            const ext = att.extension || getExtensionFromName(att.name);
+            const kind = getArtifactKindForExtension(ext);
+            const { Icon, label, accentClass, bgClass } = getArtifactVisualMeta(ext, kind);
+            return (
+              <div
+                key={att.id || `${att.name}-${idx}`}
+                className="p-2 px-3 glass-strong rounded-2xl border border-[var(--line)] flex items-center justify-between gap-3 text-xs text-[var(--text-primary)] animate-fadeIn"
               >
-                <Archive size={11} />
-                <span>Inspect</span>
-              </button>
-            )}
+                {att.kind === 'image' ? (
+                  <div className="flex items-center gap-2.5 min-w-0">
+                    <img
+                      src={att.data}
+                      alt={att.name}
+                      className="w-8 h-8 rounded-xl object-cover shrink-0 border border-[var(--line)]"
+                    />
+                    <div className="min-w-0">
+                      <span className="truncate text-xs font-semibold text-[var(--text-primary)] block">
+                        {att.name}
+                      </span>
+                      <span className="text-[10px] text-[var(--text-muted)] font-mono">
+                        {label} · {formatFileSize(att.size || 0)}
+                      </span>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="flex items-center gap-2.5 min-w-0">
+                    <div className={clsx('w-8 h-8 rounded-xl border flex items-center justify-center shrink-0', bgClass)}>
+                      <Icon size={15} className={accentClass} />
+                    </div>
+                    <div className="min-w-0">
+                      <span className="truncate text-xs font-semibold text-[var(--text-primary)] block">
+                        {att.name}
+                      </span>
+                      <span className="text-[10px] text-[var(--text-muted)] font-mono">
+                        {label} · {formatFileSize(att.size || att.data.length)}
+                        {att.kind === 'zip' && att.zipStats ? ` · ${att.zipStats.fileCount} files` : ''}
+                      </span>
+                    </div>
+                  </div>
+                )}
 
-            {attachment.htmlContent && (
-              <button
-                type="button"
-                onClick={() => setPreviewingHtml(attachment.htmlContent!)}
-                className="px-2.5 py-1 bg-emerald-500/15 hover:bg-emerald-500/25 border border-emerald-500/40 text-emerald-800 dark:text-emerald-200 rounded-lg text-[11px] font-semibold flex items-center gap-1 transition-colors cursor-pointer"
-                title="Open live HTML preview"
-              >
-                <Play size={10} fill="currentColor" />
-                <span>Preview</span>
-              </button>
-            )}
+                <div className="flex items-center gap-1.5 shrink-0">
+                  <button
+                    type="button"
+                    onClick={() => openAttachmentPreview(att)}
+                    className="px-2.5 py-1 bg-[var(--bg-2)] hover:bg-[var(--bg-3)] border border-[var(--line)] text-[var(--text-primary)] rounded-lg text-[11px] font-medium flex items-center gap-1 transition-colors cursor-pointer"
+                    title={att.kind === 'zip' ? 'Inspect ZIP archive' : 'Preview file'}
+                  >
+                    {att.kind === 'zip' ? <Archive size={11} /> : <Play size={10} />}
+                    <span>{att.kind === 'zip' ? 'Inspect' : 'Preview'}</span>
+                  </button>
 
-            <button
-              type="button"
-              onClick={() => setAttachment(null)}
-              className="p-1.5 hover:bg-black/[0.06] dark:hover:bg-white/[0.1] rounded-lg text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-colors cursor-pointer"
-              title="Remove attachment"
-            >
-              <X size={14} />
-            </button>
-          </div>
+                  {att.artifact && (
+                    <button
+                      type="button"
+                      onClick={() => triggerArtifactDownload(att.artifact!)}
+                      className="p-1.5 hover:bg-black/[0.06] dark:hover:bg-white/[0.1] rounded-lg text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors cursor-pointer"
+                      title={`Download ${att.name}`}
+                    >
+                      <Download size={13} />
+                    </button>
+                  )}
+
+                  <button
+                    type="button"
+                    onClick={() => removeAttachment(idx)}
+                    className="p-1.5 hover:bg-black/[0.06] dark:hover:bg-white/[0.1] rounded-lg text-[var(--text-muted)] hover:text-rose-500 transition-colors cursor-pointer"
+                    title="Remove attachment"
+                  >
+                    <X size={14} />
+                  </button>
+                </div>
+              </div>
+            );
+          })}
         </div>
       )}
 
       {/* iOS 26 Liquid Glass Composer Dock */}
-      <div className={clsx(
-        "relative flex items-center w-full min-h-[54px] glass-dock-2026 rounded-full transition-all px-2.5 py-1.5 gap-1.5",
-        isDragging && "glow-ring"
-      )}>
+      <div
+        className={clsx(
+          'relative flex items-center w-full min-h-[54px] glass-dock-2026 rounded-full transition-all px-2.5 py-1.5 gap-1.5',
+          isDragging && 'glow-ring'
+        )}
+      >
         <input
           type="file"
+          multiple
           ref={fileInputRef}
           onChange={handleFileUpload}
-          accept=".zip,application/zip,application/x-zip-compressed,image/*,.txt,.md,.json,.csv,.js,.ts,.tsx,.py,.html,.htm,.css,.xml,.yaml,.yml,.log,.pdf"
+          accept=".html,.htm,.css,.scss,.js,.jsx,.ts,.tsx,.json,.txt,.md,.markdown,.pdf,.csv,.tsv,.xlsx,.docx,.png,.jpg,.jpeg,.gif,.webp,.svg,.zip,.py,.sql,.yaml,.yml,.xml,image/*,application/zip,application/x-zip-compressed,application/pdf"
           className="hidden"
         />
 
@@ -360,7 +589,7 @@ export const InputArea = React.memo(function InputArea({
           type="button"
           onClick={() => fileInputRef.current?.click()}
           className="w-9 h-9 sm:w-10 sm:h-10 rounded-full glass hover:bg-black/[0.05] dark:hover:bg-white/[0.1] text-[var(--text-primary)] flex items-center justify-center shrink-0 transition-all cursor-pointer"
-          title="Attach image, code, or ZIP archive"
+          title="Attach files (HTML, CSS, JS, React, JSON, CSV, XLSX, DOCX, PDF, PNG, JPG, SVG, ZIP)"
         >
           <Plus size={18} />
         </button>
@@ -412,15 +641,15 @@ export const InputArea = React.memo(function InputArea({
               ? `Ask 4-Model Squad (${activeCharacterName} + 3) · splits tasks in parallel...`
               : webResearchEnabled
               ? `Ask ${activeCharacterName} with live internet & full-website crawl...`
-              : `Ask ${activeCharacterName} anything, or continue where we left off...`
+              : `Ask ${activeCharacterName} to build apps, edit ZIPs, or create files...`
           }
           rows={1}
           autoCapitalize="sentences"
           autoCorrect="on"
           spellCheck={true}
           className={clsx(
-            "flex-1 min-h-[38px] max-h-[128px] bg-transparent text-[var(--text-primary)] placeholder:text-[var(--text-muted)] border-0 focus:ring-0 resize-none py-2 px-1.5 outline-none text-base sm:text-sm leading-snug font-sans",
-            imageMode && "placeholder:text-[var(--accent)]"
+            'flex-1 min-h-[38px] max-h-[128px] bg-transparent text-[var(--text-primary)] placeholder:text-[var(--text-muted)] border-0 focus:ring-0 resize-none py-2 px-1.5 outline-none text-base sm:text-sm leading-snug font-sans',
+            imageMode && 'placeholder:text-[var(--accent)]'
           )}
         />
 
@@ -449,7 +678,7 @@ export const InputArea = React.memo(function InputArea({
           >
             <Square size={13} fill="currentColor" />
           </button>
-        ) : text.trim() || attachment ? (
+        ) : text.trim() || attachments.length > 0 ? (
           <button
             type="button"
             onClick={handleSend}

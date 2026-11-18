@@ -13,12 +13,40 @@
         "lastUsedAt": { "type": "number" }
       },
       "required": ["id", "userId", "name", "key", "createdAt"]
+    },
+    "Artifact": {
+      "title": "Artifact",
+      "description": "Persistent generated or uploaded file/ZIP artifact linked to a conversation",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "filename": { "type": "string", "maxLength": 255 },
+        "path": { "type": "string", "maxLength": 512 },
+        "mimeType": { "type": "string", "maxLength": 128 },
+        "extension": { "type": "string", "maxLength": 32 },
+        "kind": { "type": "string", "maxLength": 32 },
+        "size": { "type": "number" },
+        "content": { "type": "string", "maxLength": 700000 },
+        "storageRef": { "type": "string", "maxLength": 512 },
+        "downloadUrl": { "type": "string", "maxLength": 512 },
+        "createdAt": { "type": "number" },
+        "conversationId": { "type": "string", "maxLength": 128 },
+        "messageId": { "type": "string", "maxLength": 128 },
+        "userId": { "type": "string", "maxLength": 128 },
+        "groupId": { "type": "string", "maxLength": 128 },
+        "projectName": { "type": "string", "maxLength": 255 }
+      },
+      "required": ["id", "filename", "mimeType", "extension", "size", "storageRef", "createdAt", "conversationId", "userId"]
     }
   },
   "firestore": {
     "/user_api_keys/{keyId}": {
       "schema": { "$ref": "#/entities/UserApiKey" },
       "description": "User API key records"
+    },
+    "/artifacts/{artifactId}": {
+      "schema": { "$ref": "#/entities/Artifact" },
+      "description": "Persistent generated and uploaded artifacts"
     }
   }
 }

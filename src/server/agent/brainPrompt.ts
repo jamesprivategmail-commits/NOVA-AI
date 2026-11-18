@@ -24,6 +24,7 @@ export interface BuildBrainPromptOptions {
   personaName?: string;
   characterDirective?: string;
   earlierSummary?: string;
+  conversationArtifactsContext?: string;
 }
 
 /**
@@ -41,6 +42,7 @@ export function buildUnifiedBrainPrompt(options: BuildBrainPromptOptions): strin
     personaName,
     characterDirective,
     earlierSummary,
+    conversationArtifactsContext,
   } = options;
 
   const brainSettings: AIBrainSettings = rawBrainSettings || {
@@ -148,6 +150,18 @@ ${githubContext?.activeFile ? `Currently Selected File: ${githubContext.activeFi
 3. COMPLETE LARGE TASKS WITHOUT STUBS: Never leave placeholders like "// ... rest of code", "/* TODO */", or half-finished files. Complete every file, function, section, and requirement cleanly in full unless the user explicitly asks to stop or change direction.
 4. STRUCTURED PRECISION: For large multi-part tasks, briefly organize the plan cleanly, execute thoroughly step by step, verify edge cases, and only conclude when the deliverable is genuinely complete.`;
 
+  // 7. Native Artifact & File Delivery Protocol
+  const artifactProtocol = `
+[NATIVE ARTIFACT & FILE DELIVERY ENGINE — MANDATORY]:
+- Whenever you generate complete deliverable files (HTML, CSS, JS, JSX/React, TSX, JSON, TXT, Markdown, PDF, CSV, XLSX, DOCX, SVG, or multi-file projects / modified ZIP archives), output each file inside a dedicated artifact fence:
+  \`\`\`nova-artifact {"filename":"index.html","title":"Interactive App","project":"my-project"}
+  ...complete file contents...
+  \`\`\`
+- Keep conversational prose concise and clear. Do NOT repeat or dump large source files in plain text outside the artifact block when delivering an artifact card.
+- For multi-file projects or edits to an uploaded ZIP archive: output every created or modified file as a \`\`\`nova-artifact\`\`\` block with the exact relative \`filename\` / \`path\` and shared \`project\` name. Unrelated files in an uploaded ZIP are preserved automatically and the backend packages everything into a downloadable ZIP deliverable.
+- For PDF, XLSX, or DOCX requests: emit the clean structured content inside \`\`\`nova-artifact {"filename":"report.pdf"}\`\`\` (or \`.xlsx\` with CSV/JSON rows, or \`.docx\` with Markdown/text) and the delivery engine compiles the real binary file.
+${conversationArtifactsContext ? `\n[ACTIVE CONVERSATION ARTIFACTS — AVAILABLE FOR REFERENCE & EDITING]:\n${conversationArtifactsContext}` : ''}`;
+
   const sections = [
     masterBrainBase,
     toolRegistryContext,
@@ -156,10 +170,11 @@ ${githubContext?.activeFile ? `Currently Selected File: ${githubContext.activeFi
     codebaseSearchInstructions,
     codingWorkflowInstructions,
     conversationContinuity,
+    artifactProtocol,
     extraSystemPrompt
   ]
     .filter(Boolean)
     .map((s) => s.trim());
 
-  return compactSystemPrompt(sections.join('\n\n'), 6800);
+  return compactSystemPrompt(sections.join('\n\n'), 8200);
 }

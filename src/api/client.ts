@@ -5,6 +5,8 @@ import type {
   CouncilAgentDiscussion,
   CouncilWorkerTask,
   WebResearchSource,
+  ArtifactRecord,
+  ProjectGroupInfo,
 } from '../models/types';
 
 export interface GitHubContextPayload {
@@ -92,6 +94,8 @@ export async function sendMessageToGroq(
     characterDirective?: string;
     earlierSummary?: string;
     webResearch?: boolean | 'auto';
+    conversationId?: string;
+    attachments?: ChatAttachment[];
   }
 ): Promise<ChatTelemetryResult> {
   const startTime = performance.now();
@@ -108,6 +112,8 @@ export async function sendMessageToGroq(
       provider, 
       model, 
       attachment, 
+      attachments: options?.attachments,
+      conversationId: options?.conversationId,
       githubContext,
       clientKeys: clientKeys || undefined,
       temperature: options?.temperature,
@@ -282,6 +288,8 @@ export async function sendCouncilMessage(params: {
   webResearch?: boolean | 'auto';
   userId?: string;
   attachment?: ChatAttachment;
+  attachments?: ChatAttachment[];
+  conversationId?: string;
   githubContext?: GitHubContextPayload;
   temperature?: number;
   earlierSummary?: string;
@@ -296,6 +304,8 @@ export async function sendCouncilMessage(params: {
     webResearch = 'auto',
     userId,
     attachment,
+    attachments,
+    conversationId,
     githubContext,
     temperature,
     earlierSummary,
@@ -339,6 +349,8 @@ export async function sendCouncilMessage(params: {
       webResearch,
       userId,
       attachment,
+      attachments,
+      conversationId,
       githubContext,
       temperature,
       earlierSummary,
@@ -635,4 +647,173 @@ export async function fetchProcessLogs(id: string): Promise<string[]> {
   const data = await res.json();
   return data.logs || [];
 }
+
+/**
+ * Native Artifact, File Upload, ZIP Delivery & Preview Client APIs
+ */
+export async function uploadArtifactFile(params: {
+  userId: string;
+  conversationId: string;
+  filename: string;
+  content?: string;
+  base64Data?: string;
+  mimeType?: string;
+}): Promise<ArtifactRecord> {
+  const res = await fetch('/api/artifacts/upload', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(params),
+  });
+  const data = await res.json();
+  if (!res.ok || !data.artifact) {
+    throw new Error(data.error || 'Failed to upload file');
+  }
+  return data.artifact;
+}
+
+export async function uploadZipProjectArchive(params: {
+  userId: string;
+  conversationId: string;
+  filename: string;
+  base64Data: string;
+}): Promise<{
+  projectId: string;
+  artifact: ArtifactRecord;
+  fileTree: string[];
+  extractedFiles: { path: string; name: string; size: number; isText: boolean; content?: string }[];
+  aiPromptSnippet: string;
+  hasHtmlEntry: boolean;
+  htmlEntryContent?: string;
+}> {
+  const res = await fetch('/api/artifacts/upload-zip', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(params),
+  });
+  const data = await res.json();
+  if (!res.ok || !data.success) {
+    throw new Error(data.error || 'Failed to extract ZIP archive');
+  }
+  return data;
+}
+
+export async function commitResponseArtifactsApi(params: {
+  userId: string;
+  conversationId: string;
+  messageId?: string;
+  rawText: string;
+  sourceProjectId?: string;
+  projectName?: string;
+  files?: { path: string; content: string; title?: string; mimeType?: string }[];
+}): Promise<{
+  artifacts: ArtifactRecord[];
+  zipArtifact?: ArtifactRecord;
+  projectGroup?: ProjectGroupInfo;
+}> {
+  const res = await fetch('/api/artifacts/commit-response', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(params),
+  });
+  const data = await res.json();
+  if (!res.ok) {
+    throw new Error(data.error || 'Failed to persist generated artifacts');
+  }
+  return {
+    artifacts: data.artifacts || [],
+    zipArtifact: data.zipArtifact,
+    projectGroup: data.projectGroup,
+  };
+}
+
+export async function listConversationArtifacts(userId: string, conversationId?: string): Promise<ArtifactRecord[]> {
+  const url = `/api/artifacts?userId=${encodeURIComponent(userId)}${conversationId ? `&conversationId=${encodeURIComponent(conversationId)}` : ''}`;
+  const res = await fetch(url);
+  if (!res.ok) return [];
+  const data = await res.json();
+  return data.artifacts || [];
+}
+
+export async function fetchArtifactById(id: string, userId?: string): Promise<ArtifactRecord | null> {
+  const url = `/api/artifacts/${encodeURIComponent(id)}${userId ? `?userId=${encodeURIComponent(userId)}` : ''}`;
+  const res = await fetch(url);
+  if (!res.ok) return null;
+  const data = await res.json();
+  return data.artifact || null;
+}
+
+export async function updateArtifactContentApi(id: string, userId: string, content: string): Promise<ArtifactRecord> {
+  const res = await fetch(`/api/artifacts/${encodeURIComponent(id)}`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ userId, content }),
+  });
+  const data = await res.json();
+  if (!res.ok || !data.artifact) throw new Error(data.error || 'Failed to update artifact');
+  return data.artifact;
+}
+
+export async function compileInlinePreviewHtml(params: {
+  content: string;
+  filename: string;
+  siblings?: ArtifactRecord[];
+}): Promise<string> {
+  const res = await fetch('/api/artifacts/preview-inline', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(params),
+  });
+  const data = await res.json();
+  if (!res.ok || !data.html) throw new Error(data.error || 'Failed to compile preview');
+  return data.html;
+}
+
+export async function bundleArtifactsAsZipApi(params: {
+  userId: string;
+  conversationId: string;
+  artifactIds: string[];
+  projectName?: string;
+}): Promise<ArtifactRecord> {
+  const res = await fetch('/api/artifacts/group-zip', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(params),
+  });
+  const data = await res.json();
+  if (!res.ok || !data.zipArtifact) throw new Error(data.error || 'Failed to bundle ZIP');
+  return data.zipArtifact;
+}
+
+export async function inspectZipArtifactApi(id: string, userId?: string) {
+  const url = `/api/artifacts/${encodeURIComponent(id)}/zip-inspect${userId ? `?userId=${encodeURIComponent(userId)}` : ''}`;
+  const res = await fetch(url);
+  const data = await res.json();
+  if (!res.ok || !data.zipData) throw new Error(data.error || 'Failed to inspect ZIP artifact');
+  return data.zipData;
+}
+
+export async function deleteArtifactApi(id: string, userId: string): Promise<boolean> {
+  const res = await fetch(`/api/artifacts/${encodeURIComponent(id)}?userId=${encodeURIComponent(userId)}`, {
+    method: 'DELETE',
+  });
+  const data = await res.json();
+  return Boolean(data.success);
+}
+
+export async function rebindArtifactsApi(params: {
+  userId: string;
+  artifactIds: string[];
+  conversationId: string;
+}): Promise<ArtifactRecord[]> {
+  const res = await fetch('/api/artifacts/rebind', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(params),
+  });
+  if (!res.ok) return [];
+  const data = await res.json();
+  return data.artifacts || [];
+}
+
+
 

@@ -3,6 +3,7 @@ import { db } from "../config/firebase.js";
 import { validateEmail, validatePassword } from "../utils/security.js";
 import fs from "fs";
 import path from "path";
+import firebaseConfig from "../../firebase-applet-config.json";
 
 const DISCLAIMER_TEXT = `┏━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓
 ᴠᴏɪᴅ ᴀɪ • ᴅɪꜱᴄʟᴀɪᴍᴇR ⚠️
@@ -349,7 +350,7 @@ export class TelegramBotService {
   }
 
   private async authenticateWithFirebase(email: string, pass: string): Promise<{ success: boolean; uid?: string; emailVerified?: boolean; error?: string }> {
-    const apiKey = "AIzaSyBy0g8e-YgsI7fscFQWoRiWbpL7fXO6hho";
+    const apiKey = process.env.FIREBASE_API_KEY || firebaseConfig.apiKey;
     try {
       const res = await fetch(`https://identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key=${apiKey}`, {
         method: "POST",
@@ -374,7 +375,7 @@ export class TelegramBotService {
   }
 
   private async registerWithFirebase(email: string, pass: string, telegramUserId: number, telegramUsername?: string): Promise<{ success: boolean; uid?: string; error?: string }> {
-    const apiKey = "AIzaSyBy0g8e-YgsI7fscFQWoRiWbpL7fXO6hho";
+    const apiKey = process.env.FIREBASE_API_KEY || firebaseConfig.apiKey;
     try {
       const trimmedEmail = email.trim().toLowerCase();
       const emailValidation = validateEmail(trimmedEmail);

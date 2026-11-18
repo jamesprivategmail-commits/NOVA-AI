@@ -66,6 +66,10 @@ service cloud.firestore {
     match /project_memories/{projectId} {
       allow read, write: if true;
     }
+
+    match /artifacts/{artifactId} {
+      allow read, write: if true;
+    }
   }
 }
 

@@ -23,6 +23,8 @@ import { processManager } from "./process/processManager.js";
 import { autonomousAgent } from "./agent/autonomousAgent.js";
 import { conductLiveResearch, extractUrlsFromText, needsLiveInternetResearch } from "./research/webResearcher.js";
 import { runMultiModelCouncil } from "./council/multiModelCouncil.js";
+import { createArtifactRouter } from "./artifacts/artifactRoutes.js";
+import { artifactService } from "./artifacts/artifactService.js";
 import http from "http";
 
 import { GoogleGenAI } from "@google/genai";
@@ -1267,7 +1269,8 @@ export function createApp(): express.Express {
         imgSrc: ["'self'", "data:", "blob:", "https:"],
         connectSrc: ["'self'", "https:", "wss:"],
         fontSrc: ["'self'", "data:", "https://fonts.gstatic.com"],
-        frameSrc: ["'self'", "https://*.firebaseapp.com", "https://*.web.app", "https://accounts.google.com"],
+        frameSrc: ["'self'", "blob:", "data:", "https://*.firebaseapp.com", "https://*.web.app", "https://accounts.google.com"],
+        objectSrc: ["'self'", "blob:", "data:"],
         frameAncestors: null,
         upgradeInsecureRequests: isProd ? [] : null
       }
@@ -1283,7 +1286,7 @@ export function createApp(): express.Express {
     next();
   });
   app.use(express.static(path.join(process.cwd(), "public")));
-  app.use(express.json({ limit: '10mb' }));
+  app.use(express.json({ limit: '45mb' }));
 
   // Normalize POST requests hitting /api, /, or /api/ to /api/chat after body is parsed
   app.use((req, res, next) => {
@@ -1356,6 +1359,8 @@ export function createApp(): express.Express {
         characterDirective,
         earlierSummary,
         webResearch,
+        conversationId,
+        attachments,
       } = req.body || {};
       const parsedTemp = typeof temperature === 'number' && !Number.isNaN(temperature) ? temperature : 0.65;
       
@@ -1439,6 +1444,26 @@ export function createApp(): express.Express {
         console.warn(`[Chat] Could not load project memory for ${projectId}:`, err);
       }
 
+      let conversationArtifactsContext = '';
+      if (conversationId && userId) {
+        try {
+          const existingArts = await artifactService.listArtifacts({ userId, conversationId });
+          if (existingArts.length > 0) {
+            conversationArtifactsContext = existingArts
+              .slice(0, 12)
+              .map((a) => {
+                const snippet = a.content
+                  ? a.content.slice(0, 1800)
+                  : a.extractedPreview
+                  ? a.extractedPreview.slice(0, 1200)
+                  : '';
+                return `- [${a.id}] ${a.path || a.filename} (${a.extension}, ${a.size} bytes${a.sourceProjectId ? `, projectId=${a.sourceProjectId}` : ''})${snippet ? `\n\`\`\`${a.extension}\n${snippet}\n\`\`\`` : ''}`;
+              })
+              .join('\n\n');
+          }
+        } catch (_) {}
+      }
+
       // Shared authoritative brain prompt builder across all integrations
       const combinedSystemPrompt = coreBrain.buildNovaSystemPrompt(buildUnifiedBrainPrompt({
         tier,
@@ -1461,25 +1486,34 @@ export function createApp(): express.Express {
         personaName,
         characterDirective,
         earlierSummary,
+        conversationArtifactsContext,
       }));
 
-      // ── Attachment Processing (Image / File) ──────────────────────
+      // ── Attachment Processing (Single or Multiple Images / Files / ZIPs) ──────────────────────
       let imageDataUrl: string | undefined;
       let messagesForAI = Array.isArray(messages) ? messages : [];
+      const allAttachments = Array.isArray(attachments) && attachments.length > 0
+        ? attachments
+        : (attachment ? [attachment] : []);
 
-      if (attachment) {
-        if (attachment.kind === 'image' && attachment.data) {
-          imageDataUrl = attachment.data;
-        } else if ((attachment.kind === 'file' || attachment.kind === 'zip') && attachment.data) {
+      if (allAttachments.length > 0) {
+        let extraTextBlocks = '';
+        for (const att of allAttachments) {
+          if (att.kind === 'image' && att.data && !imageDataUrl) {
+            imageDataUrl = att.data;
+          } else if ((att.kind === 'file' || att.kind === 'zip') && att.data) {
+            const isZip = att.kind === 'zip';
+            extraTextBlocks += isZip
+              ? `\n\n[📦 Extracted ZIP Archive: ${att.name}${att.projectId ? ` (projectId: ${att.projectId})` : ''}]\n${att.data}\n`
+              : `\n\n[📄 File: ${att.name}]\n\`\`\`\n${att.data}\n\`\`\`\n`;
+          }
+        }
+        if (extraTextBlocks) {
           const lastUserMsg = [...messagesForAI].reverse().find((m: any) => m.role === 'user');
           if (lastUserMsg) {
-            const isZip = attachment.kind === 'zip';
-            const fileContent = isZip 
-              ? `\n\n[📦 Extracted ZIP Archive: ${attachment.name}]\n${attachment.data}\n`
-              : `\n\n[📄 File: ${attachment.name}]\n\`\`\`\n${attachment.data}\n\`\`\`\n`;
             messagesForAI = messagesForAI.map((m: any) =>
               m === lastUserMsg
-                ? { ...m, text: `${m.text || m.content || ''}${fileContent}` }
+                ? { ...m, text: `${m.text || m.content || ''}${extraTextBlocks}` }
                 : m
             );
           }
@@ -1676,6 +1710,8 @@ export function createApp(): express.Express {
         earlierSummary,
         githubContext,
         attachment,
+        attachments,
+        conversationId,
       } = req.body || {};
 
       const parsedTemp = typeof temperature === "number" && !Number.isNaN(temperature) ? temperature : 0.6;
@@ -1698,6 +1734,26 @@ export function createApp(): express.Express {
         return res.end();
       }
 
+      let conversationArtifactsContext = '';
+      if (conversationId && userId) {
+        try {
+          const existingArts = await artifactService.listArtifacts({ userId, conversationId });
+          if (existingArts.length > 0) {
+            conversationArtifactsContext = existingArts
+              .slice(0, 12)
+              .map((a) => {
+                const snippet = a.content
+                  ? a.content.slice(0, 1800)
+                  : a.extractedPreview
+                  ? a.extractedPreview.slice(0, 1200)
+                  : '';
+                return `- [${a.id}] ${a.path || a.filename} (${a.extension}, ${a.size} bytes${a.sourceProjectId ? `, projectId=${a.sourceProjectId}` : ''})${snippet ? `\n\`\`\`${a.extension}\n${snippet}\n\`\`\`` : ''}`;
+              })
+              .join('\n\n');
+          }
+        } catch (_) {}
+      }
+
       const maxTokens = tier === "vip" ? 12288 : (tier === "premium" || tier === "pro") ? 8192 : 4096;
       const combinedSystemPrompt = coreBrain.buildNovaSystemPrompt(
         buildUnifiedBrainPrompt({
@@ -1706,20 +1762,30 @@ export function createApp(): express.Express {
           githubContext,
           extraSystemPrompt: systemPrompt,
           earlierSummary,
+          conversationArtifactsContext,
         })
       );
 
       let messagesForCouncil = Array.isArray(messages) ? [...messages] : [];
-      if (attachment && (attachment.kind === "file" || attachment.kind === "zip") && attachment.data) {
-        const lastUser = [...messagesForCouncil].reverse().find((m: any) => m.role === "user");
-        if (lastUser) {
-          const snippet =
-            attachment.kind === "zip"
-              ? `\n\n[📦 Extracted ZIP Archive: ${attachment.name}]\n${attachment.data}\n`
-              : `\n\n[📄 File: ${attachment.name}]\n\`\`\`\n${attachment.data}\n\`\`\`\n`;
-          messagesForCouncil = messagesForCouncil.map((m: any) =>
-            m === lastUser ? { ...m, text: `${m.text || m.content || ""}${snippet}` } : m
-          );
+      const councilAttachments = Array.isArray(attachments) && attachments.length > 0
+        ? attachments
+        : (attachment ? [attachment] : []);
+      if (councilAttachments.length > 0) {
+        let extra = '';
+        for (const att of councilAttachments) {
+          if ((att.kind === "file" || att.kind === "zip") && att.data) {
+            extra += att.kind === "zip"
+              ? `\n\n[📦 Extracted ZIP Archive: ${att.name}${att.projectId ? ` (projectId: ${att.projectId})` : ''}]\n${att.data}\n`
+              : `\n\n[📄 File: ${att.name}]\n\`\`\`\n${att.data}\n\`\`\`\n`;
+          }
+        }
+        if (extra) {
+          const lastUser = [...messagesForCouncil].reverse().find((m: any) => m.role === "user");
+          if (lastUser) {
+            messagesForCouncil = messagesForCouncil.map((m: any) =>
+              m === lastUser ? { ...m, text: `${m.text || m.content || ""}${extra}` } : m
+            );
+          }
         }
       }
 
@@ -2930,6 +2996,9 @@ export function createApp(): express.Express {
       res.status(500).json({ error: err?.message || "Failed to export workspace zip" });
     }
   });
+
+  // ── Native Artifact, Attachment & ZIP Project Delivery Endpoints ─────────
+  app.use(["/api/artifacts", "/artifacts"], createArtifactRouter());
 
   // ── Managed Background Processes Endpoints ─────────────────────────
   app.get(["/api/processes", "/processes"], (req, res) => {
