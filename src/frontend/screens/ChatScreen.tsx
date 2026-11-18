@@ -767,7 +767,7 @@ export function ChatScreen({ userId }: ChatScreenProps) {
       <div className="flex-1 flex flex-col h-full min-h-0 relative min-w-0 bg-transparent z-10 overflow-hidden">
         {/* Broadcast System Banner Notice */}
         {activeBroadcast && (
-          <div className="bg-[#151830] border-b border-[#2b3052] p-2 px-3 flex items-center justify-between text-xs text-white z-30">
+          <div className="bg-[var(--nova-bg-2)] border-b border-[var(--nova-border)] p-2 px-3 flex items-center justify-between text-xs text-white z-30">
             <div className="flex items-center gap-2 min-w-0">
               <div className="p-1 bg-blue-600 rounded-lg text-white font-bold shrink-0">
                 <Radio size={12} />
@@ -798,7 +798,7 @@ export function ChatScreen({ userId }: ChatScreenProps) {
           <div className="flex items-center gap-2.5 shrink-0">
             <button
               onClick={() => setIsSidebarOpen(!isSidebarOpen)}
-              className="w-9 h-9 rounded-lg bg-[#181b30] hover:bg-[#1b1f3a] border border-[#2c3156] text-slate-300 hover:text-white flex items-center justify-center transition-colors cursor-pointer shrink-0"
+              className="w-9 h-9 rounded-lg bg-white/[0.05] hover:bg-white/[0.1] border border-[var(--nova-border)] text-[var(--nova-text-2)] hover:text-white flex items-center justify-center transition-colors cursor-pointer shrink-0"
               title="Toggle sidebar"
             >
               <Menu size={17} />
@@ -825,7 +825,7 @@ export function ChatScreen({ userId }: ChatScreenProps) {
 
             <button
               onClick={() => setShowPromptStudio(true)}
-              className="h-9 px-2.5 rounded-lg bg-[#131628] hover:bg-[#1c2038] border border-[#2b3054] text-slate-300 hover:text-white text-xs font-medium hidden md:flex items-center gap-1.5 transition-colors cursor-pointer shrink-0"
+              className="h-9 px-2.5 rounded-lg bg-white/[0.04] hover:bg-white/[0.09] border border-[var(--nova-border)] text-[var(--nova-text-2)] hover:text-white text-xs font-medium hidden md:flex items-center gap-1.5 transition-colors cursor-pointer shrink-0"
               title="Prompt Engineering Studio & Custom System Directives"
             >
               <Sliders size={13} className="text-amber-400" />
@@ -839,7 +839,7 @@ export function ChatScreen({ userId }: ChatScreenProps) {
             <button
               onClick={() => handleExportChat()}
               title="Export this chat as Markdown"
-              className="h-9 px-2.5 rounded-lg bg-[#131628] hover:bg-[#1c2038] border border-[#2b3054] text-slate-300 hover:text-white text-xs font-medium hidden md:flex items-center gap-1.5 transition-colors cursor-pointer shrink-0"
+              className="h-9 px-2.5 rounded-lg bg-white/[0.04] hover:bg-white/[0.09] border border-[var(--nova-border)] text-[var(--nova-text-2)] hover:text-white text-xs font-medium hidden md:flex items-center gap-1.5 transition-colors cursor-pointer shrink-0"
             >
               <Download size={13} className="text-violet-400" />
               <span className="hidden lg:inline text-xs">Export</span>
@@ -848,19 +848,19 @@ export function ChatScreen({ userId }: ChatScreenProps) {
               onClick={handleRegenerate}
               disabled={isLoading || messages.length === 0}
               title="Regenerate the last response"
-              className="h-9 px-2.5 rounded-lg bg-[#131628] hover:bg-[#1c2038] border border-[#2b3054] text-slate-300 hover:text-white text-xs font-medium hidden md:flex items-center gap-1.5 transition-colors cursor-pointer shrink-0 disabled:opacity-40 disabled:cursor-not-allowed"
+              className="h-9 px-2.5 rounded-lg bg-white/[0.04] hover:bg-white/[0.09] border border-[var(--nova-border)] text-[var(--nova-text-2)] hover:text-white text-xs font-medium hidden md:flex items-center gap-1.5 transition-colors cursor-pointer shrink-0 disabled:opacity-40 disabled:cursor-not-allowed"
             >
               <RefreshCw size={13} className="text-cyan-400" />
               <span className="hidden lg:inline text-xs">Regenerate</span>
             </button>
             <button
               onClick={() => setShowCommandPalette(true)}
-              className="h-9 px-2.5 sm:px-3 rounded-lg bg-[#131628] hover:bg-[#1a1e38] border border-[#2b3054] hover:border-[#3a4170] text-slate-300 hover:text-white text-xs font-medium flex items-center gap-2 transition-all cursor-pointer"
+              className="h-9 px-2.5 sm:px-3 rounded-lg bg-white/[0.04] hover:bg-white/[0.09] border border-[var(--nova-border)] hover:border-[var(--nova-border-strong)] text-[var(--nova-text-2)] hover:text-white text-xs font-medium flex items-center gap-2 transition-all cursor-pointer"
               title="Global Command Palette (Press ⌘K or Ctrl+K)"
             >
               <Command size={13} className="text-blue-400" />
               <span className="hidden lg:inline text-xs">Commands</span>
-              <kbd className="hidden sm:inline-block px-1.5 py-0.5 text-[10px] font-mono text-slate-400 bg-[#191c33] border border-[#2e3358] rounded">
+              <kbd className="hidden sm:inline-block px-1.5 py-0.5 text-[10px] font-mono text-[var(--nova-text-3)] bg-white/[0.05] border border-[var(--nova-border)] rounded">
                 ⌘K
               </kbd>
             </button>
@@ -872,7 +872,7 @@ export function ChatScreen({ userId }: ChatScreenProps) {
                 "h-9 px-2.5 sm:px-3 rounded-lg border text-xs font-medium flex items-center gap-1.5 transition-all cursor-pointer",
                 showWorkspace
                   ? "bg-blue-600 border-blue-500 text-white shadow-sm"
-                  : "bg-[#131628] hover:bg-[#1a1e38] border-[#2b3054] text-slate-300 hover:text-white"
+                  : "bg-white/[0.04] hover:bg-white/[0.09] border-[var(--nova-border)] text-[var(--nova-text-2)] hover:text-white"
               )}
               title="Toggle Interactive Code Workspace & Sandbox Terminal (⌘E)"
             >
@@ -882,7 +882,7 @@ export function ChatScreen({ userId }: ChatScreenProps) {
 
             <button
               onClick={() => setShowSubscription(true)}
-              className="h-9 px-3 rounded-lg bg-[#181a24] hover:bg-[#1b1f3a] border border-[#2f3458] text-white text-xs font-medium hidden sm:flex items-center gap-1 whitespace-nowrap transition-all cursor-pointer"
+              className="h-9 px-3 rounded-lg bg-white/[0.05] hover:bg-white/[0.1] border border-[var(--nova-border-strong)] text-white text-xs font-medium hidden sm:flex items-center gap-1 whitespace-nowrap transition-all cursor-pointer"
               title="Upgrade Plan"
             >
               <span className="text-blue-400 text-xs">✦</span>
@@ -993,7 +993,7 @@ export function ChatScreen({ userId }: ChatScreenProps) {
           {showScrollBottom && (
             <button
               onClick={() => scrollToBottom(true)}
-              className="sticky bottom-4 self-end mr-4 px-3.5 py-2 bg-[#0c0d12]/90 hover:bg-[#151722] backdrop-blur-xl border border-red-500/40 hover:border-red-500/70 text-white rounded-full shadow-[0_8px_25px_rgba(220,38,38,0.25)] transition-all z-20 flex items-center gap-2 text-xs font-semibold cursor-pointer animate-fadeIn active:scale-95"
+              className="sticky bottom-4 self-end mr-4 px-3.5 py-2 bg-[var(--nova-bg)]/90 hover:bg-[var(--nova-bg-2)] backdrop-blur-xl border border-[var(--nova-accent-border)] hover:border-[var(--nova-accent)] text-white rounded-full shadow-[var(--nova-shadow-2)] transition-all z-20 flex items-center gap-2 text-xs font-semibold cursor-pointer animate-fadeIn active:scale-95"
               title="Jump to latest response"
             >
               <ArrowDown size={13} className="text-red-400 animate-bounce" />
@@ -1011,7 +1011,7 @@ export function ChatScreen({ userId }: ChatScreenProps) {
             onOpenLiveVoice={() => setShowLiveVoice(true)}
             onImageGenerate={handleImageGenerate}
           />
-          <div className="text-[10px] text-[#9aa3c7] text-center px-2 pt-0.5 select-none">
+          <div className="text-[10px] text-[var(--nova-text-3)] text-center px-2 pt-0.5 select-none">
             VOID AI can make mistakes. Check important info.
           </div>
         </div>
