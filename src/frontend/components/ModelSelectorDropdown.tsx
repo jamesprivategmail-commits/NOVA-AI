@@ -129,7 +129,7 @@ export function ModelSelectorDropdown({
           "h-9 px-2.5 sm:px-3 rounded-lg border text-xs font-medium transition-all flex items-center gap-2 cursor-pointer select-none",
           isOpen
             ? "bg-[#1f222d] border-[#383d4e] text-white shadow-sm"
-            : "bg-[#14151a] hover:bg-[#1a1c23] border-[#262833] text-slate-200"
+            : "bg-[#131628] hover:bg-[#1c2038] border-[#2b3054] text-slate-200"
         )}
         title="Select AI Model & Inspect Latency Matrix"
       >
@@ -154,7 +154,7 @@ export function ModelSelectorDropdown({
 
       {/* Flyout Menu */}
       {isOpen && (
-        <div className="absolute left-0 mt-2 w-80 sm:w-96 rounded-2xl bg-[#14151a] border border-[#272a36] shadow-2xl p-2 z-50 text-white select-none animate-fadeIn">
+        <div className="absolute left-0 mt-2 w-80 sm:w-96 rounded-2xl bg-[#131628] border border-[#272a36] shadow-2xl p-2 z-50 text-white select-none animate-fadeIn">
           {/* Header */}
           <div className="px-3 py-2 border-b border-[#222430] flex items-center justify-between">
             <div className="flex items-center gap-2">
@@ -178,8 +178,8 @@ export function ModelSelectorDropdown({
                   className={clsx(
                     "p-2.5 rounded-xl cursor-pointer transition-all border",
                     isSelected
-                      ? "bg-[#1d202b] border-[#383d4f] text-white"
-                      : "bg-transparent border-transparent hover:bg-[#181a22] text-slate-300 hover:text-white"
+                      ? "bg-[#1d202b] border-[#3a4170] text-white"
+                      : "bg-transparent border-transparent hover:bg-[#181b30] text-slate-300 hover:text-white"
                   )}
                 >
                   <div className="flex items-start justify-between gap-2">

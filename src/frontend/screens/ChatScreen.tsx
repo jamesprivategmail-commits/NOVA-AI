@@ -58,7 +58,7 @@ import { LiveHtmlPreviewModal } from '../components/workspace/LiveHtmlPreviewMod
 import { ZipInspectorModal } from '../components/workspace/ZipInspectorModal';
 import { ParsedZipResult } from '../utils/zipParser';
 import { offlineCache } from '../utils/offlineQueue';
-import { Menu, Shield, Crown, Mail, ArrowDown, Sparkles, Code, Code2, Target, Binary, Zap, Bot, Mic, ChevronDown, Send, Radio, X, Trash2, Terminal, Flame, Eye, Lock, ShieldAlert, GitBranch, MessageSquare, FolderCode, Check, Loader2, Command, Sliders, ExternalLink } from 'lucide-react';
+import { Menu, Shield, Crown, Mail, ArrowDown, Sparkles, Code, Code2, Target, Binary, Zap, Bot, Mic, ChevronDown, Send, Radio, X, Trash2, Terminal, Flame, Eye, Lock, ShieldAlert, GitBranch, MessageSquare, FolderCode, Check, Loader2, Command, Sliders, ExternalLink, Download, RefreshCw } from 'lucide-react';
 import { getAuth, signOut } from 'firebase/auth';
 import { clsx } from 'clsx';
 
@@ -373,6 +373,39 @@ export function ChatScreen({ userId }: ChatScreenProps) {
     setStreamingMessage('');
   };
 
+  const handleRegenerate = async () => {
+    if (isLoading || messages.length === 0) return;
+    const lastUserIdx = [...messages].map(m => m.role).lastIndexOf('user');
+    if (lastUserIdx === -1) return;
+    const lastUserMsg = messages[lastUserIdx];
+    // Drop everything after (and any duplicate trailing assistant turns before) the last user message
+    const trailing = messages.slice(lastUserIdx + 1);
+    for (const m of trailing) {
+      if (!m.id.startsWith('user-') && !m.id.startsWith('assistant-')) continue;
+      try { await deleteMessage(currentChatId!, m.id); } catch (_) {}
+    }
+    setMessages(messages.slice(0, lastUserIdx + 1));
+    await handleSend(lastUserMsg.text, undefined, { resend: true });
+  };
+
+  const handleExportChat = () => {
+    if (messages.length === 0) return;
+    const chat = chats.find(c => c.id === currentChatId);
+    const title = chat?.title || 'nova-chat';
+    const lines = messages.map(m => {
+      const who = m.role === 'user' ? 'You' : 'NOVA';
+      return `### ${who}\n\n${m.text}\n`;
+    });
+    const md = `# ${title}\n\n_Exported from NOVA AI on ${new Date().toLocaleString()}_\n\n${lines.join('\n---\n\n')}`;
+    const blob = new Blob([md], { type: 'text/markdown;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `${title.replace(/[^a-z0-9-_ ]/gi, '').trim().replace(/\s+/g, '-') || 'nova-chat'}.md`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
   const handleDeleteChat = async (id: string) => {
     await deleteChat(id);
     const updatedChats = chats.filter((c) => c.id !== id);
@@ -542,7 +575,7 @@ export function ChatScreen({ userId }: ChatScreenProps) {
     }
   };
 
-  const handleSend = async (text: string, attachment?: ChatAttachment) => {
+  const handleSend = async (text: string, attachment?: ChatAttachment, opts?: { resend?: boolean }) => {
     if (!checkLimitations()) return;
 
     let activeChatId = currentChatId;
@@ -585,11 +618,14 @@ export function ChatScreen({ userId }: ChatScreenProps) {
       createdAt: Date.now()
     };
 
-    const currentMessages = [...messages, optimisticUserMsg];
+    const isResend = Boolean(opts?.resend);
+    const currentMessages = isResend ? [...messages] : [...messages, optimisticUserMsg];
     setMessages(currentMessages);
 
-    // Persist user message to db asynchronously
-    saveMessage(activeChatId, 'user', displayText).catch((err) => console.error('Failed async message save:', err));
+    // Persist user message to db asynchronously (skip when regenerating)
+    if (!isResend) {
+      saveMessage(activeChatId, 'user', displayText).catch((err) => console.error('Failed async message save:', err));
+    }
 
     setIsLoading(true);
     setStreamingMessage('');
@@ -749,7 +785,7 @@ export function ChatScreen({ userId }: ChatScreenProps) {
       <div className="flex-1 flex flex-col h-full min-h-0 relative min-w-0 bg-transparent z-10 overflow-hidden">
         {/* Broadcast System Banner Notice */}
         {activeBroadcast && (
-          <div className="bg-[#191b24] border-b border-[#292d3b] p-2 px-3 flex items-center justify-between text-xs text-white z-30">
+          <div className="bg-[#151830] border-b border-[#2b3052] p-2 px-3 flex items-center justify-between text-xs text-white z-30">
             <div className="flex items-center gap-2 min-w-0">
               <div className="p-1 bg-blue-600 rounded-lg text-white font-bold shrink-0">
                 <Radio size={12} />
@@ -775,19 +811,19 @@ export function ChatScreen({ userId }: ChatScreenProps) {
         )}
 
         {/* 2026 Top Bar Contract — Zone 1: Brand | Zone 2: Engine & Preset | Zone 3: Actions */}
-        <header className="h-14 px-3 sm:px-4 sticky top-0 z-20 bg-[#0d0e13]/90 backdrop-blur-md border-b border-[#232634] flex items-center justify-between gap-4 select-none w-full min-w-0">
+        <header className="h-14 px-3 sm:px-4 sticky top-0 z-20 nova-glass-strong border-x-0 border-t-0 flex items-center justify-between gap-4 select-none w-full min-w-0">
           {/* Zone 1: Sidebar Toggle + Brand wordmark */}
           <div className="flex items-center gap-2.5 shrink-0">
             <button
               onClick={() => setIsSidebarOpen(!isSidebarOpen)}
-              className="w-9 h-9 rounded-lg bg-[#181a22] hover:bg-[#202330] border border-[#2a2d3d] text-slate-300 hover:text-white flex items-center justify-center transition-colors cursor-pointer shrink-0"
+              className="w-9 h-9 rounded-lg bg-[#181b30] hover:bg-[#1b1f3a] border border-[#2c3156] text-slate-300 hover:text-white flex items-center justify-center transition-colors cursor-pointer shrink-0"
               title="Toggle sidebar"
             >
               <Menu size={17} />
             </button>
 
             <div className="flex items-center gap-2">
-              <span className="font-bold text-sm tracking-tight text-white whitespace-nowrap">
+              <span className="font-bold text-sm tracking-tight text-white whitespace-nowrap">NOVA<span className="nova-aurora-text"> AI</span></span><span hidden>
                 VOID AI
               </span>
               <span className="hidden sm:inline text-[10px] font-mono text-slate-500">
@@ -807,7 +843,7 @@ export function ChatScreen({ userId }: ChatScreenProps) {
 
             <button
               onClick={() => setShowPromptStudio(true)}
-              className="h-9 px-2.5 rounded-lg bg-[#14151a] hover:bg-[#1a1c23] border border-[#262833] text-slate-300 hover:text-white text-xs font-medium hidden md:flex items-center gap-1.5 transition-colors cursor-pointer shrink-0"
+              className="h-9 px-2.5 rounded-lg bg-[#131628] hover:bg-[#1c2038] border border-[#2b3054] text-slate-300 hover:text-white text-xs font-medium hidden md:flex items-center gap-1.5 transition-colors cursor-pointer shrink-0"
               title="Prompt Engineering Studio & Custom System Directives"
             >
               <Sliders size={13} className="text-amber-400" />
@@ -819,13 +855,30 @@ export function ChatScreen({ userId }: ChatScreenProps) {
           <div className="flex items-center gap-2 shrink-0">
             {/* Global Command Bar Button (⌘K) */}
             <button
+              onClick={handleExportChat}
+              title="Export this chat as Markdown"
+              className="h-9 px-2.5 rounded-lg bg-[#131628] hover:bg-[#1c2038] border border-[#2b3054] text-slate-300 hover:text-white text-xs font-medium hidden md:flex items-center gap-1.5 transition-colors cursor-pointer shrink-0"
+            >
+              <Download size={13} className="text-violet-400" />
+              <span className="hidden lg:inline text-xs">Export</span>
+            </button>
+            <button
+              onClick={handleRegenerate}
+              disabled={isLoading || messages.length === 0}
+              title="Regenerate the last response"
+              className="h-9 px-2.5 rounded-lg bg-[#131628] hover:bg-[#1c2038] border border-[#2b3054] text-slate-300 hover:text-white text-xs font-medium hidden md:flex items-center gap-1.5 transition-colors cursor-pointer shrink-0 disabled:opacity-40 disabled:cursor-not-allowed"
+            >
+              <RefreshCw size={13} className="text-cyan-400" />
+              <span className="hidden lg:inline text-xs">Regenerate</span>
+            </button>
+            <button
               onClick={() => setShowCommandPalette(true)}
-              className="h-9 px-2.5 sm:px-3 rounded-lg bg-[#14151a] hover:bg-[#1f222e] border border-[#262833] hover:border-[#383d4f] text-slate-300 hover:text-white text-xs font-medium flex items-center gap-2 transition-all cursor-pointer"
+              className="h-9 px-2.5 sm:px-3 rounded-lg bg-[#131628] hover:bg-[#1a1e38] border border-[#2b3054] hover:border-[#3a4170] text-slate-300 hover:text-white text-xs font-medium flex items-center gap-2 transition-all cursor-pointer"
               title="Global Command Palette (Press ⌘K or Ctrl+K)"
             >
               <Command size={13} className="text-blue-400" />
               <span className="hidden lg:inline text-xs">Commands</span>
-              <kbd className="hidden sm:inline-block px-1.5 py-0.5 text-[10px] font-mono text-slate-400 bg-[#1e2029] border border-[#2d303e] rounded">
+              <kbd className="hidden sm:inline-block px-1.5 py-0.5 text-[10px] font-mono text-slate-400 bg-[#191c33] border border-[#2e3358] rounded">
                 ⌘K
               </kbd>
             </button>
@@ -837,7 +890,7 @@ export function ChatScreen({ userId }: ChatScreenProps) {
                 "h-9 px-2.5 sm:px-3 rounded-lg border text-xs font-medium flex items-center gap-1.5 transition-all cursor-pointer",
                 showWorkspace
                   ? "bg-blue-600 border-blue-500 text-white shadow-sm"
-                  : "bg-[#14151a] hover:bg-[#1f222e] border-[#262833] text-slate-300 hover:text-white"
+                  : "bg-[#131628] hover:bg-[#1a1e38] border-[#2b3054] text-slate-300 hover:text-white"
               )}
               title="Toggle Interactive Code Workspace & Sandbox Terminal (⌘E)"
             >
@@ -847,7 +900,7 @@ export function ChatScreen({ userId }: ChatScreenProps) {
 
             <button
               onClick={() => setShowSubscription(true)}
-              className="h-9 px-3 rounded-lg bg-[#181a24] hover:bg-[#202330] border border-[#2d3040] text-white text-xs font-medium hidden sm:flex items-center gap-1 whitespace-nowrap transition-all cursor-pointer"
+              className="h-9 px-3 rounded-lg bg-[#181a24] hover:bg-[#1b1f3a] border border-[#2f3458] text-white text-xs font-medium hidden sm:flex items-center gap-1 whitespace-nowrap transition-all cursor-pointer"
               title="Upgrade Plan"
             >
               <span className="text-blue-400 text-xs">✦</span>
@@ -873,39 +926,39 @@ export function ChatScreen({ userId }: ChatScreenProps) {
           {messages.length === 0 ? (
             /* Clean 2026 NOVA/VOID Welcome Screen */
             <div className="flex-1 flex flex-col items-center justify-center px-4 max-w-2xl mx-auto w-full">
-              <div className="w-24 h-24 rounded-2xl bg-black/80 border border-red-500/30 p-1.5 flex items-center justify-center mb-5 overflow-hidden shadow-[0_0_30px_rgba(220,38,38,0.25)] ring-1 ring-white/10">
+              <div className="w-24 h-24 rounded-2xl bg-black/80 border border-violet-500/40 p-1.5 flex items-center justify-center mb-5 overflow-hidden shadow-[0_0_40px_rgba(139,92,246,0.35)] nova-pulse ring-1 ring-white/10">
                 <img 
                   src="/void-logo.jpg"
                   alt="VOID AI" 
                   className="w-full h-full object-cover rounded-xl"
                 />
               </div>
-              <h1 className="text-2xl sm:text-3xl font-bold text-white mb-1.5 tracking-tight">How can I help you today?</h1>
-              <p className="text-sm text-slate-400 mb-8 font-normal">Next-generation real-time multimodal intelligence</p>
+              <h1 className="text-2xl sm:text-3xl font-bold mb-1.5 tracking-tight"><span className="nova-aurora-text">How can I help you today?</span></h1>
+              <p className="text-sm text-slate-400 mb-8 font-normal">Brilliant answers, beautifully fast.</p>
 
               {/* Quick action prompts with 2026 obsidian styling */}
               <div className="w-full grid grid-cols-2 gap-2.5 max-w-lg">
                 <button
                   onClick={() => handleSend("Explain quantum computing algorithms with interactive examples.")}
-                  className="p-3.5 sm:p-4 min-h-[56px] rounded-xl bg-black/60 hover:bg-black/85 border border-white/10 hover:border-red-500/40 flex items-center justify-center text-center text-slate-300 hover:text-white text-[13px] sm:text-sm font-medium transition-all duration-200 cursor-pointer leading-snug hover:shadow-[0_0_15px_rgba(220,38,38,0.15)] active:scale-[0.98]"
+                  className="nova-chip nova-in p-3.5 sm:p-4 min-h-[56px] rounded-xl flex items-center justify-center text-center text-[13px] sm:text-sm font-medium cursor-pointer leading-snug active:scale-[0.98]"
                 >
                   Quantum algorithms & code
                 </button>
                 <button
                   onClick={() => handleSend("Build a high-performance REST and WebSocket API architecture.")}
-                  className="p-3.5 sm:p-4 min-h-[56px] rounded-xl bg-black/60 hover:bg-black/85 border border-white/10 hover:border-blue-500/40 flex items-center justify-center text-center text-slate-300 hover:text-white text-[13px] sm:text-sm font-medium transition-all duration-200 cursor-pointer leading-snug hover:shadow-[0_0_15px_rgba(59,130,246,0.15)] active:scale-[0.98]"
+                  className="nova-chip nova-in p-3.5 sm:p-4 min-h-[56px] rounded-xl flex items-center justify-center text-center text-[13px] sm:text-sm font-medium cursor-pointer leading-snug active:scale-[0.98]"
                 >
                   Design API architecture
                 </button>
                 <button
                   onClick={() => handleSend("Audit my code for security vulnerabilities and optimize memory.")}
-                  className="p-3.5 sm:p-4 min-h-[56px] rounded-xl bg-black/60 hover:bg-black/85 border border-white/10 hover:border-emerald-500/40 flex items-center justify-center text-center text-slate-300 hover:text-white text-[13px] sm:text-sm font-medium transition-all duration-200 cursor-pointer leading-snug hover:shadow-[0_0_15px_rgba(16,185,129,0.15)] active:scale-[0.98]"
+                  className="nova-chip nova-in p-3.5 sm:p-4 min-h-[56px] rounded-xl flex items-center justify-center text-center text-[13px] sm:text-sm font-medium cursor-pointer leading-snug active:scale-[0.98]"
                 >
                   Security audit & profiling
                 </button>
                 <button
                   onClick={() => handleSend("Summarize the latest 2026 tech breakthroughs and research.")}
-                  className="p-3.5 sm:p-4 min-h-[56px] rounded-xl bg-black/60 hover:bg-black/85 border border-white/10 hover:border-purple-500/40 flex items-center justify-center text-center text-slate-300 hover:text-white text-[13px] sm:text-sm font-medium transition-all duration-200 cursor-pointer leading-snug hover:shadow-[0_0_15px_rgba(168,85,247,0.15)] active:scale-[0.98]"
+                  className="nova-chip nova-in p-3.5 sm:p-4 min-h-[56px] rounded-xl flex items-center justify-center text-center text-[13px] sm:text-sm font-medium cursor-pointer leading-snug active:scale-[0.98]"
                 >
                   2026 Research & Insights
                 </button>
@@ -968,7 +1021,7 @@ export function ChatScreen({ userId }: ChatScreenProps) {
         </div>
 
         {/* Fixed Bottom Input Area — flex flow docked, never overlaps messages or mobile keyboard */}
-        <div className="shrink-0 w-full bg-black/85 backdrop-blur-md pt-1.5 pb-2 px-2 z-10 flex flex-col items-center border-t border-[#38383b]/50">
+        <div className="shrink-0 w-full bg-black/85 backdrop-blur-md pt-1.5 pb-2 px-2 z-10 flex flex-col items-center border-t border-[#2e3354]/50">
           <InputArea
             onSend={handleSend}
             isLoading={isLoading}
@@ -976,7 +1029,7 @@ export function ChatScreen({ userId }: ChatScreenProps) {
             onOpenLiveVoice={() => setShowLiveVoice(true)}
             onImageGenerate={handleImageGenerate}
           />
-          <div className="text-[10px] text-[#8d8d91] text-center px-2 pt-0.5 select-none">
+          <div className="text-[10px] text-[#9aa3c7] text-center px-2 pt-0.5 select-none">
             VOID AI can make mistakes. Check important info.
           </div>
         </div>

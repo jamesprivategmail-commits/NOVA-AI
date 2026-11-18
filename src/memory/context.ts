@@ -1,24 +1,33 @@
 import { Message } from "../models/types";
 
 export class MemoryManager {
-  private systemPrompt: string = "You are NOVA AI, a highly intelligent and helpful AI assistant created by NovaTech. You answer clearly, concisely, and use formatting like markdown where appropriate.";
+  private systemPrompt: string = "You are NOVA AI, a brilliant, fast, and precise AI assistant. Lead with the answer, keep it tight, use markdown where it helps, and never invent facts.";
 
-  // Formats previous messages for context window
+  // Builds the context window: system prompt first, then the most recent
+  // messages, oldest first, trimmed to a rough token budget.
   public buildContext(history: Message[], maxTokens: number = 4000): {role: string, text: string}[] {
-    // In a real app, we might tokenize and truncate.
-    // For now, we take the last N messages to fit within context.
-    
-    const contextMessages = history.map(m => ({
-      role: m.role,
-      text: m.text
-    }));
+    const CHARS_PER_TOKEN = 4;
+    const budgetChars = Math.max(1000, maxTokens * CHARS_PER_TOKEN);
 
-    // Inject system prompt as first message if possible
-    // Note: Gemini handles system instructions specifically in the API, 
-    // but we can prepend it as a system/user hint for now, or just send it if backend supports.
-    // We will just return the messages. The backend could be updated to inject system prompt.
-    
-    return contextMessages;
+    // Walk backwards so the newest messages always win the budget.
+    const kept: Message[] = [];
+    let used = 0;
+    for (let i = history.length - 1; i >= 0; i--) {
+      const m = history[i];
+      const cost = (m.text || '').length + 8;
+      if (used + cost > budgetChars && kept.length >= 6) break;
+      used += cost;
+      kept.unshift(m);
+    }
+
+    return [
+      { role: 'system', text: this.systemPrompt },
+      ...kept.map(m => ({ role: m.role, text: m.text }))
+    ];
+  }
+
+  public setSystemPrompt(prompt: string) {
+    if (prompt && prompt.trim()) this.systemPrompt = prompt.trim();
   }
 }
 

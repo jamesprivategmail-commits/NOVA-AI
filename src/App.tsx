@@ -92,8 +92,8 @@ export default function App() {
   if (loading) {
     return (
       <div className="min-h-screen bg-[#06070a] flex flex-col items-center justify-center gap-4 relative overflow-hidden">
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-red-900/20 rounded-full blur-3xl pointer-events-none" />
-        <div className="relative w-20 h-20 rounded-2xl bg-black border border-red-600/80 p-1.5 shadow-[0_0_30px_rgba(220,38,38,0.4)] flex items-center justify-center overflow-hidden">
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-violet-900/25 rounded-full blur-3xl pointer-events-none" />
+        <div className="relative w-20 h-20 rounded-2xl bg-black border border-violet-500/80 p-1.5 shadow-[0_0_30px_rgba(139,92,246,0.45)] flex items-center justify-center overflow-hidden">
           <img 
             src="/void-logo.jpg" 
             alt="NOVA AI Profile" 
@@ -103,8 +103,8 @@ export default function App() {
             }}
           />
         </div>
-        <div className="relative flex items-center gap-2 text-red-500 font-mono text-xs font-bold tracking-widest uppercase">
-          <span className="w-2 h-2 rounded-full bg-red-600 animate-pulse" />
+        <div className="relative flex items-center gap-2 text-violet-400 font-mono text-xs font-bold tracking-widest uppercase">
+          <span className="w-2 h-2 rounded-full bg-violet-500 animate-pulse" />
           <span>INITIALIZING NOVA AI...</span>
         </div>
       </div>
@@ -137,15 +137,15 @@ export default function App() {
   return (
     <Suspense fallback={
       <div className="min-h-screen bg-[#06070a] flex flex-col items-center justify-center gap-4 relative overflow-hidden">
-        <div className="w-20 h-20 rounded-2xl bg-black border border-red-600/80 p-1.5 shadow-[0_0_30px_rgba(220,38,38,0.4)] flex items-center justify-center overflow-hidden">
+        <div className="w-20 h-20 rounded-2xl bg-black border border-violet-500/80 p-1.5 shadow-[0_0_30px_rgba(139,92,246,0.45)] flex items-center justify-center overflow-hidden">
           <img 
             src="/void-logo.jpg" 
             alt="NOVA AI" 
             className="w-full h-full object-cover"
           />
         </div>
-        <div className="flex items-center gap-2 text-red-500 font-mono text-xs font-bold tracking-widest uppercase">
-          <span className="w-2 h-2 rounded-full bg-red-600 animate-pulse" />
+        <div className="flex items-center gap-2 text-violet-400 font-mono text-xs font-bold tracking-widest uppercase">
+          <span className="w-2 h-2 rounded-full bg-violet-500 animate-pulse" />
           <span>LOADING NOVA AI...</span>
         </div>
       </div>

@@ -180,7 +180,7 @@ export const MessageBubble = React.memo(function MessageBubble({
       return (
         <code
           {...rest}
-          className="bg-[#21262D] text-sky-300 px-1.5 py-0.5 rounded text-xs font-mono border border-[#30363D] inline-block"
+          className="bg-[#21262D] text-sky-300 px-1.5 py-0.5 rounded text-xs font-mono border border-[var(--nova-border-strong)] inline-block"
         >
           {children}
         </code>
@@ -188,7 +188,7 @@ export const MessageBubble = React.memo(function MessageBubble({
     },
     table(props: any) {
       return (
-        <div className="overflow-x-auto my-4 border border-[#30363D] rounded-xl shadow-md">
+        <div className="overflow-x-auto my-4 border border-[var(--nova-border-strong)] rounded-xl shadow-md">
           <table className="w-full text-left text-sm text-slate-200 border-collapse">
             {props.children}
           </table>
@@ -196,13 +196,13 @@ export const MessageBubble = React.memo(function MessageBubble({
       );
     },
     thead(props: any) {
-      return <thead className="bg-[#161B22] border-b border-[#30363D] text-xs font-semibold uppercase text-slate-300">{props.children}</thead>;
+      return <thead className="bg-[#161B22] border-b border-[var(--nova-border-strong)] text-xs font-semibold uppercase text-slate-300">{props.children}</thead>;
     },
     th(props: any) {
-      return <th className="px-4 py-2.5 font-bold border-r border-[#30363D] last:border-r-0">{props.children}</th>;
+      return <th className="px-4 py-2.5 font-bold border-r border-[var(--nova-border-strong)] last:border-r-0">{props.children}</th>;
     },
     td(props: any) {
-      return <td className="px-4 py-2 border-t border-[#30363D] border-r border-[#30363D] last:border-r-0 hover:bg-[#21262D]/50 transition-colors">{props.children}</td>;
+      return <td className="px-4 py-2 border-t border-[var(--nova-border-strong)] border-r border-[var(--nova-border-strong)] last:border-r-0 hover:bg-[#21262D]/50 transition-colors">{props.children}</td>;
     },
     a(props: any) {
       return (
@@ -224,7 +224,7 @@ export const MessageBubble = React.memo(function MessageBubble({
           <img
             src={props.src}
             alt={props.alt || 'Generated asset'}
-            className="rounded-lg border border-[#30363D] max-h-56 object-cover shadow-lg hover:brightness-110 transition-all cursor-pointer"
+            className="rounded-lg border border-[var(--nova-border-strong)] max-h-56 object-cover shadow-lg hover:brightness-110 transition-all cursor-pointer"
             onClick={() => props.src && setPreviewImage(props.src)}
           />
         </span>
@@ -246,11 +246,11 @@ export const MessageBubble = React.memo(function MessageBubble({
         {/* Avatar */}
         <div className="shrink-0 mt-0.5">
           {isUser ? (
-            <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-[#252527] flex items-center justify-center text-white text-xs font-bold">
+            <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-white/[0.04] flex items-center justify-center text-white text-xs font-bold">
               <User size={14} />
             </div>
           ) : (
-            <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-full bg-black/80 border border-[#38383b] p-0.5 flex items-center justify-center overflow-hidden">
+            <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-full bg-black/80 border border-[var(--nova-border-strong)] p-0.5 flex items-center justify-center overflow-hidden">
               <img 
                 src="/void-logo.jpg"
                 alt="VOID AI" 
@@ -273,7 +273,7 @@ export const MessageBubble = React.memo(function MessageBubble({
             <span className={clsx("text-xs font-semibold", isUser ? "text-white" : "text-white")}>
               {isUser ? 'You' : 'VOID AI'}
             </span>
-            <span className="text-[10px] text-[#8d8d91]">
+            <span className="text-[10px] text-[var(--nova-text-2)]">
               {new Date(message.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
             </span>
           </div>
@@ -284,18 +284,18 @@ export const MessageBubble = React.memo(function MessageBubble({
               <textarea
                 value={editText}
                 onChange={(e) => setEditText(e.target.value)}
-                className="w-full bg-[#252527] border border-[#38383b] focus:border-[#454547] rounded-xl p-3 text-white min-h-[110px] outline-none text-sm"
+                className="w-full bg-white/[0.04] border border-[var(--nova-border-strong)] focus:border-[#3b4168] rounded-xl p-3 text-white min-h-[110px] outline-none text-sm"
               />
               <div className="flex items-center gap-2 justify-end">
                 <button
                   onClick={() => setIsEditing(false)}
-                  className="px-3 py-1.5 text-xs font-medium text-[#8d8d91] hover:text-white bg-[#202022] hover:bg-[#38383b] rounded-lg transition-colors cursor-pointer"
+                  className="px-3 py-1.5 text-xs font-medium text-[var(--nova-text-2)] hover:text-white bg-white/[0.05] hover:bg-[#38383b] rounded-lg transition-colors cursor-pointer"
                 >
                   Cancel
                 </button>
                 <button
                   onClick={handleSaveEdit}
-                  className="px-4 py-1.5 text-xs font-medium bg-[#3f86ff] hover:opacity-90 text-white rounded-lg transition-all cursor-pointer"
+                  className="px-4 py-1.5 text-xs font-medium bg-gradient-to-br from-violet-600 to-indigo-600 hover:opacity-90 text-white rounded-lg transition-all cursor-pointer"
                 >
                   Save
                 </button>
@@ -305,20 +305,20 @@ export const MessageBubble = React.memo(function MessageBubble({
             <div className={clsx(
               "text-sm leading-relaxed w-full",
               isUser
-                ? "bg-[#252527] text-white rounded-2xl rounded-tr-sm p-3.5 sm:p-4 max-w-[95%] sm:max-w-[85%] text-left"
+                ? "bg-gradient-to-br from-[#1d2140] to-[#151830] text-white rounded-2xl rounded-tr-sm p-3.5 sm:p-4 max-w-[95%] sm:max-w-[85%] text-left border border-[var(--nova-border-strong)]"
                 : "bg-transparent text-white w-full max-w-none text-left"
             )}>
               <div className={clsx(
                 "prose prose-invert max-w-none text-sm leading-relaxed w-full",
                 "prose-headings:text-white prose-headings:font-bold prose-headings:tracking-tight",
-                "prose-h1:text-base sm:prose-h1:text-lg prose-h1:mt-2.5 prose-h1:mb-1.5 prose-h1:border-b prose-h1:border-[#38383b] prose-h1:pb-1.5",
+                "prose-h1:text-base sm:prose-h1:text-lg prose-h1:mt-2.5 prose-h1:mb-1.5 prose-h1:border-b prose-h1:border-[var(--nova-border-strong)] prose-h1:pb-1.5",
                 "prose-h2:text-sm sm:prose-h2:text-base prose-h2:mt-2.5 prose-h2:mb-1",
                 "prose-h3:text-sm prose-h3:mt-2 prose-h3:mb-1",
                 "prose-p:my-1.5 prose-p:leading-relaxed",
                 "prose-ul:my-1.5 prose-ul:pl-4 sm:prose-ul:pl-5 prose-ul:list-disc prose-li:my-0.5",
                 "prose-ol:my-1.5 prose-ol:pl-4 sm:prose-ol:pl-5 prose-ol:list-decimal prose-li:my-0.5",
-                "prose-blockquote:border-l-2 prose-blockquote:border-[#3f86ff] prose-blockquote:bg-[#252527] prose-blockquote:py-1.5 prose-blockquote:px-3 prose-blockquote:rounded-r-lg prose-blockquote:text-[#8d8d91] prose-blockquote:not-italic prose-blockquote:my-2",
-                "prose-hr:border-[#38383b] prose-hr:my-3",
+                "prose-blockquote:border-l-2 prose-blockquote:border-[#3f86ff] prose-blockquote:bg-white/[0.04] prose-blockquote:py-1.5 prose-blockquote:px-3 prose-blockquote:rounded-r-lg prose-blockquote:text-[var(--nova-text-2)] prose-blockquote:not-italic prose-blockquote:my-2",
+                "prose-hr:border-[var(--nova-border-strong)] prose-hr:my-3",
                 isStreaming && "streaming-cursor"
               )}>
                 {/* 1. AI Narration / Conversation before tool */}
@@ -402,7 +402,7 @@ export const MessageBubble = React.memo(function MessageBubble({
             )}>
               <button
                 onClick={handleCopy}
-                className="p-1.5 text-[#8d8d91] hover:text-white hover:bg-[#252527] rounded-md transition-colors flex items-center gap-1 text-xs cursor-pointer"
+                className="p-1.5 text-[var(--nova-text-2)] hover:text-white hover:bg-white/[0.06] rounded-md transition-colors flex items-center gap-1 text-xs cursor-pointer"
                 title="Copy text"
               >
                 {copied ? (
@@ -424,7 +424,7 @@ export const MessageBubble = React.memo(function MessageBubble({
                     onClick={handleSpeak}
                     className={clsx(
                       "p-1.5 rounded-md transition-colors text-xs flex items-center gap-1 cursor-pointer",
-                      isSpeaking ? "text-blue-400 bg-blue-950/40" : "text-[#8d8d91] hover:text-white hover:bg-[#252527]"
+                      isSpeaking ? "text-blue-400 bg-blue-950/40" : "text-[var(--nova-text-2)] hover:text-white hover:bg-white/[0.06]"
                     )}
                     title={isSpeaking ? "Stop speech readout" : "Read message aloud"}
                   >
@@ -436,7 +436,7 @@ export const MessageBubble = React.memo(function MessageBubble({
                     onClick={() => setLiked(liked === true ? null : true)}
                     className={clsx(
                       "p-1.5 rounded-md transition-colors text-xs flex items-center gap-1 cursor-pointer",
-                      liked === true ? "text-emerald-400 bg-emerald-950/40" : "text-[#8d8d91] hover:text-white hover:bg-[#252527]"
+                      liked === true ? "text-emerald-400 bg-emerald-950/40" : "text-[var(--nova-text-2)] hover:text-white hover:bg-white/[0.06]"
                     )}
                     title="Good response"
                   >
@@ -446,7 +446,7 @@ export const MessageBubble = React.memo(function MessageBubble({
                     onClick={() => setLiked(liked === false ? null : false)}
                     className={clsx(
                       "p-1.5 rounded-md transition-colors text-xs flex items-center gap-1 cursor-pointer",
-                      liked === false ? "text-rose-400 bg-rose-950/40" : "text-[#8d8d91] hover:text-white hover:bg-[#252527]"
+                      liked === false ? "text-rose-400 bg-rose-950/40" : "text-[var(--nova-text-2)] hover:text-white hover:bg-white/[0.06]"
                     )}
                     title="Poor response"
                   >
@@ -464,7 +464,7 @@ export const MessageBubble = React.memo(function MessageBubble({
                 }}
                 className={clsx(
                   "p-1.5 rounded-md transition-colors text-xs flex items-center gap-1 cursor-pointer",
-                  message.isStarred ? "text-amber-400" : "text-[#8d8d91] hover:text-white hover:bg-[#252527]"
+                  message.isStarred ? "text-amber-400" : "text-[var(--nova-text-2)] hover:text-white hover:bg-white/[0.06]"
                 )}
                 title={message.isStarred ? "Unstar message" : "Star message"}
               >
@@ -478,7 +478,7 @@ export const MessageBubble = React.memo(function MessageBubble({
                     detail: { messageId: message.id }
                   }));
                 }}
-                className="p-1.5 text-[#8d8d91] hover:text-cyan-400 hover:bg-[#252527] rounded-md transition-colors flex items-center gap-1 text-xs cursor-pointer"
+                className="p-1.5 text-[var(--nova-text-2)] hover:text-cyan-400 hover:bg-white/[0.06] rounded-md transition-colors flex items-center gap-1 text-xs cursor-pointer"
                 title="Branch conversation into a new thread from this message"
               >
                 <GitBranch size={13} />
@@ -488,7 +488,7 @@ export const MessageBubble = React.memo(function MessageBubble({
               {isUser && onEdit && (
                 <button
                   onClick={() => setIsEditing(true)}
-                  className="p-1.5 text-[#8d8d91] hover:text-white hover:bg-[#252527] rounded-md transition-colors flex items-center gap-1 text-xs cursor-pointer"
+                  className="p-1.5 text-[var(--nova-text-2)] hover:text-white hover:bg-white/[0.06] rounded-md transition-colors flex items-center gap-1 text-xs cursor-pointer"
                   title="Edit message"
                 >
                   <Edit2 size={14} />
@@ -499,7 +499,7 @@ export const MessageBubble = React.memo(function MessageBubble({
               {onDelete && (
                 <button
                   onClick={() => onDelete(message.id)}
-                  className="p-1.5 text-[#8d8d91] hover:text-rose-400 hover:bg-[#252527] rounded-md transition-colors cursor-pointer"
+                  className="p-1.5 text-[var(--nova-text-2)] hover:text-rose-400 hover:bg-white/[0.06] rounded-md transition-colors cursor-pointer"
                   title="Delete message"
                 >
                   <Trash2 size={14} />
@@ -519,7 +519,7 @@ export const MessageBubble = React.memo(function MessageBubble({
           <img
             src={previewImage}
             alt="Expanded view"
-            className="max-w-full max-h-[90vh] rounded-2xl border border-[#30363D] shadow-2xl"
+            className="max-w-full max-h-[90vh] rounded-2xl border border-[var(--nova-border-strong)] shadow-2xl"
           />
         </div>
       )}

@@ -254,7 +254,7 @@ export function CommandPalette({
       <div className="fixed inset-0" onClick={onClose} />
 
       <div 
-        className="relative w-full max-w-xl bg-[#14151a] border border-[#2a2d39] rounded-2xl shadow-2xl overflow-hidden flex flex-col z-10 select-none text-white"
+        className="relative w-full max-w-xl bg-[#131628] border border-[#2a2d39] rounded-2xl shadow-2xl overflow-hidden flex flex-col z-10 select-none text-white"
         onKeyDown={handleKeyDown}
       >
         {/* Search Input Bar */}
@@ -279,7 +279,7 @@ export function CommandPalette({
               <X size={14} />
             </button>
           )}
-          <kbd className="hidden sm:inline-block px-1.5 py-0.5 text-[10px] font-mono font-medium text-slate-400 bg-[#1e2029] border border-[#2e313f] rounded">
+          <kbd className="hidden sm:inline-block px-1.5 py-0.5 text-[10px] font-mono font-medium text-slate-400 bg-[#191c33] border border-[#2e313f] rounded">
             ESC
           </kbd>
         </div>
@@ -301,14 +301,14 @@ export function CommandPalette({
                   className={clsx(
                     "flex items-center justify-between gap-3 px-3 py-2.5 rounded-xl cursor-pointer transition-all",
                     isSelected 
-                      ? "bg-[#202330] text-white" 
+                      ? "bg-[#1b1f3a] text-white" 
                       : "text-slate-300 hover:bg-[#1a1c24] hover:text-white"
                   )}
                 >
                   <div className="flex items-center gap-3 min-w-0">
                     <div className={clsx(
                       "w-7 h-7 rounded-lg flex items-center justify-center shrink-0 border",
-                      isSelected ? "bg-[#272b3c] border-[#3a3f55]" : "bg-[#181a22] border-[#262835]"
+                      isSelected ? "bg-[#272b3c] border-[#3a3f55]" : "bg-[#181b30] border-[#262835]"
                     )}>
                       {item.icon}
                     </div>
@@ -329,7 +329,7 @@ export function CommandPalette({
 
                   <div className="flex items-center gap-2 shrink-0">
                     {item.shortcut && (
-                      <kbd className="px-1.5 py-0.5 text-[10px] font-mono text-slate-400 bg-[#191b24] border border-[#2a2d3b] rounded">
+                      <kbd className="px-1.5 py-0.5 text-[10px] font-mono text-slate-400 bg-[#151830] border border-[#2a2d3b] rounded">
                         {item.shortcut}
                       </kbd>
                     )}

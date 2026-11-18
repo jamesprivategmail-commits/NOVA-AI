@@ -63,7 +63,7 @@ export function BrainPanel() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center p-10 bg-[#1a1a1c] rounded-xl border border-[#38383b]">
+      <div className="flex items-center justify-center p-10 bg-[#1a1a1c] rounded-xl border border-[#2e3354]">
         <Loader2 size={20} className="text-[#3f86ff] animate-spin" />
       </div>
     );
@@ -71,12 +71,12 @@ export function BrainPanel() {
 
   if (error) {
     return (
-      <div className="flex flex-col items-center gap-3 p-10 bg-[#1a1a1c] rounded-xl border border-[#38383b] text-center">
+      <div className="flex flex-col items-center gap-3 p-10 bg-[#1a1a1c] rounded-xl border border-[#2e3354] text-center">
         <AlertCircle size={22} className="text-rose-400" />
-        <p className="text-xs text-[#8d8d91]">{error}</p>
+        <p className="text-xs text-[#9aa3c7]">{error}</p>
         <button
           onClick={fetchAll}
-          className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#202022] hover:bg-[#252527] border border-[#38383b] text-white text-xs transition-colors cursor-pointer"
+          className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#14172a] hover:bg-[#181b30] border border-[#2e3354] text-white text-xs transition-colors cursor-pointer"
         >
           <RefreshCw size={13} /> Retry
         </button>
@@ -85,21 +85,21 @@ export function BrainPanel() {
   }
 
   return (
-    <div className="bg-[#1a1a1c] rounded-xl border border-[#38383b] text-white overflow-hidden">
+    <div className="bg-[#1a1a1c] rounded-xl border border-[#2e3354] text-white overflow-hidden">
       {/* Header */}
-      <div className="flex items-center justify-between p-4 border-b border-[#38383b]">
+      <div className="flex items-center justify-between p-4 border-b border-[#2e3354]">
         <div className="flex items-center gap-2.5">
-          <div className="w-9 h-9 rounded-lg bg-[#202022] border border-[#38383b] flex items-center justify-center">
+          <div className="w-9 h-9 rounded-lg bg-[#14172a] border border-[#2e3354] flex items-center justify-center">
             <Brain size={18} className="text-[#3f86ff]" />
           </div>
           <div>
             <div className="text-sm font-bold">Nova&apos;s Brain</div>
-            <div className="text-[10px] text-[#8d8d91]">Council stats &amp; learnings</div>
+            <div className="text-[10px] text-[#9aa3c7]">Council stats &amp; learnings</div>
           </div>
         </div>
         <button
           onClick={fetchAll}
-          className="w-[34px] h-[34px] rounded-lg border bg-[#202022] hover:bg-[#252527] border-[#38383b] text-[#8d8d91] hover:text-white flex items-center justify-center transition-colors cursor-pointer"
+          className="w-[34px] h-[34px] rounded-lg border bg-[#14172a] hover:bg-[#181b30] border-[#2e3354] text-[#9aa3c7] hover:text-white flex items-center justify-center transition-colors cursor-pointer"
           title="Refresh"
         >
           <RefreshCw size={15} />
@@ -109,14 +109,14 @@ export function BrainPanel() {
       <div className="p-4 space-y-4">
         {/* Stat cards */}
         <div className="grid grid-cols-2 gap-3">
-          <div className="bg-[#202022] rounded-lg border border-[#38383b] p-3">
-            <div className="flex items-center gap-1.5 text-[10px] text-[#8d8d91] uppercase tracking-wide">
+          <div className="bg-[#14172a] rounded-lg border border-[#2e3354] p-3">
+            <div className="flex items-center gap-1.5 text-[10px] text-[#9aa3c7] uppercase tracking-wide">
               <Activity size={12} /> Council Runs
             </div>
             <div className="text-2xl font-bold mt-1 font-mono">{stats?.runs ?? 0}</div>
           </div>
-          <div className="bg-[#202022] rounded-lg border border-[#38383b] p-3">
-            <div className="flex items-center gap-1.5 text-[10px] text-[#8d8d91] uppercase tracking-wide">
+          <div className="bg-[#14172a] rounded-lg border border-[#2e3354] p-3">
+            <div className="flex items-center gap-1.5 text-[10px] text-[#9aa3c7] uppercase tracking-wide">
               <Sparkles size={12} /> Learnings
             </div>
             <div className="text-2xl font-bold mt-1 font-mono">{stats?.learningCount ?? learnings.length}</div>
@@ -124,22 +124,22 @@ export function BrainPanel() {
         </div>
 
         {/* Provider wins bar chart */}
-        <div className="bg-[#202022] rounded-lg border border-[#38383b] p-3">
-          <div className="flex items-center gap-1.5 text-[10px] text-[#8d8d91] uppercase tracking-wide mb-2.5">
+        <div className="bg-[#14172a] rounded-lg border border-[#2e3354] p-3">
+          <div className="flex items-center gap-1.5 text-[10px] text-[#9aa3c7] uppercase tracking-wide mb-2.5">
             <Trophy size={12} /> Provider Wins
           </div>
           {Object.keys(wins).length === 0 ? (
-            <div className="text-[11px] text-[#8d8d91] py-2">No provider data yet.</div>
+            <div className="text-[11px] text-[#9aa3c7] py-2">No provider data yet.</div>
           ) : (
             <div className="space-y-2">
               {Object.entries(wins)
                 .sort(([, a], [, b]) => b - a)
                 .map(([provider, count]) => (
                   <div key={provider} className="flex items-center gap-2">
-                    <span className="w-24 shrink-0 truncate text-[11px] text-[#8d8d91]">{provider}</span>
+                    <span className="w-24 shrink-0 truncate text-[11px] text-[#9aa3c7]">{provider}</span>
                     <div className="flex-1 h-4 bg-[#1a1a1c] rounded overflow-hidden">
                       <div
-                        className="h-full bg-[#3f86ff] rounded transition-all duration-300"
+                        className="h-full bg-gradient-to-br from-violet-600 to-indigo-600 rounded transition-all duration-300"
                         style={{ width: `${Math.round((count / maxWins) * 100)}%` }}
                       />
                     </div>
@@ -151,10 +151,10 @@ export function BrainPanel() {
         </div>
 
         {/* Recent learnings */}
-        <div className="bg-[#202022] rounded-lg border border-[#38383b] p-3">
-          <div className="text-[10px] text-[#8d8d91] uppercase tracking-wide mb-2.5">Recent Learnings</div>
+        <div className="bg-[#14172a] rounded-lg border border-[#2e3354] p-3">
+          <div className="text-[10px] text-[#9aa3c7] uppercase tracking-wide mb-2.5">Recent Learnings</div>
           {learnings.length === 0 ? (
-            <div className="text-[11px] text-[#8d8d91] py-2">Nothing learned yet.</div>
+            <div className="text-[11px] text-[#9aa3c7] py-2">Nothing learned yet.</div>
           ) : (
             <ul className="space-y-1.5 max-h-48 overflow-y-auto">
               {learnings.slice(0, 10).map((l) => (
@@ -175,7 +175,7 @@ export function BrainPanel() {
           onClick={handleDistill}
           disabled={distilling}
           className={clsx(
-            'w-full flex items-center justify-center gap-2 bg-[#3f86ff] hover:opacity-90 text-white font-medium py-2.5 px-3.5 rounded-lg transition-all cursor-pointer text-[13px]',
+            'w-full flex items-center justify-center gap-2 bg-gradient-to-br from-violet-600 to-indigo-600 hover:opacity-90 text-white font-medium py-2.5 px-3.5 rounded-lg transition-all cursor-pointer text-[13px]',
             distilling && 'opacity-60 pointer-events-none'
           )}
         >
