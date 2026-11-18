@@ -28,11 +28,11 @@ export function ToolHierarchyView({
     <div className="w-full my-2 space-y-2 select-text font-sans">
       {/* 1. AI THINKING / PLANNING */}
       {thinking && (
-        <div className="rounded-xl bg-[#161b22]/70 border border-[#30363d]/60 overflow-hidden text-xs">
+        <div className="rounded-xl bg-[#FFFFFF]/70 border border-[#FFFFFF]/60 overflow-hidden text-xs">
           <button
             type="button"
             onClick={() => setShowThinking(!showThinking)}
-            className="w-full px-3 py-2 flex items-center justify-between hover:bg-[#21262d]/50 transition-colors cursor-pointer select-none text-[#8d8d91] hover:text-slate-200"
+            className="w-full px-3 py-2 flex items-center justify-between hover:bg-[#FFFFFF]/50 transition-colors cursor-pointer select-none text-[#6B6A67] hover:text-slate-200"
           >
             <div className="flex items-center gap-2">
               <Brain size={14} className="text-purple-400 shrink-0" />
@@ -47,7 +47,7 @@ export function ToolHierarchyView({
           </button>
 
           {showThinking && (
-            <div className="px-3.5 py-2.5 bg-[#0d1117]/60 border-t border-[#30363d]/40 text-slate-300 text-[11px] leading-relaxed whitespace-pre-wrap font-sans">
+            <div className="px-3.5 py-2.5 bg-[#FAF9F5]/60 border-t border-[#FFFFFF]/40 text-[#6B6A67] text-[11px] leading-relaxed whitespace-pre-wrap font-sans">
               {thinking}
             </div>
           )}

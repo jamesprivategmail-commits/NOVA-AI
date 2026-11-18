@@ -55,14 +55,14 @@ export function FileArtifactCard({ event, onOpenInWorkspace }: FileArtifactCardP
   };
 
   return (
-    <div className="w-full my-2 rounded-xl bg-[#161b22] border border-[#30363d]/80 overflow-hidden font-sans text-xs transition-all shadow-md">
+    <div className="w-full my-2 rounded-xl bg-[#FFFFFF] border border-[#FFFFFF]/80 overflow-hidden font-sans text-xs transition-all shadow-md">
       {/* Top Header Card */}
-      <div className="flex items-center justify-between px-3 py-2 bg-[#1c2128] border-b border-[#30363d]/70 select-none">
+      <div className="flex items-center justify-between px-3 py-2 bg-[#FFFFFF] border-b border-[#FFFFFF]/70 select-none">
         <div className="flex items-center gap-2 min-w-0">
-          <FileCode size={14} className="text-[#3f86ff] shrink-0" />
+          <FileCode size={14} className="text-[#D97757] shrink-0" />
 
           {/* File pill: [ index.html ] */}
-          <span className="font-mono font-bold text-white text-xs bg-[#0d1117] px-2 py-0.5 rounded border border-[#30363d] truncate">
+          <span className="font-mono font-bold text-[#1F1E1D] text-xs bg-[#FAF9F5] px-2 py-0.5 rounded border border-[#FFFFFF] truncate">
             {fileName}
           </span>
 
@@ -75,7 +75,7 @@ export function FileArtifactCard({ event, onOpenInWorkspace }: FileArtifactCardP
           )}
 
           {event.summary && (
-            <span className="text-[10px] text-[#8d8d91] truncate hidden sm:inline">
+            <span className="text-[10px] text-[#6B6A67] truncate hidden sm:inline">
               • {event.summary}
             </span>
           )}
@@ -87,9 +87,9 @@ export function FileArtifactCard({ event, onOpenInWorkspace }: FileArtifactCardP
           <button
             type="button"
             onClick={() => setShowDiff(!showDiff)}
-            className="flex items-center gap-1 px-2 py-1 rounded bg-[#21262d] hover:bg-[#30363d] text-slate-200 text-[11px] font-medium transition-colors cursor-pointer"
+            className="flex items-center gap-1 px-2 py-1 rounded bg-[#FFFFFF] hover:bg-[#FFFFFF] text-slate-200 text-[11px] font-medium transition-colors cursor-pointer"
           >
-            <Eye size={12} className="text-[#3f86ff]" />
+            <Eye size={12} className="text-[#D97757]" />
             <span>{showDiff ? 'Hide diff' : 'View diff'}</span>
             {showDiff ? <ChevronUp size={11} /> : <ChevronDown size={11} />}
           </button>
@@ -98,7 +98,7 @@ export function FileArtifactCard({ event, onOpenInWorkspace }: FileArtifactCardP
           <button
             type="button"
             onClick={handleOpen}
-            className="flex items-center gap-1 px-2.5 py-1 rounded bg-[#3f86ff]/20 hover:bg-[#3f86ff]/30 text-[#3f86ff] hover:text-white border border-[#3f86ff]/40 text-[11px] font-medium transition-colors cursor-pointer"
+            className="flex items-center gap-1 px-2.5 py-1 rounded bg-[#D97757]/20 hover:bg-[#D97757]/30 text-[#D97757] hover:text-white border border-[#D97757]/40 text-[11px] font-medium transition-colors cursor-pointer"
             title="Open in Workspace editor"
           >
             <span>Open</span>
@@ -109,14 +109,14 @@ export function FileArtifactCard({ event, onOpenInWorkspace }: FileArtifactCardP
 
       {/* Inline Diff & Syntax Highlighting Viewer */}
       {showDiff && (
-        <div className="p-3 bg-[#0d1117] space-y-2 border-t border-[#30363d]/60">
-          <div className="flex items-center justify-between text-[11px] text-[#8d8d91] font-mono">
-            <span>Path: <span className="text-slate-300">{event.filePath}</span></span>
+        <div className="p-3 bg-[#FAF9F5] space-y-2 border-t border-[#FFFFFF]/60">
+          <div className="flex items-center justify-between text-[11px] text-[#6B6A67] font-mono">
+            <span>Path: <span className="text-[#6B6A67]">{event.filePath}</span></span>
             
             <div className="flex items-center gap-2">
               <button
                 onClick={handleCopy}
-                className="flex items-center gap-1 px-2 py-0.5 rounded bg-[#21262d] hover:bg-[#30363d] text-slate-300 hover:text-white transition-colors cursor-pointer"
+                className="flex items-center gap-1 px-2 py-0.5 rounded bg-[#FFFFFF] hover:bg-[#FFFFFF] text-[#6B6A67] hover:text-[#1F1E1D] transition-colors cursor-pointer"
               >
                 {copied ? <Check size={11} className="text-emerald-400" /> : <Copy size={11} />}
                 <span>{copied ? 'Copied' : 'Copy'}</span>
@@ -124,7 +124,7 @@ export function FileArtifactCard({ event, onOpenInWorkspace }: FileArtifactCardP
 
               <button
                 onClick={handleRevert}
-                className="flex items-center gap-1 px-2 py-0.5 rounded bg-amber-950/40 hover:bg-amber-950/80 border border-amber-800/40 text-amber-300 hover:text-white transition-colors cursor-pointer"
+                className="flex items-center gap-1 px-2 py-0.5 rounded bg-amber-950/40 hover:bg-amber-950/80 border border-amber-800/40 text-amber-300 hover:text-[#1F1E1D] transition-colors cursor-pointer"
                 title="Revert file change"
               >
                 <RotateCcw size={11} />
@@ -133,7 +133,7 @@ export function FileArtifactCard({ event, onOpenInWorkspace }: FileArtifactCardP
             </div>
           </div>
 
-          <div className="rounded-lg overflow-hidden border border-[#30363d] max-h-72 overflow-y-auto text-xs">
+          <div className="rounded-lg overflow-hidden border border-[#FFFFFF] max-h-72 overflow-y-auto text-xs">
             <SyntaxHighlighter
               language={event.diff ? 'diff' : syntaxLang}
               style={vscDarkPlus}
@@ -142,7 +142,7 @@ export function FileArtifactCard({ event, onOpenInWorkspace }: FileArtifactCardP
                 padding: '0.75rem',
                 fontSize: '11px',
                 lineHeight: '1.5',
-                background: '#0d1117',
+                background: '#FAF9F5',
               }}
             >
               {contentToDisplay}

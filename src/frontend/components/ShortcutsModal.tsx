@@ -39,11 +39,11 @@ export function ShortcutsModal({ onClose }: { onClose: () => void }) {
             >
               <Keyboard size={16} style={{ color: 'var(--accent)' }} />
             </div>
-            <h2 className="font-display text-base font-semibold text-white">Keyboard shortcuts</h2>
+            <h2 className="font-display text-base font-semibold text-[#1F1E1D]">Keyboard shortcuts</h2>
           </div>
           <button
             onClick={onClose}
-            className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-white/5 transition-colors cursor-pointer"
+            className="p-1.5 rounded-lg text-[#6B6A67] hover:text-[#1F1E1D] hover:bg-white/5 transition-colors cursor-pointer"
           >
             <X size={16} />
           </button>
@@ -61,7 +61,7 @@ export function ShortcutsModal({ onClose }: { onClose: () => void }) {
                     key={keys}
                     className="flex items-center justify-between py-1.5 px-2.5 rounded-lg hover:bg-white/[0.03] transition-colors"
                   >
-                    <span className="text-xs text-slate-300">{desc}</span>
+                    <span className="text-xs text-[#6B6A67]">{desc}</span>
                     <span className="flex gap-1">
                       {keys.split(' + ').map(k => (
                         <kbd key={k} className="kbd">{k}</kbd>

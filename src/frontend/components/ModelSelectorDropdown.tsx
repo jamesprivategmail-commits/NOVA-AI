@@ -131,8 +131,8 @@ export function ModelSelectorDropdown({
         className={clsx(
           "h-9 px-2.5 sm:px-3 rounded-lg border text-xs font-medium transition-all flex items-center gap-2 cursor-pointer select-none",
           isOpen
-            ? "bg-[#1f222d] border-[#383d4e] text-white shadow-sm"
-            : "bg-[#14151a] hover:bg-[#1a1c23] border-[#262833] text-slate-200"
+            ? "bg-[#FFFFFF] border-[#F0EEE5] text-[#1F1E1D] shadow-sm"
+            : "bg-[#FAF9F5] hover:bg-[#FFFFFF] border-[#FFFFFF] text-slate-200"
         )}
         title="Select AI Model & Inspect Latency Matrix"
       >
@@ -143,23 +143,23 @@ export function ModelSelectorDropdown({
 
         {/* Real-time telemetry snippet if available */}
         {lastTelemetry?.tokensPerSec ? (
-          <span className="hidden lg:inline text-[10px] font-mono tabular-nums text-slate-400">
+          <span className="hidden lg:inline text-[10px] font-mono tabular-nums text-[#6B6A67]">
             · {Math.round(lastTelemetry.tokensPerSec)} t/s
           </span>
         ) : (
-          <span className="hidden lg:inline text-[10px] font-mono tabular-nums text-slate-400">
+          <span className="hidden lg:inline text-[10px] font-mono tabular-nums text-[#6B6A67]">
             · {currentOption.speed}
           </span>
         )}
 
-        <ChevronDown size={13} className={clsx("text-slate-400 transition-transform", isOpen && "rotate-180")} />
+        <ChevronDown size={13} className={clsx("text-[#6B6A67] transition-transform", isOpen && "rotate-180")} />
       </button>
 
       {/* Flyout Menu */}
       {isOpen && (
-        <div className="absolute left-0 mt-2 w-80 sm:w-96 rounded-2xl bg-[#14151a] border border-[#272a36] shadow-2xl p-2 z-50 text-white select-none animate-fadeIn">
+        <div className="absolute left-0 mt-2 w-80 sm:w-96 rounded-2xl bg-[#FAF9F5] border border-[#FFFFFF] shadow-2xl p-2 z-50 text-[#1F1E1D] select-none animate-fadeIn">
           {/* Header */}
-          <div className="px-3 py-2 border-b border-[#222430] flex items-center justify-between">
+          <div className="px-3 py-2 border-b border-[#FFFFFF] flex items-center justify-between">
             <div className="flex items-center gap-2">
               <Cpu size={14} className="text-blue-400" />
               <span className="text-xs font-bold tracking-tight">Choose your Nova</span>
@@ -181,8 +181,8 @@ export function ModelSelectorDropdown({
                   className={clsx(
                     "p-2.5 rounded-xl cursor-pointer transition-all border nova-menu-item",
                     isSelected
-                      ? "bg-[#1d202b] border-[#383d4f] text-white"
-                      : "bg-transparent border-transparent hover:bg-[#181a22] text-slate-300 hover:text-white"
+                      ? "bg-[#FFFFFF] border-[#F0EEE5] text-[#1F1E1D]"
+                      : "bg-transparent border-transparent hover:bg-[#FFFFFF] text-[#6B6A67] hover:text-[#1F1E1D]"
                   )}
                   style={{ animationDelay: `${i * 35}ms` }}
                 >
@@ -198,7 +198,7 @@ export function ModelSelectorDropdown({
                             </span>
                           )}
                         </div>
-                        <p className="text-[11px] text-slate-400 line-clamp-2 mt-0.5">
+                        <p className="text-[11px] text-[#6B6A67] line-clamp-2 mt-0.5">
                           {persona.personality}
                         </p>
                         <p className="text-[10px] text-slate-500 truncate mt-0.5 font-mono">
@@ -208,7 +208,7 @@ export function ModelSelectorDropdown({
                     </div>
 
                     <div className="text-right shrink-0 font-mono tabular-nums text-[10px]">
-                      <div className="text-slate-300 font-medium">{AVAILABLE_MODELS.find(m => m.id === persona.modelId)?.speed}</div>
+                      <div className="text-[#6B6A67] font-medium">{AVAILABLE_MODELS.find(m => m.id === persona.modelId)?.speed}</div>
                       <div className="text-slate-500 mt-0.5">{AVAILABLE_MODELS.find(m => m.id === persona.modelId)?.latencyBadge}</div>
                     </div>
                   </div>
@@ -218,13 +218,13 @@ export function ModelSelectorDropdown({
           </div>
 
           {/* Precision Controls Section (Temperature & Sampling) */}
-          <div className="p-3 bg-[#101116] rounded-xl border border-[#222430] mt-1 space-y-2">
+          <div className="p-3 bg-[#FAF9F5] rounded-xl border border-[#FFFFFF] mt-1 space-y-2">
             <div className="flex items-center justify-between text-[11px]">
-              <span className="font-semibold text-slate-300 flex items-center gap-1.5">
-                <Sliders size={12} className="text-slate-400" />
+              <span className="font-semibold text-[#6B6A67] flex items-center gap-1.5">
+                <Sliders size={12} className="text-[#6B6A67]" />
                 Temperature (Creativity)
               </span>
-              <span className="font-mono tabular-nums text-slate-400 text-[10px]">
+              <span className="font-mono tabular-nums text-[#6B6A67] text-[10px]">
                 {temperature.toFixed(2)}
               </span>
             </div>
@@ -235,7 +235,7 @@ export function ModelSelectorDropdown({
               step="0.05"
               value={temperature}
               onChange={(e) => handleTempChange(parseFloat(e.target.value))}
-              className="w-full accent-blue-500 h-1 bg-[#232633] rounded-lg appearance-none cursor-pointer"
+              className="w-full accent-blue-500 h-1 bg-[#FFFFFF] rounded-lg appearance-none cursor-pointer"
             />
             <div className="flex justify-between text-[9px] text-slate-500 font-mono">
               <span>0.0 (Strict Code)</span>

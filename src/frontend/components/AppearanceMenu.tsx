@@ -62,8 +62,8 @@ export function AppearanceMenu() {
         className={clsx(
           "w-9 h-9 rounded-xl border flex items-center justify-center transition-all cursor-pointer",
           open
-            ? "glow-ring text-white"
-            : "bg-white/[0.04] hover:bg-white/[0.08] border-white/10 text-slate-300 hover:text-white"
+            ? "glow-ring text-[#1F1E1D]"
+            : "bg-white/[0.04] hover:bg-white/[0.08] border-white/10 text-[#6B6A67] hover:text-[#1F1E1D]"
         )}
         title="Appearance: accent color & text size"
       >
@@ -72,7 +72,7 @@ export function AppearanceMenu() {
 
       {open && (
         <div className="absolute right-0 top-11 w-60 glass-strong rounded-2xl p-3.5 z-50 animate-riseIn">
-          <div className="text-[10px] font-semibold uppercase tracking-widest text-slate-400 mb-2">Accent</div>
+          <div className="text-[10px] font-semibold uppercase tracking-widest text-[#6B6A67] mb-2">Accent</div>
           <div className="flex items-center gap-2 mb-4">
             {ACCENTS.map(a => (
               <button
@@ -90,7 +90,7 @@ export function AppearanceMenu() {
             ))}
           </div>
 
-          <div className="text-[10px] font-semibold uppercase tracking-widest text-slate-400 mb-2">Text size</div>
+          <div className="text-[10px] font-semibold uppercase tracking-widest text-[#6B6A67] mb-2">Text size</div>
           <div className="grid grid-cols-3 gap-1.5">
             {SIZES.map(s => (
               <button
@@ -99,8 +99,8 @@ export function AppearanceMenu() {
                 className={clsx(
                   "py-1.5 rounded-lg text-[11px] font-medium transition-all cursor-pointer border",
                   size === s.id
-                    ? "text-white"
-                    : "bg-white/[0.04] border-transparent text-slate-400 hover:text-white"
+                    ? "text-[#1F1E1D]"
+                    : "bg-white/[0.04] border-transparent text-[#6B6A67] hover:text-[#1F1E1D]"
                 )}
                 style={size === s.id ? { background: 'var(--accent-soft)', borderColor: 'var(--accent-muted)' } : undefined}
               >

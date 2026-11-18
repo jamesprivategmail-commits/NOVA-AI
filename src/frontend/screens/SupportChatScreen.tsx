@@ -52,24 +52,24 @@ export function SupportChatScreen({ userId, userName, onClose, isAdminView = fal
   };
 
   return (
-    <div className="relative flex flex-col h-full w-full bg-[#0d0d10] text-white z-10 overflow-hidden">
+    <div className="relative flex flex-col h-full w-full bg-[#FAF9F5] text-[#1F1E1D] z-10 overflow-hidden">
       {/* Header */}
-      <div className="flex items-center justify-between p-3.5 border-b border-[#38383b]/80 bg-[#202022]/90 ">
+      <div className="flex items-center justify-between p-3.5 border-b border-[#3D3929]/80 bg-[#1F1E1D]/90 ">
         <div className="flex items-center gap-3">
           <button 
             onClick={onClose} 
-            className="flex items-center gap-1.5 px-2.5 py-1.5 hover:bg-[#38383b]/80 rounded-lg text-[#8d8d91] hover:text-white transition-colors text-xs font-semibold"
+            className="flex items-center gap-1.5 px-2.5 py-1.5 hover:bg-[#3D3929]/80 rounded-lg text-[#6B6A67] hover:text-[#1F1E1D] transition-colors text-xs font-semibold"
           >
             <ArrowLeft size={16} />
             <span>Back</span>
           </button>
           <div>
             <div className="flex items-center gap-2">
-              <h2 className="text-sm font-bold text-white">
+              <h2 className="text-sm font-bold text-[#1F1E1D]">
                 {isAdminView ? `Support Ticket: ${chatUserName}` : 'VOID AI Support Desk'}
               </h2>
               {isAdminView ? (
-                <span className="px-2 py-0.5 rounded-full bg-[#252527] border border-[#38383b] text-[#8d8d91] text-[10px] font-bold">
+                <span className="px-2 py-0.5 rounded-full bg-[#1F1E1D] border border-[#3D3929] text-[#E8E4D9] text-[10px] font-bold">
                   ADMIN REPLY MODE
                 </span>
               ) : (
@@ -79,7 +79,7 @@ export function SupportChatScreen({ userId, userName, onClose, isAdminView = fal
                 </span>
               )}
             </div>
-            <p className="text-[11px] text-[#8d8d91] ">
+            <p className="text-[11px] text-[#6B6A67] ">
               {isAdminView ? `User ID: ${chatUserId}` : 'Instant direct line to VOID AI Support Team'}
             </p>
           </div>
@@ -89,7 +89,7 @@ export function SupportChatScreen({ userId, userName, onClose, isAdminView = fal
           <button
             type="button"
             onClick={onExpandFullScreen}
-            className="flex items-center gap-1.5 px-3 py-1.5 bg-[#3f86ff] hover:opacity-90 text-white rounded-xl text-xs font-bold transition-all shadow-md cursor-pointer shrink-0"
+            className="flex items-center gap-1.5 px-3 py-1.5 bg-[#D97757] hover:opacity-90 text-white rounded-xl text-xs font-bold transition-all shadow-md cursor-pointer shrink-0"
             title="Open Full Page Chat Screen"
           >
             <Maximize2 size={14} />
@@ -99,16 +99,16 @@ export function SupportChatScreen({ userId, userName, onClose, isAdminView = fal
       </div>
 
       {/* Messages area */}
-      <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-[#202022]/40">
+      <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-[#1F1E1D]/40">
         {messages.length === 0 ? (
           <div className="h-full flex flex-col items-center justify-center text-center max-w-sm mx-auto p-6">
-            <div className="w-14 h-14 bg-[#252527]/40 border border-[#38383b]/40 rounded-2xl flex items-center justify-center mb-3 text-[#8d8d91]">
+            <div className="w-14 h-14 bg-[#1F1E1D]/40 border border-[#3D3929]/40 rounded-2xl flex items-center justify-center mb-3 text-[#E8E4D9]">
               <Shield size={28} />
             </div>
-            <h3 className="text-base font-bold mb-1 text-white">
+            <h3 className="text-base font-bold mb-1 text-[#1F1E1D]">
               {isAdminView ? 'No Messages Yet' : 'How can we help?'}
             </h3>
-            <p className="text-[#8d8d91] text-xs leading-relaxed">
+            <p className="text-[#6B6A67] text-xs leading-relaxed">
               {isAdminView 
                 ? 'Type a message below to initiate contact with this user.'
                 : 'Have questions about tier upgrades, payment requests, or custom features? Send us a message and our support staff will reply in real-time.'}
@@ -125,8 +125,8 @@ export function SupportChatScreen({ userId, userName, onClose, isAdminView = fal
                   <div className={clsx(
                     "w-7 h-7 rounded-full flex items-center justify-center shrink-0 mt-0.5 text-xs font-bold border",
                     msg.isAdmin 
-                      ? "bg-[#252527] border-[#38383b] text-[#8d8d91]" 
-                      : "bg-[#38383b] border-[#38383b] text-white"
+                      ? "bg-[#1F1E1D] border-[#3D3929] text-[#E8E4D9]" 
+                      : "bg-[#3D3929] border-[#3D3929] text-[#1F1E1D]"
                   )}>
                     {msg.isAdmin ? <Shield size={14} /> : <User size={14} />}
                   </div>
@@ -136,15 +136,15 @@ export function SupportChatScreen({ userId, userName, onClose, isAdminView = fal
                   <div className={clsx(
                     "rounded-2xl px-4 py-2.5 text-xs md:text-sm leading-relaxed shadow-sm",
                     isMe 
-                      ? "bg-[#3f86ff] text-white rounded-tr-xs font-normal" 
+                      ? "bg-[#D97757] text-white rounded-tr-xs font-normal" 
                       : msg.isAdmin
-                        ? "bg-[#252527] border border-[#38383b] text-white rounded-tl-xs"
-                        : "bg-[#252527] border border-[#38383b] text-white rounded-tl-xs"
+                        ? "bg-[#1F1E1D] border border-[#3D3929] text-white rounded-tl-xs"
+                        : "bg-[#1F1E1D] border border-[#3D3929] text-white rounded-tl-xs"
                   )}>
                     <p className="whitespace-pre-wrap break-words">{msg.text}</p>
                   </div>
                   {messageTime && (
-                    <div className={clsx("text-[10px] text-[#8d8d91] px-1", isMe ? "text-right" : "text-left")}>
+                    <div className={clsx("text-[10px] text-[#6B6A67] px-1", isMe ? "text-right" : "text-left")}>
                       {messageTime} {msg.isAdmin && !isMe ? '• Official Admin' : ''}
                     </div>
                   )}
@@ -157,8 +157,8 @@ export function SupportChatScreen({ userId, userName, onClose, isAdminView = fal
       </div>
 
       {/* Input area */}
-      <div className="p-3 border-t border-[#38383b]/80 bg-[#202022]">
-        <div className="relative flex items-center bg-[#252527] rounded-xl border border-[#38383b] focus-within:border-[#3f86ff]/70 overflow-hidden transition-all">
+      <div className="p-3 border-t border-[#3D3929]/80 bg-[#1F1E1D]">
+        <div className="relative flex items-center bg-[#1F1E1D] rounded-xl border border-[#3D3929] focus-within:border-[#D97757]/70 overflow-hidden transition-all">
           <input
             value={inputText}
             onChange={(e) => setInputText(e.target.value)}
@@ -169,12 +169,12 @@ export function SupportChatScreen({ userId, userName, onClose, isAdminView = fal
               }
             }}
             placeholder={isAdminView ? `Reply to ${chatUserName}...` : "Type support message..."}
-            className="flex-1 bg-transparent py-3 pl-3.5 pr-12 outline-none text-xs md:text-sm text-white placeholder:text-[#8d8d91]"
+            className="flex-1 bg-transparent py-3 pl-3.5 pr-12 outline-none text-xs md:text-sm text-[#1F1E1D] placeholder:text-[#6B6A67]"
           />
           <button
             onClick={handleSend}
             disabled={!inputText.trim()}
-            className="absolute right-1.5 p-2 bg-[#3f86ff] hover:opacity-90 text-white rounded-lg disabled:opacity-40 disabled:bg-[#38383b] transition-colors shadow-md"
+            className="absolute right-1.5 p-2 bg-[#D97757] hover:opacity-90 text-white rounded-lg disabled:opacity-40 disabled:bg-[#3D3929] transition-colors shadow-md"
             title="Send Message"
           >
             <Send size={15} />

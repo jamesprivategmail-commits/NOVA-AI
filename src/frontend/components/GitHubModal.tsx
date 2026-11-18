@@ -323,19 +323,19 @@ export function GitHubModal({ isOpen, onClose, onSelectFileForChat, onRepoChange
 
   return (
     <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-2 sm:p-4 overflow-y-auto">
-      <div className="bg-[#1a1a1c] border border-[#38383b] rounded-2xl w-full max-w-4xl shadow-2xl flex flex-col max-h-[92vh] overflow-hidden animate-fadeIn text-white text-xs">
+      <div className="bg-[#1F1E1D] border border-[#3D3929] rounded-2xl w-full max-w-4xl shadow-2xl flex flex-col max-h-[92vh] overflow-hidden animate-fadeIn text-white text-xs">
         
         {/* Top Header */}
-        <div className="p-4 border-b border-[#38383b] flex items-center justify-between bg-[#202022]">
+        <div className="p-4 border-b border-[#3D3929] flex items-center justify-between bg-[#1F1E1D]">
           <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-xl bg-black border border-[#38383b] flex items-center justify-center text-white">
+            <div className="w-9 h-9 rounded-xl bg-black border border-[#3D3929] flex items-center justify-center text-white">
               <svg className="w-5 h-5 fill-current" viewBox="0 0 24 24">
                 <path fillRule="evenodd" clipRule="evenodd" d="M12 2C6.477 2 2 6.484 2 12.017c0 4.425 2.865 8.18 6.839 9.504.5.092.682-.217.682-.483 0-.237-.008-.868-.013-1.703-2.782.605-3.369-1.343-3.369-1.343-.454-1.158-1.11-1.466-1.11-1.466-.908-.62.069-.608.069-.608 1.003.07 1.53 1.032 1.53 1.032.892 1.53 2.341 1.088 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.113-4.555-4.951 0-1.093.39-1.988 1.029-2.688-.103-.253-.446-1.272.098-2.65 0 0 .84-.27 2.75 1.026A9.564 9.564 0 0112 6.844c.85.004 1.705.115 2.504.337 1.909-1.296 2.747-1.027 2.747-1.027.546 1.379.202 2.398.1 2.651.64.7 1.028 1.595 1.028 2.688 0 3.848-2.339 4.695-4.566 4.943.359.309.678.92.678 1.855 0 1.338-.012 2.419-.012 2.747 0 .268.18.58.688.482A10.019 10.019 0 0022 12.017C22 6.484 17.522 2 12 2z" />
               </svg>
             </div>
             <div>
               <div className="flex items-center gap-2">
-                <h2 className="text-sm font-bold text-white tracking-wide">GitHub Workspace</h2>
+                <h2 className="text-sm font-bold text-[#1F1E1D] tracking-wide">GitHub Workspace</h2>
                 {user ? (
                   <span className="px-2 py-0.5 rounded-full bg-emerald-950/60 text-emerald-400 border border-emerald-800/40 text-[10px] font-medium flex items-center gap-1">
                     <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
@@ -347,7 +347,7 @@ export function GitHubModal({ isOpen, onClose, onSelectFileForChat, onRepoChange
                   </span>
                 )}
               </div>
-              <p className="text-[11px] text-[#8d8d91]">
+              <p className="text-[11px] text-[#6B6A67]">
                 AI-powered direct code editing, repository browsing, and automated commits
               </p>
             </div>
@@ -355,21 +355,21 @@ export function GitHubModal({ isOpen, onClose, onSelectFileForChat, onRepoChange
 
           <button
             onClick={onClose}
-            className="p-1.5 rounded-lg text-[#8d8d91] hover:text-white hover:bg-[#252527] transition-colors cursor-pointer"
+            className="p-1.5 rounded-lg text-[#E8E4D9] hover:text-white hover:bg-[#1F1E1D] transition-colors cursor-pointer"
           >
             <X size={18} />
           </button>
         </div>
 
         {/* Tab Navigation */}
-        <div className="flex border-b border-[#38383b] bg-[#1a1a1c] px-4 gap-1 overflow-x-auto">
+        <div className="flex border-b border-[#3D3929] bg-[#1F1E1D] px-4 gap-1 overflow-x-auto">
           <button
             onClick={() => setActiveTab('connect')}
             className={clsx(
               "py-2.5 px-3 border-b-2 font-medium text-xs transition-colors flex items-center gap-1.5 cursor-pointer shrink-0",
               activeTab === 'connect' 
-                ? "border-[#3f86ff] text-white" 
-                : "border-transparent text-[#8d8d91] hover:text-white"
+                ? "border-[#D97757] text-[#1F1E1D]" 
+                : "border-transparent text-[#6B6A67] hover:text-[#1F1E1D]"
             )}
           >
             <Key size={14} />
@@ -381,14 +381,14 @@ export function GitHubModal({ isOpen, onClose, onSelectFileForChat, onRepoChange
             className={clsx(
               "py-2.5 px-3 border-b-2 font-medium text-xs transition-colors flex items-center gap-1.5 cursor-pointer shrink-0",
               activeTab === 'repos' 
-                ? "border-[#3f86ff] text-white" 
-                : "border-transparent text-[#8d8d91] hover:text-white"
+                ? "border-[#D97757] text-[#1F1E1D]" 
+                : "border-transparent text-[#6B6A67] hover:text-[#1F1E1D]"
             )}
           >
             <Folder size={14} />
             <span>Repositories & Explorer</span>
             {repos.length > 0 && (
-              <span className="ml-1 px-1.5 py-0.2 rounded-full bg-[#252527] text-[10px] text-[#8d8d91]">
+              <span className="ml-1 px-1.5 py-0.2 rounded-full bg-[#1F1E1D] text-[10px] text-[#E8E4D9]">
                 {repos.length}
               </span>
             )}
@@ -399,8 +399,8 @@ export function GitHubModal({ isOpen, onClose, onSelectFileForChat, onRepoChange
             className={clsx(
               "py-2.5 px-3 border-b-2 font-medium text-xs transition-colors flex items-center gap-1.5 cursor-pointer shrink-0",
               activeTab === 'commit' 
-                ? "border-[#3f86ff] text-white" 
-                : "border-transparent text-[#8d8d91] hover:text-white"
+                ? "border-[#D97757] text-[#1F1E1D]" 
+                : "border-transparent text-[#6B6A67] hover:text-[#1F1E1D]"
             )}
           >
             <GitCommit size={14} />
@@ -412,8 +412,8 @@ export function GitHubModal({ isOpen, onClose, onSelectFileForChat, onRepoChange
             className={clsx(
               "py-2.5 px-3 border-b-2 font-medium text-xs transition-colors flex items-center gap-1.5 cursor-pointer shrink-0",
               activeTab === 'create' 
-                ? "border-[#3f86ff] text-white" 
-                : "border-transparent text-[#8d8d91] hover:text-white"
+                ? "border-[#D97757] text-[#1F1E1D]" 
+                : "border-transparent text-[#6B6A67] hover:text-[#1F1E1D]"
             )}
           >
             <Plus size={14} />
@@ -461,27 +461,27 @@ export function GitHubModal({ isOpen, onClose, onSelectFileForChat, onRepoChange
             <div className="space-y-6 max-w-2xl mx-auto py-2">
               {/* Authenticated User Banner */}
               {user ? (
-                <div className="p-4 bg-[#202022] border border-[#38383b] rounded-2xl flex items-center justify-between">
+                <div className="p-4 bg-[#1F1E1D] border border-[#3D3929] rounded-2xl flex items-center justify-between">
                   <div className="flex items-center gap-3">
                     <img 
                       src={user.avatar_url} 
                       alt={user.login} 
-                      className="w-12 h-12 rounded-xl border border-[#38383b]"
+                      className="w-12 h-12 rounded-xl border border-[#3D3929]"
                     />
                     <div>
                       <div className="flex items-center gap-2">
-                        <span className="font-bold text-sm text-white">{user.name || user.login}</span>
+                        <span className="font-bold text-sm text-[#1F1E1D]">{user.name || user.login}</span>
                         <a 
                           href={user.html_url} 
                           target="_blank" 
                           rel="noreferrer"
-                          className="text-[#8d8d91] hover:text-white"
+                          className="text-[#6B6A67] hover:text-[#1F1E1D]"
                         >
                           <ExternalLink size={12} />
                         </a>
                       </div>
-                      <span className="text-xs text-[#8d8d91]">@{user.login} • {user.public_repos} public repos</span>
-                      {user.bio && <p className="text-[11px] text-[#8d8d91] mt-1">{user.bio}</p>}
+                      <span className="text-xs text-[#6B6A67]">@{user.login} • {user.public_repos} public repos</span>
+                      {user.bio && <p className="text-[11px] text-[#6B6A67] mt-1">{user.bio}</p>}
                     </div>
                   </div>
 
@@ -496,30 +496,30 @@ export function GitHubModal({ isOpen, onClose, onSelectFileForChat, onRepoChange
               ) : null}
 
               {/* Method 1: Instant Personal Access Token */}
-              <div className="p-5 bg-[#202022] border border-[#38383b] rounded-2xl space-y-4">
+              <div className="p-5 bg-[#1F1E1D] border border-[#3D3929] rounded-2xl space-y-4">
                 <div className="flex items-start justify-between">
                   <div>
-                    <h3 className="font-bold text-sm text-white flex items-center gap-2">
-                      <Key size={15} className="text-[#3f86ff]" />
+                    <h3 className="font-bold text-sm text-[#1F1E1D] flex items-center gap-2">
+                      <Key size={15} className="text-[#D97757]" />
                       <span>Direct Token Connection (Instant & Recommended)</span>
                     </h3>
-                    <p className="text-xs text-[#8d8d91] mt-1">
-                      Works instantly with zero domain errors or Firebase issues. Paste any GitHub Personal Access Token (Classic or Fine-grained with <code className="bg-[#252527] px-1 py-0.5 rounded text-amber-300">repo</code> scope).
+                    <p className="text-xs text-[#6B6A67] mt-1">
+                      Works instantly with zero domain errors or Firebase issues. Paste any GitHub Personal Access Token (Classic or Fine-grained with <code className="bg-[#1F1E1D] px-1 py-0.5 rounded text-amber-300">repo</code> scope).
                     </p>
                   </div>
                 </div>
 
                 <form onSubmit={handleConnectWithPAT} className="space-y-3">
                   <div>
-                    <label className="text-[11px] font-medium text-[#8d8d91] block mb-1">
-                      GitHub Personal Access Token (starts with <code className="text-white">ghp_</code> or fine-grained)
+                    <label className="text-[11px] font-medium text-[#6B6A67] block mb-1">
+                      GitHub Personal Access Token (starts with <code className="text-[#1F1E1D]">ghp_</code> or fine-grained)
                     </label>
                     <input
                       type="password"
                       value={patInput}
                       onChange={(e) => setPatInput(e.target.value)}
                       placeholder="ghp_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
-                      className="w-full bg-[#1a1a1c] border border-[#38383b] focus:border-[#3f86ff] rounded-xl px-3 py-2 text-xs text-white outline-none font-mono"
+                      className="w-full bg-[#1F1E1D] border border-[#3D3929] focus:border-[#D97757] rounded-xl px-3 py-2 text-xs text-white outline-none font-mono"
                     />
                   </div>
 
@@ -528,7 +528,7 @@ export function GitHubModal({ isOpen, onClose, onSelectFileForChat, onRepoChange
                       href="https://github.com/settings/tokens/new?scopes=repo,read:user,user:email&description=VOID+AI+Direct+Coding"
                       target="_blank"
                       rel="noreferrer"
-                      className="text-[11px] text-[#3f86ff] hover:underline inline-flex items-center gap-1"
+                      className="text-[11px] text-[#D97757] hover:underline inline-flex items-center gap-1"
                     >
                       <span>Generate token on GitHub with repo permissions</span>
                       <ExternalLink size={11} />
@@ -537,7 +537,7 @@ export function GitHubModal({ isOpen, onClose, onSelectFileForChat, onRepoChange
                     <button
                       type="submit"
                       disabled={isVerifying || !patInput.trim()}
-                      className="px-4 py-2 bg-[#3f86ff] hover:opacity-90 disabled:opacity-50 text-white rounded-xl font-bold text-xs transition-all flex items-center gap-2 cursor-pointer shadow-md"
+                      className="px-4 py-2 bg-[#D97757] hover:opacity-90 disabled:opacity-50 text-white rounded-xl font-bold text-xs transition-all flex items-center gap-2 cursor-pointer shadow-md"
                     >
                       {isVerifying ? (
                         <>
@@ -556,22 +556,22 @@ export function GitHubModal({ isOpen, onClose, onSelectFileForChat, onRepoChange
               </div>
 
               {/* Method 2: OAuth Flow */}
-              <div className="p-5 bg-[#202022] border border-[#38383b] rounded-2xl space-y-4">
+              <div className="p-5 bg-[#1F1E1D] border border-[#3D3929] rounded-2xl space-y-4">
                 <div className="flex items-start justify-between">
                   <div>
-                    <h3 className="font-bold text-sm text-white flex items-center gap-2">
+                    <h3 className="font-bold text-sm text-[#1F1E1D] flex items-center gap-2">
                       <ShieldCheck size={15} className="text-emerald-400" />
                       <span>One-Click GitHub OAuth</span>
                     </h3>
-                    <p className="text-xs text-[#8d8d91] mt-1">
+                    <p className="text-xs text-[#6B6A67] mt-1">
                       Authenticate directly with GitHub in a popup window.
                     </p>
                   </div>
                 </div>
 
                 <div className="space-y-3">
-                  <div className="p-3 bg-[#1a1a1c] border border-[#38383b] rounded-xl space-y-2 text-[11px]">
-                    <div className="flex items-center justify-between text-[#8d8d91]">
+                  <div className="p-3 bg-[#1F1E1D] border border-[#3D3929] rounded-xl space-y-2 text-[11px]">
+                    <div className="flex items-center justify-between text-[#6B6A67]">
                       <span>OAuth Callback URL:</span>
                       <button
                         onClick={() => {
@@ -581,7 +581,7 @@ export function GitHubModal({ isOpen, onClose, onSelectFileForChat, onRepoChange
                             setTimeout(() => setSuccessMsg(''), 2500);
                           }
                         }}
-                        className="text-[#3f86ff] hover:underline flex items-center gap-1 cursor-pointer"
+                        className="text-[#D97757] hover:underline flex items-center gap-1 cursor-pointer"
                       >
                         <Copy size={11} /> Copy URL
                       </button>
@@ -589,7 +589,7 @@ export function GitHubModal({ isOpen, onClose, onSelectFileForChat, onRepoChange
                     <code className="block bg-black/60 p-2 rounded-lg text-emerald-400 font-mono break-all text-[11px]">
                       {oauthConfig?.redirectUri || 'https://ais-dev-bfcytcosqgphtyr5k6ysit-46029375391.europe-west1.run.app/auth/callback'}
                     </code>
-                    <p className="text-[#8d8d91]">
+                    <p className="text-[#6B6A67]">
                       Add this callback URL in your GitHub Developer Settings → OAuth Apps if creating an OAuth application.
                     </p>
                   </div>
@@ -597,10 +597,10 @@ export function GitHubModal({ isOpen, onClose, onSelectFileForChat, onRepoChange
                   <button
                     onClick={handleConnectWithOAuth}
                     disabled={isConnectingOAuth}
-                    className="w-full py-2.5 px-4 bg-[#252527] hover:bg-[#38383b] border border-[#38383b] hover:border-white/40 text-white rounded-xl font-bold text-xs transition-all flex items-center justify-center gap-2 cursor-pointer"
+                    className="w-full py-2.5 px-4 bg-[#1F1E1D] hover:bg-[#3D3929] border border-[#3D3929] hover:border-white/40 text-white rounded-xl font-bold text-xs transition-all flex items-center justify-center gap-2 cursor-pointer"
                   >
                     {isConnectingOAuth ? (
-                      <RefreshCw size={14} className="animate-spin text-[#3f86ff]" />
+                      <RefreshCw size={14} className="animate-spin text-[#D97757]" />
                     ) : (
                       <svg className="w-4 h-4 fill-current" viewBox="0 0 24 24">
                         <path fillRule="evenodd" clipRule="evenodd" d="M12 2C6.477 2 2 6.484 2 12.017c0 4.425 2.865 8.18 6.839 9.504.5.092.682-.217.682-.483 0-.237-.008-.868-.013-1.703-2.782.605-3.369-1.343-3.369-1.343-.454-1.158-1.11-1.466-1.11-1.466-.908-.62.069-.608.069-.608 1.003.07 1.53 1.032 1.53 1.032.892 1.53 2.341 1.088 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.113-4.555-4.951 0-1.093.39-1.988 1.029-2.688-.103-.253-.446-1.272.098-2.65 0 0 .84-.27 2.75 1.026A9.564 9.564 0 0112 6.844c.85.004 1.705.115 2.504.337 1.909-1.296 2.747-1.027 2.747-1.027.546 1.379.202 2.398.1 2.651.64.7 1.028 1.595 1.028 2.688 0 3.848-2.339 4.695-4.566 4.943.359.309.678.92.678 1.855 0 1.338-.012 2.419-.012 2.747 0 .268.18.58.688.482A10.019 10.019 0 0022 12.017C22 6.484 17.522 2 12 2z" />
@@ -617,15 +617,15 @@ export function GitHubModal({ isOpen, onClose, onSelectFileForChat, onRepoChange
           {activeTab === 'repos' && (
             <div className="space-y-4">
               {!token ? (
-                <div className="p-8 text-center bg-[#202022] rounded-2xl border border-[#38383b] space-y-3">
-                  <Key size={32} className="mx-auto text-[#8d8d91]" />
-                  <h3 className="font-bold text-sm text-white">Connect GitHub Account First</h3>
-                  <p className="text-xs text-[#8d8d91] max-w-sm mx-auto">
+                <div className="p-8 text-center bg-[#1F1E1D] rounded-2xl border border-[#3D3929] space-y-3">
+                  <Key size={32} className="mx-auto text-[#6B6A67]" />
+                  <h3 className="font-bold text-sm text-[#1F1E1D]">Connect GitHub Account First</h3>
+                  <p className="text-xs text-[#6B6A67] max-w-sm mx-auto">
                     Please connect via Personal Access Token or OAuth on the Connection tab to browse and edit repositories.
                   </p>
                   <button
                     onClick={() => setActiveTab('connect')}
-                    className="px-4 py-2 bg-[#3f86ff] hover:opacity-90 text-white rounded-xl font-bold text-xs transition-colors cursor-pointer"
+                    className="px-4 py-2 bg-[#D97757] hover:opacity-90 text-white rounded-xl font-bold text-xs transition-colors cursor-pointer"
                   >
                     Go to Connection Tab
                   </button>
@@ -633,13 +633,13 @@ export function GitHubModal({ isOpen, onClose, onSelectFileForChat, onRepoChange
               ) : (
                 <div className="grid grid-cols-1 md:grid-cols-12 gap-4">
                   {/* Left Column: Repository list */}
-                  <div className="md:col-span-4 bg-[#202022] border border-[#38383b] rounded-2xl p-3 flex flex-col h-[520px]">
-                    <div className="flex items-center justify-between pb-2 border-b border-[#38383b]">
-                      <span className="font-bold text-xs text-white">Your Repositories</span>
+                  <div className="md:col-span-4 bg-[#1F1E1D] border border-[#3D3929] rounded-2xl p-3 flex flex-col h-[520px]">
+                    <div className="flex items-center justify-between pb-2 border-b border-[#3D3929]">
+                      <span className="font-bold text-xs text-[#1F1E1D]">Your Repositories</span>
                       <button
                         onClick={loadRepos}
                         disabled={isLoadingRepos}
-                        className="p-1 text-[#8d8d91] hover:text-white rounded transition-colors"
+                        className="p-1 text-[#6B6A67] hover:text-[#1F1E1D] rounded transition-colors"
                         title="Refresh repos"
                       >
                         <RefreshCw size={13} className={clsx(isLoadingRepos && "animate-spin")} />
@@ -648,24 +648,24 @@ export function GitHubModal({ isOpen, onClose, onSelectFileForChat, onRepoChange
 
                     {/* Search */}
                     <div className="my-2 relative">
-                      <Search size={13} className="absolute left-2.5 top-2.5 text-[#8d8d91]" />
+                      <Search size={13} className="absolute left-2.5 top-2.5 text-[#6B6A67]" />
                       <input
                         type="text"
                         value={repoSearch}
                         onChange={(e) => setRepoSearch(e.target.value)}
                         placeholder="Search repo..."
-                        className="w-full bg-[#1a1a1c] border border-[#38383b] rounded-lg pl-8 pr-2 py-1.5 text-xs text-white outline-none"
+                        className="w-full bg-[#1F1E1D] border border-[#3D3929] rounded-lg pl-8 pr-2 py-1.5 text-xs text-white outline-none"
                       />
                     </div>
 
                     {/* Repo List */}
                     <div className="flex-1 overflow-y-auto space-y-1 pr-1">
                       {isLoadingRepos ? (
-                        <div className="flex items-center justify-center h-32 text-[#8d8d91]">
+                        <div className="flex items-center justify-center h-32 text-[#6B6A67]">
                           <RefreshCw size={16} className="animate-spin mr-2" /> Loading repos...
                         </div>
                       ) : filteredRepos.length === 0 ? (
-                        <div className="text-center py-8 text-[#8d8d91]">No repositories found</div>
+                        <div className="text-center py-8 text-[#6B6A67]">No repositories found</div>
                       ) : (
                         filteredRepos.map((r) => {
                           const isSelected = activeRepo?.repo === r.name;
@@ -676,12 +676,12 @@ export function GitHubModal({ isOpen, onClose, onSelectFileForChat, onRepoChange
                               className={clsx(
                                 "w-full text-left p-2 rounded-xl transition-all cursor-pointer border flex flex-col gap-0.5",
                                 isSelected
-                                  ? "bg-[#252527] border-[#3f86ff] shadow-sm"
-                                  : "bg-[#1a1a1c] hover:bg-[#252527]/70 border-transparent text-[#8d8d91] hover:text-white"
+                                  ? "bg-[#1F1E1D] border-[#D97757] shadow-sm"
+                                  : "bg-[#1F1E1D] hover:bg-[#1F1E1D]/70 border-transparent text-[#E8E4D9] hover:text-white"
                               )}
                             >
                               <div className="flex items-center justify-between">
-                                <span className={clsx("font-bold text-xs truncate", isSelected ? "text-white" : "text-slate-300")}>
+                                <span className={clsx("font-bold text-xs truncate", isSelected ? "text-[#1F1E1D]" : "text-[#6B6A67]")}>
                                   {r.name}
                                 </span>
                                 {r.private ? (
@@ -689,13 +689,13 @@ export function GitHubModal({ isOpen, onClose, onSelectFileForChat, onRepoChange
                                     Private
                                   </span>
                                 ) : (
-                                  <span className="text-[9px] px-1 py-0.2 rounded bg-slate-800 text-slate-400">
+                                  <span className="text-[9px] px-1 py-0.2 rounded bg-slate-800 text-[#6B6A67]">
                                     Public
                                   </span>
                                 )}
                               </div>
                               {r.description && (
-                                <p className="text-[10px] text-[#8d8d91] truncate">{r.description}</p>
+                                <p className="text-[10px] text-[#6B6A67] truncate">{r.description}</p>
                               )}
                             </button>
                           );
@@ -705,31 +705,31 @@ export function GitHubModal({ isOpen, onClose, onSelectFileForChat, onRepoChange
                   </div>
 
                   {/* Right Column: Active Repo Explorer */}
-                  <div className="md:col-span-8 bg-[#202022] border border-[#38383b] rounded-2xl p-4 flex flex-col h-[520px]">
+                  <div className="md:col-span-8 bg-[#1F1E1D] border border-[#3D3929] rounded-2xl p-4 flex flex-col h-[520px]">
                     {activeRepo ? (
                       <>
                         {/* Active Repo Header & Branch selector */}
-                        <div className="flex flex-wrap items-center justify-between pb-3 border-b border-[#38383b] gap-2">
+                        <div className="flex flex-wrap items-center justify-between pb-3 border-b border-[#3D3929] gap-2">
                           <div className="flex items-center gap-2">
-                            <span className="font-bold text-sm text-white">
+                            <span className="font-bold text-sm text-[#1F1E1D]">
                               {activeRepo.owner} / {activeRepo.repo}
                             </span>
                             <a
                               href={`https://github.com/${activeRepo.owner}/${activeRepo.repo}`}
                               target="_blank"
                               rel="noreferrer"
-                              className="text-[#8d8d91] hover:text-white"
+                              className="text-[#6B6A67] hover:text-[#1F1E1D]"
                             >
                               <ExternalLink size={13} />
                             </a>
                           </div>
 
                           <div className="flex items-center gap-2">
-                            <GitBranch size={13} className="text-[#3f86ff]" />
+                            <GitBranch size={13} className="text-[#D97757]" />
                             <select
                               value={activeRepo.branch}
                               onChange={(e) => handleBranchChange(e.target.value)}
-                              className="bg-[#1a1a1c] border border-[#38383b] rounded-lg px-2 py-1 text-xs text-white outline-none cursor-pointer"
+                              className="bg-[#1F1E1D] border border-[#3D3929] rounded-lg px-2 py-1 text-xs text-white outline-none cursor-pointer"
                             >
                               {branches.map((b) => (
                                 <option key={b} value={b}>{b}</option>
@@ -741,12 +741,12 @@ export function GitHubModal({ isOpen, onClose, onSelectFileForChat, onRepoChange
                         {/* File Tree + Viewer */}
                         <div className="grid grid-cols-1 md:grid-cols-12 gap-3 flex-1 overflow-hidden mt-3">
                           {/* File list */}
-                          <div className="md:col-span-5 bg-[#1a1a1c] border border-[#38383b] rounded-xl p-2 overflow-y-auto">
-                            <div className="text-[10px] font-bold text-[#8d8d91] uppercase px-1 pb-1">
+                          <div className="md:col-span-5 bg-[#1F1E1D] border border-[#3D3929] rounded-xl p-2 overflow-y-auto">
+                            <div className="text-[10px] font-bold text-[#6B6A67] uppercase px-1 pb-1">
                               Files ({fileTree.filter(f => f.type === 'blob').length})
                             </div>
                             {isLoadingTree ? (
-                              <div className="p-4 text-center text-[#8d8d91]">
+                              <div className="p-4 text-center text-[#6B6A67]">
                                 <RefreshCw size={14} className="animate-spin mx-auto mb-1" /> Loading tree...
                               </div>
                             ) : (
@@ -762,11 +762,11 @@ export function GitHubModal({ isOpen, onClose, onSelectFileForChat, onRepoChange
                                         className={clsx(
                                           "w-full text-left px-2 py-1.5 rounded-lg text-xs flex items-center gap-1.5 transition-colors cursor-pointer truncate",
                                           isSel
-                                            ? "bg-[#3f86ff]/20 text-[#3f86ff] font-semibold"
-                                            : "hover:bg-[#252527] text-slate-300 hover:text-white"
+                                            ? "bg-[#D97757]/20 text-[#D97757] font-semibold"
+                                            : "hover:bg-[#1F1E1D] text-[#6B6A67] hover:text-white"
                                         )}
                                       >
-                                        <File size={13} className="shrink-0 text-[#8d8d91]" />
+                                        <File size={13} className="shrink-0 text-[#6B6A67]" />
                                         <span className="truncate">{item.path}</span>
                                       </button>
                                     );
@@ -776,17 +776,17 @@ export function GitHubModal({ isOpen, onClose, onSelectFileForChat, onRepoChange
                           </div>
 
                           {/* File Viewer */}
-                          <div className="md:col-span-7 bg-[#1a1a1c] border border-[#38383b] rounded-xl p-3 flex flex-col overflow-hidden">
+                          <div className="md:col-span-7 bg-[#1F1E1D] border border-[#3D3929] rounded-xl p-3 flex flex-col overflow-hidden">
                             {selectedFile ? (
                               <>
-                                <div className="flex items-center justify-between pb-2 border-b border-[#38383b] mb-2">
-                                  <span className="font-mono text-[11px] text-[#3f86ff] truncate">
+                                <div className="flex items-center justify-between pb-2 border-b border-[#3D3929] mb-2">
+                                  <span className="font-mono text-[11px] text-[#D97757] truncate">
                                     {selectedFile}
                                   </span>
                                   <div className="flex items-center gap-1.5">
                                     <button
                                       onClick={handleSendFileToChat}
-                                      className="px-2 py-1 bg-[#3f86ff] hover:opacity-90 text-white rounded-lg text-[10px] font-bold transition-all flex items-center gap-1 cursor-pointer"
+                                      className="px-2 py-1 bg-[#D97757] hover:opacity-90 text-white rounded-lg text-[10px] font-bold transition-all flex items-center gap-1 cursor-pointer"
                                     >
                                       <Sparkles size={11} />
                                       <span>Ask AI to Edit</span>
@@ -795,7 +795,7 @@ export function GitHubModal({ isOpen, onClose, onSelectFileForChat, onRepoChange
                                 </div>
 
                                 {isLoadingFile ? (
-                                  <div className="flex-1 flex items-center justify-center text-[#8d8d91]">
+                                  <div className="flex-1 flex items-center justify-center text-[#6B6A67]">
                                     <RefreshCw size={16} className="animate-spin mr-2" /> Reading file...
                                   </div>
                                 ) : (
@@ -805,7 +805,7 @@ export function GitHubModal({ isOpen, onClose, onSelectFileForChat, onRepoChange
                                 )}
                               </>
                             ) : (
-                              <div className="flex-1 flex flex-col items-center justify-center text-center p-4 text-[#8d8d91]">
+                              <div className="flex-1 flex flex-col items-center justify-center text-center p-4 text-[#6B6A67]">
                                 <Code size={24} className="mb-2 opacity-50" />
                                 <span className="font-medium text-xs">Select any file from the list</span>
                                 <span className="text-[11px] opacity-75 mt-0.5">
@@ -817,7 +817,7 @@ export function GitHubModal({ isOpen, onClose, onSelectFileForChat, onRepoChange
                         </div>
                       </>
                     ) : (
-                      <div className="flex-1 flex flex-col items-center justify-center text-[#8d8d91]">
+                      <div className="flex-1 flex flex-col items-center justify-center text-[#6B6A67]">
                         <span>Select a repository on the left to explore files</span>
                       </div>
                     )}
@@ -830,15 +830,15 @@ export function GitHubModal({ isOpen, onClose, onSelectFileForChat, onRepoChange
           {/* TAB 3: DIRECT FILE COMMIT */}
           {activeTab === 'commit' && (
             <div className="space-y-4 max-w-2xl mx-auto py-2">
-              <div className="p-4 bg-[#202022] border border-[#38383b] rounded-2xl">
+              <div className="p-4 bg-[#1F1E1D] border border-[#3D3929] rounded-2xl">
                 <div className="flex items-center justify-between mb-3">
-                  <h3 className="font-bold text-sm text-white flex items-center gap-2">
-                    <GitCommit size={15} className="text-[#3f86ff]" />
+                  <h3 className="font-bold text-sm text-[#1F1E1D] flex items-center gap-2">
+                    <GitCommit size={15} className="text-[#D97757]" />
                     <span>Direct Commit to GitHub</span>
                   </h3>
                   {activeRepo && (
-                    <span className="text-xs text-[#8d8d91]">
-                      Target: <strong className="text-white">{activeRepo.owner}/{activeRepo.repo}</strong> ({activeRepo.branch})
+                    <span className="text-xs text-[#6B6A67]">
+                      Target: <strong className="text-[#1F1E1D]">{activeRepo.owner}/{activeRepo.repo}</strong> ({activeRepo.branch})
                     </span>
                   )}
                 </div>
@@ -850,7 +850,7 @@ export function GitHubModal({ isOpen, onClose, onSelectFileForChat, onRepoChange
                 ) : (
                   <form onSubmit={handleDirectCommit} className="space-y-3">
                     <div>
-                      <label className="text-[11px] font-medium text-[#8d8d91] block mb-1">
+                      <label className="text-[11px] font-medium text-[#6B6A67] block mb-1">
                         File Path (e.g. <code>src/components/MyComponent.tsx</code> or <code>README.md</code>)
                       </label>
                       <input
@@ -859,12 +859,12 @@ export function GitHubModal({ isOpen, onClose, onSelectFileForChat, onRepoChange
                         value={commitPath}
                         onChange={(e) => setCommitPath(e.target.value)}
                         placeholder="src/index.ts"
-                        className="w-full bg-[#1a1a1c] border border-[#38383b] focus:border-[#3f86ff] rounded-xl px-3 py-2 text-xs text-white outline-none font-mono"
+                        className="w-full bg-[#1F1E1D] border border-[#3D3929] focus:border-[#D97757] rounded-xl px-3 py-2 text-xs text-white outline-none font-mono"
                       />
                     </div>
 
                     <div>
-                      <label className="text-[11px] font-medium text-[#8d8d91] block mb-1">
+                      <label className="text-[11px] font-medium text-[#6B6A67] block mb-1">
                         Commit Message
                       </label>
                       <input
@@ -873,12 +873,12 @@ export function GitHubModal({ isOpen, onClose, onSelectFileForChat, onRepoChange
                         value={commitMessage}
                         onChange={(e) => setCommitMessage(e.target.value)}
                         placeholder="feat: add new feature"
-                        className="w-full bg-[#1a1a1c] border border-[#38383b] focus:border-[#3f86ff] rounded-xl px-3 py-2 text-xs text-white outline-none"
+                        className="w-full bg-[#1F1E1D] border border-[#3D3929] focus:border-[#D97757] rounded-xl px-3 py-2 text-xs text-white outline-none"
                       />
                     </div>
 
                     <div>
-                      <label className="text-[11px] font-medium text-[#8d8d91] block mb-1">
+                      <label className="text-[11px] font-medium text-[#6B6A67] block mb-1">
                         File Content
                       </label>
                       <textarea
@@ -887,18 +887,18 @@ export function GitHubModal({ isOpen, onClose, onSelectFileForChat, onRepoChange
                         value={commitContent}
                         onChange={(e) => setCommitContent(e.target.value)}
                         placeholder="// Enter or paste code here..."
-                        className="w-full bg-[#1a1a1c] border border-[#38383b] focus:border-[#3f86ff] rounded-xl p-3 text-xs text-white outline-none font-mono leading-relaxed"
+                        className="w-full bg-[#1F1E1D] border border-[#3D3929] focus:border-[#D97757] rounded-xl p-3 text-xs text-white outline-none font-mono leading-relaxed"
                       />
                     </div>
 
                     <div className="flex items-center justify-between pt-2">
-                      <span className="text-[11px] text-[#8d8d91]">
+                      <span className="text-[11px] text-[#6B6A67]">
                         Commits directly to branch <strong>{activeRepo.branch}</strong>
                       </span>
                       <button
                         type="submit"
                         disabled={isCommitting}
-                        className="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-white rounded-xl font-bold text-xs transition-all flex items-center gap-2 cursor-pointer shadow-lg"
+                        className="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-[#1F1E1D] rounded-xl font-bold text-xs transition-all flex items-center gap-2 cursor-pointer shadow-lg"
                       >
                         {isCommitting ? (
                           <>
@@ -922,12 +922,12 @@ export function GitHubModal({ isOpen, onClose, onSelectFileForChat, onRepoChange
           {/* TAB 4: CREATE NEW REPO */}
           {activeTab === 'create' && (
             <div className="space-y-4 max-w-xl mx-auto py-2">
-              <div className="p-5 bg-[#202022] border border-[#38383b] rounded-2xl">
-                <h3 className="font-bold text-sm text-white mb-1 flex items-center gap-2">
-                  <Plus size={15} className="text-[#3f86ff]" />
+              <div className="p-5 bg-[#1F1E1D] border border-[#3D3929] rounded-2xl">
+                <h3 className="font-bold text-sm text-[#1F1E1D] mb-1 flex items-center gap-2">
+                  <Plus size={15} className="text-[#D97757]" />
                   <span>Create a New GitHub Repository</span>
                 </h3>
-                <p className="text-xs text-[#8d8d91] mb-4">
+                <p className="text-xs text-[#6B6A67] mb-4">
                   Create a new repository under your GitHub account for new projects.
                 </p>
 
@@ -938,7 +938,7 @@ export function GitHubModal({ isOpen, onClose, onSelectFileForChat, onRepoChange
                 ) : (
                   <form onSubmit={handleCreateRepo} className="space-y-4">
                     <div>
-                      <label className="text-[11px] font-medium text-[#8d8d91] block mb-1">
+                      <label className="text-[11px] font-medium text-[#6B6A67] block mb-1">
                         Repository Name *
                       </label>
                       <input
@@ -947,12 +947,12 @@ export function GitHubModal({ isOpen, onClose, onSelectFileForChat, onRepoChange
                         value={newRepoName}
                         onChange={(e) => setNewRepoName(e.target.value)}
                         placeholder="my-awesome-app"
-                        className="w-full bg-[#1a1a1c] border border-[#38383b] focus:border-[#3f86ff] rounded-xl px-3 py-2 text-xs text-white outline-none"
+                        className="w-full bg-[#1F1E1D] border border-[#3D3929] focus:border-[#D97757] rounded-xl px-3 py-2 text-xs text-white outline-none"
                       />
                     </div>
 
                     <div>
-                      <label className="text-[11px] font-medium text-[#8d8d91] block mb-1">
+                      <label className="text-[11px] font-medium text-[#6B6A67] block mb-1">
                         Description (optional)
                       </label>
                       <input
@@ -960,7 +960,7 @@ export function GitHubModal({ isOpen, onClose, onSelectFileForChat, onRepoChange
                         value={newRepoDesc}
                         onChange={(e) => setNewRepoDesc(e.target.value)}
                         placeholder="Built with VOID AI"
-                        className="w-full bg-[#1a1a1c] border border-[#38383b] focus:border-[#3f86ff] rounded-xl px-3 py-2 text-xs text-white outline-none"
+                        className="w-full bg-[#1F1E1D] border border-[#3D3929] focus:border-[#D97757] rounded-xl px-3 py-2 text-xs text-white outline-none"
                       />
                     </div>
 
@@ -970,9 +970,9 @@ export function GitHubModal({ isOpen, onClose, onSelectFileForChat, onRepoChange
                         id="repoPrivate"
                         checked={newRepoPrivate}
                         onChange={(e) => setNewRepoPrivate(e.target.checked)}
-                        className="rounded border-[#38383b] text-[#3f86ff] focus:ring-0 cursor-pointer"
+                        className="rounded border-[#3D3929] text-[#D97757] focus:ring-0 cursor-pointer"
                       />
-                      <label htmlFor="repoPrivate" className="text-xs text-slate-300 cursor-pointer select-none">
+                      <label htmlFor="repoPrivate" className="text-xs text-[#6B6A67] cursor-pointer select-none">
                         Make repository private
                       </label>
                     </div>
@@ -980,7 +980,7 @@ export function GitHubModal({ isOpen, onClose, onSelectFileForChat, onRepoChange
                     <button
                       type="submit"
                       disabled={isCreatingRepo || !newRepoName.trim()}
-                      className="w-full py-2.5 bg-[#3f86ff] hover:opacity-90 disabled:opacity-50 text-white rounded-xl font-bold text-xs transition-all flex items-center justify-center gap-2 cursor-pointer shadow-md"
+                      className="w-full py-2.5 bg-[#D97757] hover:opacity-90 disabled:opacity-50 text-white rounded-xl font-bold text-xs transition-all flex items-center justify-center gap-2 cursor-pointer shadow-md"
                     >
                       {isCreatingRepo ? (
                         <>
@@ -1002,15 +1002,15 @@ export function GitHubModal({ isOpen, onClose, onSelectFileForChat, onRepoChange
         </div>
 
         {/* Modal Footer */}
-        <div className="p-3 border-t border-[#38383b] bg-[#202022] flex items-center justify-between">
-          <div className="text-[11px] text-[#8d8d91] flex items-center gap-2">
+        <div className="p-3 border-t border-[#3D3929] bg-[#1F1E1D] flex items-center justify-between">
+          <div className="text-[11px] text-[#6B6A67] flex items-center gap-2">
             <span className="w-2 h-2 rounded-full bg-emerald-500" />
             <span>GitHub Direct API Engine</span>
           </div>
 
           <button
             onClick={onClose}
-            className="px-4 py-1.5 bg-[#252527] hover:bg-[#38383b] text-white rounded-lg text-xs font-medium transition-colors cursor-pointer"
+            className="px-4 py-1.5 bg-[#1F1E1D] hover:bg-[#3D3929] text-white rounded-lg text-xs font-medium transition-colors cursor-pointer"
           >
             Close
           </button>

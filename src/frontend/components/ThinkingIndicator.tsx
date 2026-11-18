@@ -43,7 +43,7 @@ export function ThinkingIndicator({ persona }: { persona?: NovaPersona }) {
                   className="w-1 h-1 rounded-full shrink-0"
                   style={{ background: i <= step ? 'var(--accent)' : 'rgba(245,240,230,0.3)' }}
                 />
-                <span className="text-xs text-slate-400">{label}</span>
+                <span className="text-xs text-[#6B6A67]">{label}</span>
               </div>
             ))}
           </div>

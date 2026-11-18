@@ -135,34 +135,34 @@ export function FullPageSupportDesk({
   const activeUserProfile = currentChatUserId ? allUsersMap[currentChatUserId] : null;
 
   return (
-    <div className="fixed inset-0 z-50 bg-[#090A0F] text-white flex flex-col font-sans overflow-hidden">
+    <div className="fixed inset-0 z-50 bg-[#FAF9F5] text-[#1F1E1D] flex flex-col font-sans overflow-hidden">
       {/* Top Main Navigation Header */}
-      <header className="h-16 px-4 md:px-6 bg-[#0D1117] border-b border-[#30363D] flex items-center justify-between shrink-0 shadow-lg">
+      <header className="h-16 px-4 md:px-6 bg-[#FAF9F5] border-b border-[#FFFFFF] flex items-center justify-between shrink-0 shadow-lg">
         <div className="flex items-center gap-3">
           <button
             onClick={onClose}
-            className="flex items-center gap-2 px-3 py-1.5 bg-[#161B22] hover:bg-[#21262D] border border-[#30363D] rounded-xl text-xs font-bold text-white transition-all shadow-sm"
+            className="flex items-center gap-2 px-3 py-1.5 bg-[#FFFFFF] hover:bg-[#FFFFFF] border border-[#FFFFFF] rounded-xl text-xs font-bold text-[#1F1E1D] transition-all shadow-sm"
           >
             <ArrowLeft size={16} />
             <span>Back to Dashboard</span>
           </button>
 
-          <div className="h-5 w-[1px] bg-[#30363D] hidden sm:block" />
+          <div className="h-5 w-[1px] bg-[#FFFFFF] hidden sm:block" />
 
           <div className="flex items-center gap-2.5">
             <div className={clsx(
-              "w-8 h-8 rounded-xl flex items-center justify-center font-bold text-white shadow-md",
-              isStaffOrAdmin ? "bg-gradient-to-br from-emerald-600 to-teal-800" : "bg-gradient-to-br from-[#3f86ff] to-[#3f86ff]"
+              "w-8 h-8 rounded-xl flex items-center justify-center font-bold text-[#1F1E1D] shadow-md",
+              isStaffOrAdmin ? "bg-gradient-to-br from-emerald-600 to-teal-800" : "bg-gradient-to-br from-[#D97757] to-[#D97757]"
             )}>
               <Shield size={18} />
             </div>
             <div>
               <div className="flex items-center gap-2">
-                <h1 className="text-sm font-bold text-white tracking-wide">
+                <h1 className="text-sm font-bold text-[#1F1E1D] tracking-wide">
                   {isStaffOrAdmin ? 'Support Desk Management Workspace' : 'VOID AI Live Support Desk'}
                 </h1>
                 {isAdminView && (
-                  <span className="px-2 py-0.5 rounded-full bg-[#252527] border border-[#38383b] text-[#8d8d91] text-[10px] font-bold">
+                  <span className="px-2 py-0.5 rounded-full bg-[#1F1E1D] border border-[#3D3929] text-[#E8E4D9] text-[10px] font-bold">
                     ADMIN MODE
                   </span>
                 )}
@@ -172,7 +172,7 @@ export function FullPageSupportDesk({
                   </span>
                 )}
               </div>
-              <p className="text-[11px] text-[#8d8d91] ">
+              <p className="text-[11px] text-[#6B6A67] ">
                 {isStaffOrAdmin ? 'Real-time multi-user ticket response console' : 'Direct 1-on-1 line to official support team'}
               </p>
             </div>
@@ -181,7 +181,7 @@ export function FullPageSupportDesk({
 
         <div className="flex items-center gap-2">
           {isStaffOrAdmin && (
-            <div className="hidden md:flex items-center gap-2 bg-[#161B22] border border-[#30363D] px-3 py-1.5 rounded-xl text-xs text-white ">
+            <div className="hidden md:flex items-center gap-2 bg-[#FFFFFF] border border-[#FFFFFF] px-3 py-1.5 rounded-xl text-xs text-[#1F1E1D] ">
               <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
               <span>Active Tickets: <strong>{supportChats.length}</strong></span>
             </div>
@@ -194,17 +194,17 @@ export function FullPageSupportDesk({
         {/* Left Sidebar (Staff/Admin view) */}
         {isStaffOrAdmin && (
           <div className={clsx(
-            "w-full md:w-80 lg:w-96 bg-[#0D1117]/95 border-r border-[#30363D] flex flex-col shrink-0 h-full",
+            "w-full md:w-80 lg:w-96 bg-[#FAF9F5]/95 border-r border-[#FFFFFF] flex flex-col shrink-0 h-full",
             selectedChatUserId ? "hidden md:flex" : "flex"
           )}>
             {/* Main Mode Toggle: Tickets vs All Users */}
-            <div className="p-3 pb-2 border-b border-[#30363D] space-y-2.5">
-              <div className="flex items-center gap-1.5 bg-[#161B22] p-1 rounded-xl border border-[#30363D]">
+            <div className="p-3 pb-2 border-b border-[#FFFFFF] space-y-2.5">
+              <div className="flex items-center gap-1.5 bg-[#FFFFFF] p-1 rounded-xl border border-[#FFFFFF]">
                 <button
                   onClick={() => setViewTab('tickets')}
                   className={clsx(
                     "flex-1 py-1.5 rounded-lg text-xs font-bold transition-all text-center flex items-center justify-center gap-1.5 cursor-pointer",
-                    viewTab === 'tickets' ? "bg-[#3f86ff] text-white shadow-md" : "text-[#8d8d91] hover:text-white"
+                    viewTab === 'tickets' ? "bg-[#D97757] text-white shadow-md" : "text-[#E8E4D9] hover:text-white"
                   )}
                 >
                   <MessageSquare size={13} />
@@ -214,7 +214,7 @@ export function FullPageSupportDesk({
                   onClick={() => setViewTab('allUsers')}
                   className={clsx(
                     "flex-1 py-1.5 rounded-lg text-xs font-bold transition-all text-center flex items-center justify-center gap-1.5 cursor-pointer",
-                    viewTab === 'allUsers' ? "bg-[#3f86ff] text-white shadow-md" : "text-[#8d8d91] hover:text-white"
+                    viewTab === 'allUsers' ? "bg-[#D97757] text-white shadow-md" : "text-[#E8E4D9] hover:text-white"
                   )}
                 >
                   <User size={13} />
@@ -224,18 +224,18 @@ export function FullPageSupportDesk({
 
               {/* Search & Filter Header */}
               <div className="relative">
-                <Search size={14} className="absolute left-3 top-2.5 text-[#8d8d91]" />
+                <Search size={14} className="absolute left-3 top-2.5 text-[#6B6A67]" />
                 <input
                   type="text"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   placeholder={viewTab === 'tickets' ? "Search ticket user name or email..." : "Search registered user..."}
-                  className="w-full bg-[#161B22] border border-[#30363D] text-white text-xs rounded-xl pl-8 pr-16 py-2 outline-none focus:border-[#3f86ff] transition-colors placeholder-slate-500"
+                  className="w-full bg-[#FFFFFF] border border-[#FFFFFF] text-[#1F1E1D] text-xs rounded-xl pl-8 pr-16 py-2 outline-none focus:border-[#D97757] transition-colors placeholder-slate-500"
                 />
                 {searchQuery && (
                   <button
                     onClick={() => setSearchQuery('')}
-                    className="absolute right-1.5 top-1 px-2 py-0.5 rounded-lg bg-[#3f86ff]/90 hover:opacity-90 text-white text-[10px] font-bold transition-all flex items-center gap-1 cursor-pointer shadow"
+                    className="absolute right-1.5 top-1 px-2 py-0.5 rounded-lg bg-[#D97757]/90 hover:opacity-90 text-white text-[10px] font-bold transition-all flex items-center gap-1 cursor-pointer shadow"
                     title="Clear search query"
                   >
                     <X size={11} />
@@ -246,27 +246,27 @@ export function FullPageSupportDesk({
 
               {/* Sub Filter Tabs for Tickets */}
               {viewTab === 'tickets' && (
-                <div className="flex items-center gap-1.5 bg-[#161B22]/70 p-1 rounded-lg border border-[#30363D]/60">
+                <div className="flex items-center gap-1.5 bg-[#FFFFFF]/70 p-1 rounded-lg border border-[#FFFFFF]/60">
                   <button
                     onClick={() => setFilterMode('all')}
-                    className={clsx("flex-1 py-1 rounded-md text-[10px] font-bold transition-all text-center", filterMode === 'all' ? "bg-[#38383b] text-white shadow" : "text-[#8d8d91] hover:text-white")}
+                    className={clsx("flex-1 py-1 rounded-md text-[10px] font-bold transition-all text-center", filterMode === 'all' ? "bg-[#3D3929] text-[#1F1E1D] shadow" : "text-[#6B6A67] hover:text-[#1F1E1D]")}
                   >
                     All
                   </button>
                   <button
                     onClick={() => setFilterMode('unread')}
-                    className={clsx("flex-1 py-1 rounded-md text-[10px] font-bold transition-all text-center flex items-center justify-center gap-1", filterMode === 'unread' ? "bg-[#38383b] text-white shadow" : "text-[#8d8d91] hover:text-white")}
+                    className={clsx("flex-1 py-1 rounded-md text-[10px] font-bold transition-all text-center flex items-center justify-center gap-1", filterMode === 'unread' ? "bg-[#3D3929] text-[#1F1E1D] shadow" : "text-[#6B6A67] hover:text-[#1F1E1D]")}
                   >
                     <span>Unread</span>
                     {supportChats.filter(c => c.unreadAdmin > 0).length > 0 && (
-                      <span className="bg-[#3f86ff] text-white text-[9px] px-1.5 rounded-full font-bold">
+                      <span className="bg-[#D97757] text-white text-[9px] px-1.5 rounded-full font-bold">
                         {supportChats.filter(c => c.unreadAdmin > 0).length}
                       </span>
                     )}
                   </button>
                   <button
                     onClick={() => setFilterMode('vip')}
-                    className={clsx("flex-1 py-1 rounded-md text-[10px] font-bold transition-all text-center", filterMode === 'vip' ? "bg-[#38383b] text-white shadow" : "text-[#8d8d91] hover:text-white")}
+                    className={clsx("flex-1 py-1 rounded-md text-[10px] font-bold transition-all text-center", filterMode === 'vip' ? "bg-[#3D3929] text-[#1F1E1D] shadow" : "text-[#6B6A67] hover:text-[#1F1E1D]")}
                   >
                     VIP
                   </button>
@@ -275,10 +275,10 @@ export function FullPageSupportDesk({
             </div>
 
             {/* Chat or Users List */}
-            <div className="flex-1 overflow-y-auto divide-y divide-[#21262D]/60 p-1.5 space-y-1">
+            <div className="flex-1 overflow-y-auto divide-y divide-[#FFFFFF]/60 p-1.5 space-y-1">
               {viewTab === 'tickets' ? (
                 filteredSupportChats.length === 0 ? (
-                  <div className="p-8 text-center text-xs text-[#8d8d91] ">
+                  <div className="p-8 text-center text-xs text-[#6B6A67] ">
                     No support tickets found
                   </div>
                 ) : (
@@ -300,17 +300,17 @@ export function FullPageSupportDesk({
                         className={clsx(
                           "p-3 rounded-xl cursor-pointer transition-all flex items-start gap-3 relative border",
                           isSelected 
-                            ? "bg-[#161B22] border-[#3f86ff]/50 shadow-md" 
-                            : "hover:bg-[#161B22]/50 border-transparent text-white"
+                            ? "bg-[#FFFFFF] border-[#D97757]/50 shadow-md" 
+                            : "hover:bg-[#FFFFFF]/50 border-transparent text-[#1F1E1D]"
                         )}
                       >
-                        <div className="w-9 h-9 rounded-full bg-[#38383b] border border-[#38383b] flex items-center justify-center font-bold text-xs shrink-0 text-white">
+                        <div className="w-9 h-9 rounded-full bg-[#3D3929] border border-[#3D3929] flex items-center justify-center font-bold text-xs shrink-0 text-[#1F1E1D]">
                           {chat.userName.substring(0, 2).toUpperCase()}
                         </div>
 
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center justify-between mb-0.5">
-                            <h3 className="text-xs font-bold text-white truncate flex items-center gap-1.5">
+                            <h3 className="text-xs font-bold text-[#1F1E1D] truncate flex items-center gap-1.5">
                               <span>{chat.userName}</span>
                               {uProfile?.tier && (
                                 <span className={clsx(
@@ -318,26 +318,26 @@ export function FullPageSupportDesk({
                                   uProfile.tier === 'vip' ? "bg-purple-950 text-purple-300 border-purple-800" :
                                   uProfile.tier === 'premium' ? "bg-amber-950 text-amber-300 border-amber-800" :
                                   uProfile.tier === 'pro' ? "bg-blue-950 text-blue-300 border-blue-800" :
-                                  "bg-[#38383b] text-[#8d8d91] border-[#38383b]"
+                                  "bg-[#3D3929] text-[#6B6A67] border-[#3D3929]"
                                 )}>
                                   {uProfile.tier}
                                 </span>
                               )}
                             </h3>
                             {timeFormatted && (
-                              <span className="text-[10px] text-[#8d8d91] shrink-0">
+                              <span className="text-[10px] text-[#6B6A67] shrink-0">
                                 {timeFormatted}
                               </span>
                             )}
                           </div>
 
-                          <p className={clsx("text-xs truncate ", hasUnread ? "text-white font-bold" : "text-[#8d8d91]")}>
+                          <p className={clsx("text-xs truncate ", hasUnread ? "text-[#1F1E1D] font-bold" : "text-[#6B6A67]")}>
                             {chat.lastMessage || 'No messages yet'}
                           </p>
                         </div>
 
                         {hasUnread && (
-                          <div className="w-5 h-5 rounded-full bg-[#3f86ff] text-white text-[10px] font-bold flex items-center justify-center shrink-0 self-center shadow">
+                          <div className="w-5 h-5 rounded-full bg-[#D97757] text-white text-[10px] font-bold flex items-center justify-center shrink-0 self-center shadow">
                             {chat.unreadAdmin}
                           </div>
                         )}
@@ -367,25 +367,25 @@ export function FullPageSupportDesk({
                         className={clsx(
                           "p-3 rounded-xl cursor-pointer transition-all flex items-center justify-between gap-3 border",
                           isSelected 
-                            ? "bg-[#161B22] border-[#3f86ff]/50 shadow-md" 
-                            : "hover:bg-[#161B22]/50 border-transparent text-white"
+                            ? "bg-[#FFFFFF] border-[#D97757]/50 shadow-md" 
+                            : "hover:bg-[#FFFFFF]/50 border-transparent text-[#1F1E1D]"
                         )}
                       >
                         <div className="flex items-center gap-2.5 min-w-0">
-                          <div className="w-8 h-8 rounded-full bg-[#38383b] border border-[#38383b] flex items-center justify-center font-bold text-xs shrink-0 text-white">
+                          <div className="w-8 h-8 rounded-full bg-[#3D3929] border border-[#3D3929] flex items-center justify-center font-bold text-xs shrink-0 text-[#1F1E1D]">
                             {uName.substring(0, 2).toUpperCase()}
                           </div>
                           <div className="min-w-0">
-                            <h3 className="text-xs font-bold text-white truncate">
+                            <h3 className="text-xs font-bold text-[#1F1E1D] truncate">
                               {uName}
                             </h3>
-                            <p className="text-[10px] text-[#8d8d91] truncate ">
+                            <p className="text-[10px] text-[#6B6A67] truncate ">
                               {u.email || u.uid}
                             </p>
                           </div>
                         </div>
 
-                        <span className="px-2 py-1 bg-[#3f86ff]/80 hover:opacity-90 text-white text-[10px] font-bold rounded-lg shrink-0">
+                        <span className="px-2 py-1 bg-[#D97757]/80 hover:opacity-90 text-white text-[10px] font-bold rounded-lg shrink-0">
                           Chat
                         </span>
                       </div>
@@ -398,34 +398,34 @@ export function FullPageSupportDesk({
 
         {/* Right Active Chat Canvas (Full Height) */}
         <div className={clsx(
-          "flex-1 flex flex-col bg-[#090A0F] relative overflow-hidden h-full w-full min-w-0",
+          "flex-1 flex flex-col bg-[#FAF9F5] relative overflow-hidden h-full w-full min-w-0",
           isStaffOrAdmin && !selectedChatUserId ? "hidden md:flex" : "flex"
         )}>
           {currentChatUserId ? (
             <>
               {/* Active Ticket Header */}
-              <div className="p-3.5 bg-[#0D1117] border-b border-[#30363D] flex items-center justify-between flex-wrap gap-2 shrink-0">
+              <div className="p-3.5 bg-[#FAF9F5] border-b border-[#FFFFFF] flex items-center justify-between flex-wrap gap-2 shrink-0">
                 <div className="flex items-center gap-2.5 min-w-0">
                   {isStaffOrAdmin && (
                     <button
                       onClick={() => setSelectedChatUserId(null)}
-                      className="md:hidden flex items-center gap-1.5 px-2.5 py-1.5 bg-[#161B22] hover:bg-[#21262D] border border-[#30363D] rounded-xl text-xs font-bold text-white transition-all shrink-0"
+                      className="md:hidden flex items-center gap-1.5 px-2.5 py-1.5 bg-[#FFFFFF] hover:bg-[#FFFFFF] border border-[#FFFFFF] rounded-xl text-xs font-bold text-[#1F1E1D] transition-all shrink-0"
                       title="Back to Ticket List"
                     >
                       <ArrowLeft size={15} />
                       <span>Tickets</span>
                     </button>
                   )}
-                  <div className="w-9 h-9 rounded-full bg-[#252527] border border-[#38383b] flex items-center justify-center font-bold text-xs text-[#8d8d91] shrink-0">
+                  <div className="w-9 h-9 rounded-full bg-[#1F1E1D] border border-[#3D3929] flex items-center justify-center font-bold text-xs text-[#E8E4D9] shrink-0">
                     <User size={18} />
                   </div>
                   <div className="min-w-0">
                     <div className="flex items-center gap-2 flex-wrap">
-                      <h2 className="text-sm font-bold text-white truncate">
+                      <h2 className="text-sm font-bold text-[#1F1E1D] truncate">
                         {currentChatUserName}
                       </h2>
                       {activeUserProfile?.tier && (
-                        <span className="text-[10px] uppercase font-bold px-2 py-0.5 rounded-full bg-[#252527] border border-[#38383b] text-[#8d8d91] shrink-0">
+                        <span className="text-[10px] uppercase font-bold px-2 py-0.5 rounded-full bg-[#1F1E1D] border border-[#3D3929] text-[#E8E4D9] shrink-0">
                           {activeUserProfile.tier} TIER
                         </span>
                       )}
@@ -435,7 +435,7 @@ export function FullPageSupportDesk({
                         </span>
                       )}
                     </div>
-                    <p className="text-[11px] text-[#8d8d91] truncate">
+                    <p className="text-[11px] text-[#6B6A67] truncate">
                       User ID: {currentChatUserId} {activeUserProfile?.email ? `• ${activeUserProfile.email}` : ''}
                     </p>
                   </div>
@@ -443,7 +443,7 @@ export function FullPageSupportDesk({
 
                 {isStaffOrAdmin && (
                   <div className="flex items-center gap-2">
-                    <span className="text-xs text-[#8d8d91] bg-[#161B22] border border-[#30363D] px-2.5 py-1 rounded-lg">
+                    <span className="text-xs text-[#6B6A67] bg-[#FFFFFF] border border-[#FFFFFF] px-2.5 py-1 rounded-lg">
                       Messages: {messages.length}
                     </span>
                   </div>
@@ -451,16 +451,16 @@ export function FullPageSupportDesk({
               </div>
 
               {/* Message List Stream */}
-              <div className="flex-1 overflow-y-auto p-4 md:p-6 space-y-4 bg-[#090A0F]">
+              <div className="flex-1 overflow-y-auto p-4 md:p-6 space-y-4 bg-[#FAF9F5]">
                 {messages.length === 0 ? (
                   <div className="h-full flex flex-col items-center justify-center text-center max-w-md mx-auto p-6">
-                    <div className="w-16 h-16 bg-[#252527]/40 border border-[#38383b]/40 rounded-2xl flex items-center justify-center mb-4 text-[#8d8d91]">
+                    <div className="w-16 h-16 bg-[#1F1E1D]/40 border border-[#3D3929]/40 rounded-2xl flex items-center justify-center mb-4 text-[#E8E4D9]">
                       <Shield size={32} />
                     </div>
-                    <h3 className="text-base font-bold text-white mb-1">
+                    <h3 className="text-base font-bold text-[#1F1E1D] mb-1">
                       {isStaffOrAdmin ? 'No Message History' : 'How can we help you today?'}
                     </h3>
-                    <p className="text-[#8d8d91] text-xs leading-relaxed font-sans">
+                    <p className="text-[#6B6A67] text-xs leading-relaxed font-sans">
                       {isStaffOrAdmin
                         ? 'Type a message below to send a response to this user.'
                         : 'Have questions regarding subscription tiers, payment custom requests, or feature inquiries? Send a message and our support staff will reply right away.'}
@@ -477,8 +477,8 @@ export function FullPageSupportDesk({
                           <div className={clsx(
                             "w-8 h-8 rounded-full flex items-center justify-center shrink-0 mt-0.5 text-xs font-bold border shadow-sm",
                             msg.isAdmin
-                              ? "bg-[#252527] border-[#38383b] text-[#8d8d91]"
-                              : "bg-[#38383b] border-[#38383b] text-white"
+                              ? "bg-[#1F1E1D] border-[#3D3929] text-[#E8E4D9]"
+                              : "bg-[#3D3929] border-[#3D3929] text-[#1F1E1D]"
                           )}>
                             {msg.isAdmin ? <Shield size={16} /> : <User size={16} />}
                           </div>
@@ -488,16 +488,16 @@ export function FullPageSupportDesk({
                           <div className={clsx(
                             "rounded-2xl px-4 py-3 text-xs md:text-sm leading-relaxed shadow-md",
                             isMe
-                              ? "bg-gradient-to-r from-[#3f86ff] to-[#3f86ff] text-white rounded-tr-xs font-normal"
+                              ? "bg-gradient-to-r from-[#D97757] to-[#D97757] text-white rounded-tr-xs font-normal"
                               : msg.isAdmin
-                                ? "bg-[#161B22] border border-[#38383b]/50 text-white rounded-tl-xs"
-                                : "bg-[#161B22] border border-[#30363D] text-white rounded-tl-xs"
+                                ? "bg-[#FFFFFF] border border-[#3D3929]/50 text-[#1F1E1D] rounded-tl-xs"
+                                : "bg-[#FFFFFF] border border-[#FFFFFF] text-[#1F1E1D] rounded-tl-xs"
                           )}>
                             <p className="whitespace-pre-wrap break-words">{msg.text}</p>
                           </div>
-                          <div className={clsx("text-[10px] text-[#8d8d91] px-1 flex items-center gap-1", isMe ? "justify-end" : "justify-start")}>
+                          <div className={clsx("text-[10px] text-[#6B6A67] px-1 flex items-center gap-1", isMe ? "justify-end" : "justify-start")}>
                             <span>{time}</span>
-                            {msg.isAdmin && !isMe && <span className="text-[#8d8d91] font-bold">• Support Team</span>}
+                            {msg.isAdmin && !isMe && <span className="text-[#6B6A67] font-bold">• Support Team</span>}
                           </div>
                         </div>
                       </div>
@@ -509,13 +509,13 @@ export function FullPageSupportDesk({
 
               {/* Quick Canned Responses Bar for Staff/Admin */}
               {isStaffOrAdmin && (
-                <div className="px-4 py-2 bg-[#0D1117] border-t border-[#30363D] flex items-center gap-2 overflow-x-auto">
-                  <span className="text-[10px] text-[#8d8d91] uppercase font-bold shrink-0">Quick Replies:</span>
+                <div className="px-4 py-2 bg-[#FAF9F5] border-t border-[#FFFFFF] flex items-center gap-2 overflow-x-auto">
+                  <span className="text-[10px] text-[#6B6A67] uppercase font-bold shrink-0">Quick Replies:</span>
                   {cannedResponses.map((cr, idx) => (
                     <button
                       key={idx}
                       onClick={() => handleSend(cr)}
-                      className="shrink-0 px-2.5 py-1 bg-[#161B22] hover:bg-[#21262D] border border-[#30363D] text-[#38bdf8] hover:text-white rounded-lg text-[11px] font-sans transition-all truncate max-w-[220px]"
+                      className="shrink-0 px-2.5 py-1 bg-[#FFFFFF] hover:bg-[#FFFFFF] border border-[#FFFFFF] text-[#38bdf8] hover:text-[#1F1E1D] rounded-lg text-[11px] font-sans transition-all truncate max-w-[220px]"
                       title={cr}
                     >
                       {cr}
@@ -525,8 +525,8 @@ export function FullPageSupportDesk({
               )}
 
               {/* Input Area */}
-              <div className="p-3.5 bg-[#0D1117] border-t border-[#30363D]">
-                <div className="relative flex items-center bg-[#161B22] rounded-xl border border-[#30363D] focus-within:border-[#3f86ff]/80 overflow-hidden transition-all shadow-inner">
+              <div className="p-3.5 bg-[#FAF9F5] border-t border-[#FFFFFF]">
+                <div className="relative flex items-center bg-[#FFFFFF] rounded-xl border border-[#FFFFFF] focus-within:border-[#D97757]/80 overflow-hidden transition-all shadow-inner">
                   <textarea
                     rows={1}
                     value={inputText}
@@ -538,12 +538,12 @@ export function FullPageSupportDesk({
                       }
                     }}
                     placeholder={isStaffOrAdmin ? `Write a reply to ${currentChatUserName}...` : "Type support message..."}
-                    className="flex-1 bg-transparent py-3 pl-4 pr-12 outline-none text-xs md:text-sm text-white placeholder:text-[#8d8d91] resize-none max-h-32"
+                    className="flex-1 bg-transparent py-3 pl-4 pr-12 outline-none text-xs md:text-sm text-[#1F1E1D] placeholder:text-[#6B6A67] resize-none max-h-32"
                   />
                   <button
                     onClick={() => handleSend()}
                     disabled={!inputText.trim()}
-                    className="absolute right-2 p-2.5 bg-gradient-to-r from-[#3f86ff] to-[#3f86ff] hover:from-[#3f86ff] hover:to-[#3f86ff] text-white rounded-lg disabled:opacity-40 disabled:from-[#38383b] disabled:to-[#38383b] transition-all shadow-md"
+                    className="absolute right-2 p-2.5 bg-gradient-to-r from-[#D97757] to-[#D97757] hover:from-[#D97757] hover:to-[#D97757] text-white rounded-lg disabled:opacity-40 disabled:from-[#F0EEE5] disabled:to-[#F0EEE5] transition-all shadow-md"
                     title="Send Message"
                   >
                     <Send size={16} />
@@ -552,7 +552,7 @@ export function FullPageSupportDesk({
               </div>
             </>
           ) : (
-            <div className="h-full flex flex-col items-center justify-center p-6 text-center text-[#8d8d91] ">
+            <div className="h-full flex flex-col items-center justify-center p-6 text-center text-[#6B6A67] ">
               <MessageSquare size={36} className="mb-2 opacity-50" />
               <span>Select a support chat from the left panel to begin</span>
             </div>

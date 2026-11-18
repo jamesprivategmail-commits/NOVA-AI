@@ -1,5 +1,5 @@
 // Minimal service worker for PWA installability
-const CACHE_NAME = 'void-ai-v1';
+const CACHE_NAME = 'nova-claude-v2';
 const STATIC_ASSETS = ['/', '/index.html', '/manifest.json'];
 
 self.addEventListener('install', (event) => {

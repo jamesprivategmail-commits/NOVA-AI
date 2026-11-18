@@ -213,13 +213,13 @@ export function LiveVoiceModal({ onClose, userId, userTier = 'free' }: LiveVoice
   return (
     <div className="fixed inset-0 z-50 bg-black/95  flex flex-col justify-between items-center p-6 sm:p-10 select-none overflow-hidden">
       {/* Top Header */}
-      <div className="w-full max-w-2xl flex items-center justify-between text-[#8d8d91]">
+      <div className="w-full max-w-2xl flex items-center justify-between text-[#6B6A67]">
         <div className="flex items-center gap-2">
           <span className="relative flex h-3 w-3">
             <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
-            <span className="relative inline-flex rounded-full h-3 w-3 bg-[#3f86ff]"></span>
+            <span className="relative inline-flex rounded-full h-3 w-3 bg-[#D97757]"></span>
           </span>
-          <span className="text-xs font-bold tracking-widest uppercase text-white">
+          <span className="text-xs font-bold tracking-widest uppercase text-[#1F1E1D]">
             VOID AI • Live Voice Mode
           </span>
         </div>
@@ -229,7 +229,7 @@ export function LiveVoiceModal({ onClose, userId, userTier = 'free' }: LiveVoice
             onClick={toggleAudioOutput}
             className={clsx(
               "p-2.5 rounded-full border transition-all",
-              isAudioEnabled ? "bg-[#252527] border-[#38383b] text-white hover:bg-[#38383b]" : "bg-[#252527] border-[#38383b] text-[#8d8d91]"
+              isAudioEnabled ? "bg-[#1F1E1D] border-[#3D3929] text-white hover:bg-[#3D3929]" : "bg-[#1F1E1D] border-[#3D3929] text-[#E8E4D9]"
             )}
             title={isAudioEnabled ? "Mute Voice Output" : "Enable Voice Output"}
           >
@@ -255,12 +255,12 @@ export function LiveVoiceModal({ onClose, userId, userTier = 'free' }: LiveVoice
             className={clsx(
               "absolute w-64 h-64 sm:w-80 sm:h-80 rounded-full blur-3xl transition-colors duration-500",
               isSpeaking
-                ? "bg-gradient-to-r from-[#3f86ff] via-amber-600 to-purple-600"
+                ? "bg-gradient-to-r from-[#D97757] via-amber-600 to-purple-600"
                 : isListening
                 ? "bg-gradient-to-r from-blue-600 to-indigo-600"
                 : isThinking
                 ? "bg-gradient-to-r from-purple-600 to-pink-600 animate-pulse"
-                : "bg-[#38383b]"
+                : "bg-[#3D3929]"
             )}
           />
 
@@ -279,12 +279,12 @@ export function LiveVoiceModal({ onClose, userId, userTier = 'free' }: LiveVoice
             className={clsx(
               "relative z-10 w-44 h-44 sm:w-52 sm:h-52 rounded-full flex flex-col items-center justify-center shadow-2xl transition-all duration-500 border-2",
               isSpeaking
-                ? "bg-gradient-to-br from-[#202022] via-[#202022] to-[#2b0709] border-[#3f86ff]/80 /80"
+                ? "bg-gradient-to-br from-[#FFFFFF] via-[#FFFFFF] to-[#FAF9F5] border-[#D97757]/80 /80"
                 : isListening
-                ? "bg-gradient-to-br from-blue-900 via-[#202022] to-[#2b0709] border-blue-500/80 shadow-blue-950/80"
+                ? "bg-gradient-to-br from-blue-900 via-[#FFFFFF] to-[#FAF9F5] border-blue-500/80 shadow-blue-950/80"
                 : isThinking
-                ? "bg-gradient-to-br from-purple-900 via-[#202022] to-[#2b0709] border-purple-500/80 shadow-purple-950/80"
-                : "bg-[#252527] border-[#38383b] shadow-zinc-950"
+                ? "bg-gradient-to-br from-purple-900 via-[#FFFFFF] to-[#FAF9F5] border-purple-500/80 shadow-purple-950/80"
+                : "bg-[#1F1E1D] border-[#3D3929] shadow-zinc-950"
             )}
           >
             {isThinking ? (
@@ -294,8 +294,8 @@ export function LiveVoiceModal({ onClose, userId, userTier = 'free' }: LiveVoice
               </div>
             ) : isSpeaking ? (
               <div className="flex flex-col items-center gap-2">
-                <Radio size={36} className="text-[#8d8d91] animate-pulse" />
-                <span className="text-xs font-bold text-[#8d8d91] tracking-wider">SPEAKING</span>
+                <Radio size={36} className="text-[#6B6A67] animate-pulse" />
+                <span className="text-xs font-bold text-[#6B6A67] tracking-wider">SPEAKING</span>
               </div>
             ) : isListening ? (
               <div className="flex flex-col items-center gap-2">
@@ -304,8 +304,8 @@ export function LiveVoiceModal({ onClose, userId, userTier = 'free' }: LiveVoice
               </div>
             ) : (
               <div className="flex flex-col items-center gap-2">
-                <MicOff size={36} className="text-[#8d8d91]" />
-                <span className="text-xs font-bold text-[#8d8d91] tracking-wider">TAP TO START</span>
+                <MicOff size={36} className="text-[#6B6A67]" />
+                <span className="text-xs font-bold text-[#6B6A67] tracking-wider">TAP TO START</span>
               </div>
             )}
           </motion.button>
@@ -314,19 +314,19 @@ export function LiveVoiceModal({ onClose, userId, userTier = 'free' }: LiveVoice
         {/* Live Transcript Display */}
         <div className="w-full text-center px-4 space-y-2 min-h-[90px] flex flex-col justify-center">
           {transcript && (
-            <p className="text-xs sm:text-sm text-[#8d8d91] italic bg-[#252527]/60 border border-[#38383b]/60 rounded-xl p-3 max-w-sm mx-auto truncate">
+            <p className="text-xs sm:text-sm text-[#E8E4D9] italic bg-[#1F1E1D]/60 border border-[#3D3929]/60 rounded-xl p-3 max-w-sm mx-auto truncate">
               "{transcript}"
             </p>
           )}
 
           {aiResponseText && (
-            <p className="text-sm sm:text-base font-medium text-white max-w-md mx-auto line-clamp-3 leading-relaxed">
+            <p className="text-sm sm:text-base font-medium text-[#1F1E1D] max-w-md mx-auto line-clamp-3 leading-relaxed">
               {aiResponseText}
             </p>
           )}
 
           {!transcript && !aiResponseText && (
-            <p className="text-xs text-[#8d8d91] ">
+            <p className="text-xs text-[#6B6A67] ">
               Speak naturally. VOID AI listens and replies instantly.
             </p>
           )}
@@ -334,14 +334,14 @@ export function LiveVoiceModal({ onClose, userId, userTier = 'free' }: LiveVoice
       </div>
 
       {/* Bottom Control Bar */}
-      <div className="w-full max-w-md flex items-center justify-center gap-6 pt-4 border-t border-[#38383b]">
+      <div className="w-full max-w-md flex items-center justify-center gap-6 pt-4 border-t border-[#3D3929]">
         <button
           onClick={toggleMute}
           className={clsx(
             "p-4 rounded-full border transition-all shadow-lg flex items-center justify-center",
             isMuted 
-              ? "bg-[#252527] border-[#38383b] text-[#8d8d91]" 
-              : "bg-[#252527] border-[#38383b] text-white hover:bg-[#38383b]"
+              ? "bg-[#1F1E1D] border-[#3D3929] text-[#E8E4D9]" 
+              : "bg-[#1F1E1D] border-[#3D3929] text-white hover:bg-[#3D3929]"
           )}
           title={isMuted ? "Unmute Mic" : "Mute Mic"}
         >
@@ -350,7 +350,7 @@ export function LiveVoiceModal({ onClose, userId, userTier = 'free' }: LiveVoice
 
         <button
           onClick={onClose}
-          className="p-5 rounded-full bg-[#3f86ff] hover:opacity-90 text-white shadow-xl /80 transition-all hover:scale-105 active:scale-95"
+          className="p-5 rounded-full bg-[#D97757] hover:opacity-90 text-white shadow-xl /80 transition-all hover:scale-105 active:scale-95"
           title="End Live Voice Call"
         >
           <PhoneOff size={28} />

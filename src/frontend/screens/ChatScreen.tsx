@@ -711,7 +711,7 @@ export function ChatScreen({ userId }: ChatScreenProps) {
   };
 
   return (
-    <div className="view-enter flex h-screen h-[100dvh] w-full bg-transparent text-white overflow-hidden relative overscroll-none select-none">
+    <div className="view-enter flex h-screen h-[100dvh] w-full bg-transparent text-[#1F1E1D] overflow-hidden relative overscroll-none select-none">
       {/* Crystal-clear starry void background enhancement — sharp & high-contrast */}
       <div className="fixed inset-0 pointer-events-none z-0 bg-gradient-to-b from-black/25 via-transparent to-black/45" />
       {/* Mobile Backdrop Overlay when Sidebar is expanded */}
@@ -761,9 +761,9 @@ export function ChatScreen({ userId }: ChatScreenProps) {
       <div className="flex-1 flex flex-col h-full min-h-0 relative min-w-0 bg-transparent z-10 overflow-hidden">
         {/* Broadcast System Banner Notice */}
         {activeBroadcast && (
-          <div className="glass-strong border-b border-[var(--line)] p-2 px-3 flex items-center justify-between text-xs text-white z-30">
+          <div className="glass-strong border-b border-[var(--line)] p-2 px-3 flex items-center justify-between text-xs text-[#1F1E1D] z-30">
             <div className="flex items-center gap-2.5 min-w-0">
-              <div className="p-1.5 rounded-lg text-white font-bold shrink-0" style={{ background: 'var(--accent)', color: '#1a1714' }}>
+              <div className="p-1.5 rounded-lg text-[#1F1E1D] font-bold shrink-0" style={{ background: 'var(--accent)', color: '#FAF9F5' }}>
                 <Radio size={12} />
               </div>
               <div className="min-w-0">
@@ -879,7 +879,7 @@ export function ChatScreen({ userId }: ChatScreenProps) {
             <button
               onClick={() => setShowSettings(true)}
               className="w-9 h-9 rounded-full font-semibold text-[11px] flex items-center justify-center transition-all cursor-pointer shrink-0 hover:brightness-110 active:scale-95 shadow-[var(--shadow-sm)]"
-              style={{ background: 'var(--accent)', color: '#1a1714' }}
+              style={{ background: 'var(--accent)', color: '#FAF9F5' }}
               title="Account Settings"
             >
               {profile?.displayName ? profile.displayName.slice(0, 2).toUpperCase() : 'MT'}
@@ -922,7 +922,7 @@ export function ChatScreen({ userId }: ChatScreenProps) {
                 >
                   <span className="flex items-center gap-2">
                     <span style={{ color: 'var(--accent)' }}>✦</span>
-                    <span className="text-white font-medium">Prompt library</span>
+                    <span className="text-[#1F1E1D] font-medium">Prompt library</span>
                     <span className="text-[var(--text-muted)] text-xs">· {PROMPT_LIBRARY.length} crafted starters</span>
                   </span>
                   <span className={clsx('text-[var(--text-muted)] transition-transform duration-200', promptLibOpen && 'rotate-180')}>▾</span>
@@ -1021,7 +1021,7 @@ export function ChatScreen({ userId }: ChatScreenProps) {
           {showScrollBottom && (
             <button
               onClick={() => scrollToBottom(true)}
-              className="sticky bottom-4 self-end mr-4 px-3.5 py-2 glass-strong hover:border-white/20 text-white rounded-full transition-all z-20 flex items-center gap-2 text-xs font-medium cursor-pointer animate-fadeIn active:scale-95"
+              className="sticky bottom-4 self-end mr-4 px-3.5 py-2 glass-strong hover:border-white/20 text-[#1F1E1D] rounded-full transition-all z-20 flex items-center gap-2 text-xs font-medium cursor-pointer animate-fadeIn active:scale-95"
               title="Jump to latest response"
             >
               <ArrowDown size={13} style={{ color: 'var(--accent)' }} className="animate-bounce" />

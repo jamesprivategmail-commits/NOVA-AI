@@ -152,16 +152,16 @@ export function Sidebar({
   return (
     <aside
       className={clsx(
-        'fixed inset-y-0 left-0 z-40 md:relative md:z-30 flex flex-col h-full glass-strong text-white transition-all duration-200 ease-out w-64 sm:w-72 shrink-0 border-r border-[var(--line)] text-xs select-none',
+        'fixed inset-y-0 left-0 z-40 md:relative md:z-30 flex flex-col h-full glass-strong text-[#1F1E1D] transition-all duration-200 ease-out w-64 sm:w-72 shrink-0 border-r border-[var(--line)] text-xs select-none',
         !isOpen && '-translate-x-full md:w-0 md:-translate-x-full overflow-hidden opacity-0 pointer-events-none'
       )}
     >
       {/* ── Brand ─────────────────────────────────────────── */}
       <div className="p-3.5 border-b border-[var(--line)] flex items-center justify-between">
         <div className="flex items-center gap-2.5">
-          <div className="w-9 h-9 rounded-xl bg-black/40 border border-[var(--line)] p-0.5 flex items-center justify-center overflow-hidden shadow-[var(--shadow-xs)]">
+          <div className="w-9 h-9 rounded-xl bg-white/70 border border-[var(--line)] p-0.5 flex items-center justify-center overflow-hidden shadow-[var(--shadow-xs)]">
             <img
-              src="/void-logo.jpg"
+              src="/void-logo.jpg?v=3"
               alt="VOID Logo"
               className="w-full h-full object-cover"
             />

@@ -19,19 +19,19 @@ export const TermsModal: React.FC<TermsModalProps> = ({ onAccept, onDecline }) =
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/95  animate-fadeIn">
-      <div className="relative w-full max-w-xl bg-[#2b0709] border-2 border-[#3f86ff]/90 rounded-2xl shadow-[0_0_50px_rgba(220,38,38,0.4)] flex flex-col max-h-[92vh] overflow-hidden">
+      <div className="relative w-full max-w-xl bg-[#FAF9F5] border-2 border-[#D97757]/90 rounded-2xl shadow-[0_0_50px_rgba(220,38,38,0.4)] flex flex-col max-h-[92vh] overflow-hidden">
         
         {/* Modal Header */}
-        <div className="p-4 sm:p-5 bg-gradient-to-r from-[#202022] via-[#2b0709] to-[#202022] border-b border-[#38383b] flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-[#2b0709] border border-[#3f86ff] p-1 flex items-center justify-center shrink-0 shadow-[0_0_15px_rgba(220,38,38,0.5)]">
-            <ShieldAlert size={22} className="text-[#3f86ff] animate-pulse" />
+        <div className="p-4 sm:p-5 bg-gradient-to-r from-[#FFFFFF] via-[#FAF9F5] to-[#FFFFFF] border-b border-[#3D3929] flex items-center gap-3">
+          <div className="w-10 h-10 rounded-xl bg-[#FAF9F5] border border-[#D97757] p-1 flex items-center justify-center shrink-0 shadow-[0_0_15px_rgba(220,38,38,0.5)]">
+            <ShieldAlert size={22} className="text-[#D97757] animate-pulse" />
           </div>
           <div>
-            <h2 className="text-base sm:text-lg font-black text-[#3f86ff] font-serif tracking-widest uppercase flex items-center gap-2">
+            <h2 className="text-base sm:text-lg font-black text-[#D97757] font-serif tracking-widest uppercase flex items-center gap-2">
               <span>VOID AI • DISCLAIMER</span>
               <span className="text-xs">⚠️</span>
             </h2>
-            <p className="text-[11px] text-[#8d8d91] tracking-wider font-semibold">
+            <p className="text-[11px] text-[#6B6A67] tracking-wider font-semibold">
               SMARTER. FASTER. POWERED BY THE VOID.
             </p>
           </div>
@@ -40,26 +40,26 @@ export const TermsModal: React.FC<TermsModalProps> = ({ onAccept, onDecline }) =
         {/* Scrollable Disclaimer Content */}
         <div 
           onScroll={handleScroll}
-          className="p-4 sm:p-6 overflow-y-auto text-xs text-white space-y-4 leading-relaxed custom-scrollbar selection:bg-[#202022] selection:text-white"
+          className="p-4 sm:p-6 overflow-y-auto text-xs text-white space-y-4 leading-relaxed custom-scrollbar selection:bg-[#1F1E1D] selection:text-white"
         >
-          <div className="p-3 bg-[#252527]/40 border border-[#38383b] rounded-xl text-[#8d8d91] font-semibold text-center tracking-tight">
+          <div className="p-3 bg-[#1F1E1D]/40 border border-[#3D3929] rounded-xl text-[#E8E4D9] font-semibold text-center tracking-tight">
             VOID AI IS AN ADVANCED AI PLATFORM DESIGNED FOR PROGRAMMING, CYBERSECURITY EDUCATION, RESEARCH, AND AUTOMATION.
           </div>
 
           <div className="space-y-1.5 pt-1">
-            <div className="text-[#3f86ff] font-extrabold tracking-widest uppercase border-b border-[#38383b] pb-1 flex items-center gap-1.5 text-xs">
+            <div className="text-[#D97757] font-extrabold tracking-widest uppercase border-b border-[#3D3929] pb-1 flex items-center gap-1.5 text-xs">
               <span>⚠️ IMPORTANT NOTICE</span>
             </div>
-            <p className="text-white text-[11px] pl-1 leading-normal">
+            <p className="text-[#1F1E1D] text-[11px] pl-1 leading-normal">
               ANY CONTENT RELATED TO PHISHING, SOCIAL ENGINEERING, OR OFFENSIVE SECURITY IS PROVIDED SOLELY FOR EDUCATIONAL, RESEARCH, AND AUTHORIZED TESTING PURPOSES.
             </p>
           </div>
 
           <div className="space-y-1.5 pt-1">
-            <div className="text-[#3f86ff] font-extrabold tracking-widest uppercase border-b border-[#38383b] pb-1 flex items-center gap-1.5 text-xs">
+            <div className="text-[#D97757] font-extrabold tracking-widest uppercase border-b border-[#3D3929] pb-1 flex items-center gap-1.5 text-xs">
               <span>🚫 PROHIBITED USE</span>
             </div>
-            <ul className="list-disc list-inside space-y-1 text-white text-[11px] pl-1">
+            <ul className="list-disc list-inside space-y-1 text-[#1F1E1D] text-[11px] pl-1">
               <li>DO NOT USE VOID AI TO TARGET REAL PEOPLE.</li>
               <li>DO NOT USE IT FOR UNAUTHORIZED ACCESS.</li>
               <li>DO NOT USE IT FOR FRAUD, DECEPTION, OR HARM.</li>
@@ -67,30 +67,30 @@ export const TermsModal: React.FC<TermsModalProps> = ({ onAccept, onDecline }) =
           </div>
 
           <div className="space-y-1.5 pt-1">
-            <div className="text-[#3f86ff] font-extrabold tracking-widest uppercase border-b border-[#38383b] pb-1 flex items-center gap-1.5 text-xs">
+            <div className="text-[#D97757] font-extrabold tracking-widest uppercase border-b border-[#3D3929] pb-1 flex items-center gap-1.5 text-xs">
               <span>⚖️ USER RESPONSIBILITY</span>
             </div>
-            <p className="text-white text-[11px] pl-1 leading-normal">
+            <p className="text-[#1F1E1D] text-[11px] pl-1 leading-normal">
               BY USING VOID AI, YOU ACKNOWLEDGE THAT YOU ARE SOLELY RESPONSIBLE FOR HOW YOU USE THE PLATFORM AND THAT ALL ACTIVITIES MUST BE LAWFUL, ETHICAL, AND AUTHORIZED.
             </p>
           </div>
 
           <div className="space-y-1.5 pt-1">
-            <div className="text-[#3f86ff] font-extrabold tracking-widest uppercase border-b border-[#38383b] pb-1 flex items-center gap-1.5 text-xs">
+            <div className="text-[#D97757] font-extrabold tracking-widest uppercase border-b border-[#3D3929] pb-1 flex items-center gap-1.5 text-xs">
               <span>📜 LIMITATION OF LIABILITY</span>
             </div>
-            <p className="text-white text-[11px] pl-1 leading-normal">
+            <p className="text-[#1F1E1D] text-[11px] pl-1 leading-normal">
               NOVA AI IS NOT RESPONSIBLE FOR ANY MISUSE OF VOID AI OR ANY CONSEQUENCES ARISING FROM ILLEGAL OR UNETHICAL USE.
             </p>
           </div>
 
-          <div className="pt-2 border-t border-[#38383b] flex items-center justify-between text-[11px]">
-            <span className="text-[#3f86ff] font-bold">🌐 OFFICIAL WEBSITE</span>
+          <div className="pt-2 border-t border-[#3D3929] flex items-center justify-between text-[11px]">
+            <span className="text-[#D97757] font-bold">🌐 OFFICIAL WEBSITE</span>
             <a 
               href="https://home-of-void.netlify.app" 
               target="_blank" 
               rel="noopener noreferrer"
-              className="text-[#8d8d91] hover:text-white underline font-semibold flex items-center gap-1 transition-colors"
+              className="text-[#6B6A67] hover:text-[#1F1E1D] underline font-semibold flex items-center gap-1 transition-colors"
             >
               home-of-void.netlify.app
               <ExternalLink size={12} />
@@ -99,15 +99,15 @@ export const TermsModal: React.FC<TermsModalProps> = ({ onAccept, onDecline }) =
         </div>
 
         {/* Modal Footer & Checkbox */}
-        <div className="p-4 bg-[#2b0709] border-t border-[#38383b] space-y-3">
+        <div className="p-4 bg-[#FAF9F5] border-t border-[#3D3929] space-y-3">
           <label className="flex items-center gap-2.5 cursor-pointer group select-none">
             <input 
               type="checkbox"
               checked={isChecked}
               onChange={(e) => setIsChecked(e.target.checked)}
-              className="w-4 h-4 accent-[#3f86ff] rounded bg-[#2b0709] border-[#38383b] focus:ring-0 cursor-pointer"
+              className="w-4 h-4 accent-[#D97757] rounded bg-[#FAF9F5] border-[#3D3929] focus:ring-0 cursor-pointer"
             />
-            <span className="text-xs font-bold text-[#8d8d91] group-hover:text-[#8d8d91] transition-colors">
+            <span className="text-xs font-bold text-[#6B6A67] group-hover:text-[#6B6A67] transition-colors">
               I HAVE READ, UNDERSTOOD, AND AGREE TO ALL TERMS & CONDITIONS
             </span>
           </label>
@@ -116,7 +116,7 @@ export const TermsModal: React.FC<TermsModalProps> = ({ onAccept, onDecline }) =
             {onDecline && (
               <button
                 onClick={onDecline}
-                className="w-1/3 py-2.5 px-3 rounded-xl bg-[#252527]/40 hover:bg-[#252527] text-[#8d8d91] hover:text-white border border-[#38383b] text-xs font-bold transition-all cursor-pointer uppercase"
+                className="w-1/3 py-2.5 px-3 rounded-xl bg-[#1F1E1D]/40 hover:bg-[#1F1E1D] text-[#E8E4D9] hover:text-white border border-[#3D3929] text-xs font-bold transition-all cursor-pointer uppercase"
               >
                 DECLINE
               </button>
@@ -126,7 +126,7 @@ export const TermsModal: React.FC<TermsModalProps> = ({ onAccept, onDecline }) =
                 setIsChecked(true);
                 onAccept();
               }}
-              className="flex-1 py-3 px-4 rounded-xl text-xs font-bold uppercase tracking-wider flex items-center justify-center gap-2 transition-all shadow-lg bg-[#3f86ff] hover:opacity-90 text-white cursor-pointer shadow-[0_0_20px_rgba(63,134,255,0.4)] active:scale-[0.98]"
+              className="flex-1 py-3 px-4 rounded-xl text-xs font-bold uppercase tracking-wider flex items-center justify-center gap-2 transition-all shadow-lg bg-[#D97757] hover:opacity-90 text-white cursor-pointer shadow-[0_0_20px_rgba(63,134,255,0.4)] active:scale-[0.98]"
             >
               <ShieldCheck size={16} />
               <span>I ACCEPT & AGREE</span>

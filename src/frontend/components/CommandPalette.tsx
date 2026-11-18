@@ -145,7 +145,7 @@ export function CommandPalette({
       category: 'Actions',
       title: 'Export Conversation to Markdown',
       subtitle: 'Save active chat transcript as .md document',
-      icon: <Download size={15} className="text-slate-300" />,
+      icon: <Download size={15} className="text-[#6B6A67]" />,
       onSelect: () => { onExportCurrentChat?.(); onClose(); },
     },
     {
@@ -153,7 +153,7 @@ export function CommandPalette({
       category: 'Actions',
       title: codingModeEnabled ? 'Disable Autonomous Coding Mode' : 'Enable Autonomous Coding Mode',
       subtitle: 'Toggle direct GitHub repo write operations',
-      icon: <Shield size={15} className={codingModeEnabled ? "text-emerald-400" : "text-slate-400"} />,
+      icon: <Shield size={15} className={codingModeEnabled ? "text-emerald-400" : "text-[#6B6A67]"} />,
       onSelect: () => { onToggleCodingMode?.(); onClose(); },
     },
     {
@@ -161,7 +161,7 @@ export function CommandPalette({
       category: 'Actions',
       title: 'Open Settings & Integrations',
       subtitle: 'Configure API keys, GitHub tokens, and appearance',
-      icon: <Settings size={15} className="text-slate-300" />,
+      icon: <Settings size={15} className="text-[#6B6A67]" />,
       onSelect: () => { onOpenSettings(); onClose(); },
     },
     {
@@ -213,7 +213,7 @@ export function CommandPalette({
       category: 'Chats' as const,
       title: chat.title || 'Untitled Session',
       subtitle: `Opened ${new Date(chat.updatedAt || chat.createdAt).toLocaleDateString()}`,
-      icon: <MessageSquare size={15} className="text-slate-400" />,
+      icon: <MessageSquare size={15} className="text-[#6B6A67]" />,
       onSelect: () => { onSelectChat(chat.id); onClose(); },
     })),
   ];
@@ -254,12 +254,12 @@ export function CommandPalette({
       <div className="fixed inset-0" onClick={onClose} />
 
       <div 
-        className="relative w-full max-w-xl bg-[#14151a] border border-[#2a2d39] rounded-2xl shadow-2xl overflow-hidden flex flex-col z-10 select-none text-white"
+        className="relative w-full max-w-xl bg-[#FAF9F5] border border-[#FFFFFF] rounded-2xl shadow-2xl overflow-hidden flex flex-col z-10 select-none text-[#1F1E1D]"
         onKeyDown={handleKeyDown}
       >
         {/* Search Input Bar */}
-        <div className="flex items-center gap-3 px-4 py-3.5 border-b border-[#242733]">
-          <Search size={18} className="text-slate-400 shrink-0" />
+        <div className="flex items-center gap-3 px-4 py-3.5 border-b border-[#FFFFFF]">
+          <Search size={18} className="text-[#6B6A67] shrink-0" />
           <input
             ref={inputRef}
             type="text"
@@ -269,17 +269,17 @@ export function CommandPalette({
               setSelectedIndex(0);
             }}
             placeholder="Type a command, search chats, tools, or switch models..."
-            className="flex-1 bg-transparent text-sm text-white placeholder-slate-500 focus:outline-none"
+            className="flex-1 bg-transparent text-sm text-[#1F1E1D] placeholder-slate-500 focus:outline-none"
           />
           {query && (
             <button 
               onClick={() => setQuery('')}
-              className="p-1 text-slate-400 hover:text-white rounded"
+              className="p-1 text-[#6B6A67] hover:text-[#1F1E1D] rounded"
             >
               <X size={14} />
             </button>
           )}
-          <kbd className="hidden sm:inline-block px-1.5 py-0.5 text-[10px] font-mono font-medium text-slate-400 bg-[#1e2029] border border-[#2e313f] rounded">
+          <kbd className="hidden sm:inline-block px-1.5 py-0.5 text-[10px] font-mono font-medium text-[#6B6A67] bg-[#FFFFFF] border border-[#FFFFFF] rounded">
             ESC
           </kbd>
         </div>
@@ -301,14 +301,14 @@ export function CommandPalette({
                   className={clsx(
                     "flex items-center justify-between gap-3 px-3 py-2.5 rounded-xl cursor-pointer transition-all",
                     isSelected 
-                      ? "bg-[#202330] text-white" 
-                      : "text-slate-300 hover:bg-[#1a1c24] hover:text-white"
+                      ? "bg-[#FFFFFF] text-[#1F1E1D]" 
+                      : "text-[#6B6A67] hover:bg-[#FFFFFF] hover:text-[#1F1E1D]"
                   )}
                 >
                   <div className="flex items-center gap-3 min-w-0">
                     <div className={clsx(
                       "w-7 h-7 rounded-lg flex items-center justify-center shrink-0 border",
-                      isSelected ? "bg-[#272b3c] border-[#3a3f55]" : "bg-[#181a22] border-[#262835]"
+                      isSelected ? "bg-[#FFFFFF] border-[#F0EEE5]" : "bg-[#FFFFFF] border-[#FFFFFF]"
                     )}>
                       {item.icon}
                     </div>
@@ -320,7 +320,7 @@ export function CommandPalette({
                         </span>
                       </div>
                       {item.subtitle && (
-                        <p className="text-[11px] text-slate-400 truncate">
+                        <p className="text-[11px] text-[#6B6A67] truncate">
                           {item.subtitle}
                         </p>
                       )}
@@ -329,7 +329,7 @@ export function CommandPalette({
 
                   <div className="flex items-center gap-2 shrink-0">
                     {item.shortcut && (
-                      <kbd className="px-1.5 py-0.5 text-[10px] font-mono text-slate-400 bg-[#191b24] border border-[#2a2d3b] rounded">
+                      <kbd className="px-1.5 py-0.5 text-[10px] font-mono text-[#6B6A67] bg-[#FFFFFF] border border-[#FFFFFF] rounded">
                         {item.shortcut}
                       </kbd>
                     )}
@@ -344,10 +344,10 @@ export function CommandPalette({
         </div>
 
         {/* Footer shortcuts hint */}
-        <div className="px-4 py-2 bg-[#101116] border-t border-[#222530] flex items-center justify-between text-[11px] text-slate-500">
+        <div className="px-4 py-2 bg-[#FAF9F5] border-t border-[#FFFFFF] flex items-center justify-between text-[11px] text-slate-500">
           <div className="flex items-center gap-3">
-            <span><kbd className="font-mono text-[10px] text-slate-400">↑↓</kbd> to navigate</span>
-            <span><kbd className="font-mono text-[10px] text-slate-400">↵</kbd> to select</span>
+            <span><kbd className="font-mono text-[10px] text-[#6B6A67]">↑↓</kbd> to navigate</span>
+            <span><kbd className="font-mono text-[10px] text-[#6B6A67]">↵</kbd> to select</span>
           </div>
           <div className="font-mono text-[10px]">
             VOID AI 2026 Core

@@ -83,19 +83,19 @@ export function PromptStudioModal({
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-sm animate-fadeIn select-none">
       <div className="fixed inset-0" onClick={onClose} />
 
-      <div className="relative w-full max-w-2xl bg-[#14151a] border border-[#272a38] rounded-2xl shadow-2xl overflow-hidden flex flex-col z-10 text-white font-sans max-h-[90vh]">
+      <div className="relative w-full max-w-2xl bg-[#FAF9F5] border border-[#FFFFFF] rounded-2xl shadow-2xl overflow-hidden flex flex-col z-10 text-[#1F1E1D] font-sans max-h-[90vh]">
         {/* Header */}
-        <div className="px-5 py-4 border-b border-[#222533] flex items-center justify-between bg-[#121319]">
+        <div className="px-5 py-4 border-b border-[#FFFFFF] flex items-center justify-between bg-[#FAF9F5]">
           <div className="flex items-center gap-3">
-            <div className="w-8 h-8 rounded-lg bg-[#1f2230] border border-[#303548] flex items-center justify-center text-amber-400">
+            <div className="w-8 h-8 rounded-lg bg-[#FFFFFF] border border-[#FFFFFF] flex items-center justify-center text-amber-400">
               <Sliders size={16} />
             </div>
             <div>
-              <h3 className="text-sm font-bold text-white flex items-center gap-2">
+              <h3 className="text-sm font-bold text-[#1F1E1D] flex items-center gap-2">
                 <span>Prompt Engineering Studio</span>
                 <span className="text-[10px] font-mono text-slate-500">2026 Engine</span>
               </h3>
-              <p className="text-xs text-slate-400">
+              <p className="text-xs text-[#6B6A67]">
                 Select an expert AI Persona or craft custom system directives.
               </p>
             </div>
@@ -103,7 +103,7 @@ export function PromptStudioModal({
 
           <button
             onClick={onClose}
-            className="p-1.5 text-slate-400 hover:text-white hover:bg-[#202330] rounded-lg transition-colors cursor-pointer"
+            className="p-1.5 text-[#6B6A67] hover:text-[#1F1E1D] hover:bg-[#FFFFFF] rounded-lg transition-colors cursor-pointer"
           >
             <X size={16} />
           </button>
@@ -113,7 +113,7 @@ export function PromptStudioModal({
         <div className="p-5 overflow-y-auto space-y-4">
           {/* Preset Cards Grid */}
           <div>
-            <label className="block text-xs font-semibold text-slate-300 mb-2">
+            <label className="block text-xs font-semibold text-[#6B6A67] mb-2">
               Curated Expert Personas
             </label>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
@@ -126,8 +126,8 @@ export function PromptStudioModal({
                     className={clsx(
                       "p-3 rounded-xl border cursor-pointer transition-all flex flex-col justify-between",
                       isSelected
-                        ? "bg-[#1f2333] border-blue-500 text-white shadow-sm"
-                        : "bg-[#161822] hover:bg-[#1b1e2a] border-[#252837] text-slate-300"
+                        ? "bg-[#FFFFFF] border-blue-500 text-[#1F1E1D] shadow-sm"
+                        : "bg-[#FAF9F5] hover:bg-[#FFFFFF] border-[#FFFFFF] text-[#6B6A67]"
                     )}
                   >
                     <div>
@@ -137,12 +137,12 @@ export function PromptStudioModal({
                           <span className="text-xs font-bold">{preset.name}</span>
                         </div>
                         {isSelected && (
-                          <div className="w-4 h-4 rounded-full bg-blue-500 flex items-center justify-center text-white">
+                          <div className="w-4 h-4 rounded-full bg-blue-500 flex items-center justify-center text-[#1F1E1D]">
                             <Check size={10} className="stroke-[3]" />
                           </div>
                         )}
                       </div>
-                      <p className="text-[11px] text-slate-400 line-clamp-2 leading-relaxed">
+                      <p className="text-[11px] text-[#6B6A67] line-clamp-2 leading-relaxed">
                         {preset.tagline}
                       </p>
                     </div>
@@ -155,7 +155,7 @@ export function PromptStudioModal({
           {/* System Prompt Text Editor */}
           <div>
             <div className="flex items-center justify-between mb-1.5">
-              <label className="text-xs font-semibold text-slate-300">
+              <label className="text-xs font-semibold text-[#6B6A67]">
                 Active System Directive Prompt
               </label>
               <span className="text-[10px] font-mono text-slate-500 tabular-nums">
@@ -169,17 +169,17 @@ export function PromptStudioModal({
                 setCustomText(e.target.value);
                 setSelectedPresetId('custom');
               }}
-              className="w-full p-3.5 bg-[#0e0f14] border border-[#232635] rounded-xl text-slate-200 text-xs font-mono leading-relaxed focus:outline-none resize-none focus:border-blue-500"
+              className="w-full p-3.5 bg-[#FAF9F5] border border-[#FFFFFF] rounded-xl text-slate-200 text-xs font-mono leading-relaxed focus:outline-none resize-none focus:border-blue-500"
               placeholder="Enter custom instructions for how VOID AI responds..."
             />
           </div>
         </div>
 
         {/* Footer */}
-        <div className="px-5 py-3 bg-[#111218] border-t border-[#222533] flex items-center justify-between">
+        <div className="px-5 py-3 bg-[#FAF9F5] border-t border-[#FFFFFF] flex items-center justify-between">
           <button
             onClick={() => handleSelectPreset(PROMPT_PRESETS[0])}
-            className="text-xs text-slate-400 hover:text-white cursor-pointer"
+            className="text-xs text-[#6B6A67] hover:text-[#1F1E1D] cursor-pointer"
           >
             Reset to Default
           </button>
@@ -187,13 +187,13 @@ export function PromptStudioModal({
           <div className="flex items-center gap-2">
             <button
               onClick={onClose}
-              className="px-3 py-1.5 text-xs text-slate-300 hover:text-white hover:bg-[#1f2230] rounded-lg transition-colors cursor-pointer"
+              className="px-3 py-1.5 text-xs text-[#6B6A67] hover:text-[#1F1E1D] hover:bg-[#FFFFFF] rounded-lg transition-colors cursor-pointer"
             >
               Cancel
             </button>
             <button
               onClick={handleSave}
-              className="px-4 py-1.5 bg-blue-600 hover:bg-blue-500 text-white rounded-lg text-xs font-semibold transition-colors cursor-pointer shadow-sm"
+              className="px-4 py-1.5 bg-blue-600 hover:bg-blue-500 text-[#1F1E1D] rounded-lg text-xs font-semibold transition-colors cursor-pointer shadow-sm"
             >
               Apply to Session
             </button>

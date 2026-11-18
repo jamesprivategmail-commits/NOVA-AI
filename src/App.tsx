@@ -95,11 +95,11 @@ export default function App() {
         <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-red-900/20 rounded-full blur-3xl pointer-events-none" />
         <div className="relative w-20 h-20 rounded-2xl bg-black border border-red-600/80 p-1.5 shadow-[0_0_30px_rgba(220,38,38,0.4)] flex items-center justify-center overflow-hidden">
           <img 
-            src="/void-logo.jpg" 
+            src="/void-logo.jpg?v=3" 
             alt="NOVA AI Profile" 
             className="w-full h-full object-cover"
             onError={(e) => {
-              (e.target as HTMLImageElement).src = '/void-logo.jpg';
+              (e.target as HTMLImageElement).src = '/void-logo.jpg?v=3';
             }}
           />
         </div>
@@ -139,7 +139,7 @@ export default function App() {
       <div className="min-h-screen bg-[#06070a] flex flex-col items-center justify-center gap-4 relative overflow-hidden">
         <div className="w-20 h-20 rounded-2xl bg-black border border-red-600/80 p-1.5 shadow-[0_0_30px_rgba(220,38,38,0.4)] flex items-center justify-center overflow-hidden">
           <img 
-            src="/void-logo.jpg" 
+            src="/void-logo.jpg?v=3" 
             alt="NOVA AI" 
             className="w-full h-full object-cover"
           />

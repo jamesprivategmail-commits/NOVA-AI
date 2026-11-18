@@ -390,21 +390,21 @@ export function CodeWorkspaceDrawer({
         className="fixed inset-0 bg-black/60 backdrop-blur-xs z-30 transition-opacity" 
       />
       <div className={clsx(
-        "fixed inset-y-0 right-0 z-40 bg-[#111217] border-l border-[#242733] text-white flex flex-col shadow-2xl transition-all duration-300 ease-out select-none",
+        "fixed inset-y-0 right-0 z-40 bg-[#FAF9F5] border-l border-[#FFFFFF] text-[#1F1E1D] flex flex-col shadow-2xl transition-all duration-300 ease-out select-none",
         isExpanded ? "w-full md:w-[85vw]" : "w-full md:w-[620px] lg:w-[680px]"
       )}>
       {/* Top Bar Header */}
-      <div className="h-13 px-4 border-b border-[#242733] flex items-center justify-between shrink-0 bg-[#14151c]">
+      <div className="h-13 px-4 border-b border-[#FFFFFF] flex items-center justify-between shrink-0 bg-[#FAF9F5]">
         <div className="flex items-center gap-3">
-          <div className="w-8 h-8 rounded-lg bg-[#1f222e] border border-[#2e3345] flex items-center justify-center text-blue-400">
+          <div className="w-8 h-8 rounded-lg bg-[#FFFFFF] border border-[#FFFFFF] flex items-center justify-center text-blue-400">
             <Code2 size={16} />
           </div>
           <div>
-            <div className="text-xs font-bold text-white flex items-center gap-2">
+            <div className="text-xs font-bold text-[#1F1E1D] flex items-center gap-2">
               <span>Interactive Workspace</span>
               <span className="text-[10px] text-slate-500 font-mono">2026 Core</span>
             </div>
-            <div className="text-[11px] text-slate-400 truncate max-w-[260px]">
+            <div className="text-[11px] text-[#6B6A67] truncate max-w-[260px]">
               {activeRepo ? `${activeRepo.owner}/${activeRepo.repo} (${activeRepo.branch})` : 'Local Scratchpad'}
             </div>
           </div>
@@ -413,14 +413,14 @@ export function CodeWorkspaceDrawer({
         <div className="flex items-center gap-1.5">
           <button
             onClick={() => setIsExpanded(!isExpanded)}
-            className="p-1.5 text-slate-400 hover:text-white hover:bg-[#202330] rounded-lg transition-colors hidden sm:flex cursor-pointer"
+            className="p-1.5 text-[#6B6A67] hover:text-[#1F1E1D] hover:bg-[#FFFFFF] rounded-lg transition-colors hidden sm:flex cursor-pointer"
             title={isExpanded ? "Collapse width" : "Expand to wide view"}
           >
             {isExpanded ? <Minimize2 size={15} /> : <Maximize2 size={15} />}
           </button>
           <button
             onClick={onClose}
-            className="p-1.5 text-slate-400 hover:text-white hover:bg-[#202330] rounded-lg transition-colors cursor-pointer"
+            className="p-1.5 text-[#6B6A67] hover:text-[#1F1E1D] hover:bg-[#FFFFFF] rounded-lg transition-colors cursor-pointer"
             title="Close workspace"
           >
             <X size={16} />
@@ -429,14 +429,14 @@ export function CodeWorkspaceDrawer({
       </div>
 
       {/* Navigation Tabs Bar */}
-      <div className="px-3 pt-2 bg-[#121319] border-b border-[#242733] flex items-center gap-1 overflow-x-auto text-xs">
+      <div className="px-3 pt-2 bg-[#FAF9F5] border-b border-[#FFFFFF] flex items-center gap-1 overflow-x-auto text-xs">
         <button
           onClick={() => setActiveTab('editor')}
           className={clsx(
             "px-3 py-2 font-medium rounded-t-lg transition-colors flex items-center gap-1.5 cursor-pointer whitespace-nowrap",
             activeTab === 'editor'
-              ? "bg-[#181a24] text-white border-t-2 border-blue-500"
-              : "text-slate-400 hover:text-slate-200 hover:bg-[#161821]"
+              ? "bg-[#FFFFFF] text-[#1F1E1D] border-t-2 border-blue-500"
+              : "text-[#6B6A67] hover:text-slate-200 hover:bg-[#FAF9F5]"
           )}
         >
           <Code2 size={13} className="text-emerald-400" />
@@ -448,8 +448,8 @@ export function CodeWorkspaceDrawer({
           className={clsx(
             "px-3 py-2 font-medium rounded-t-lg transition-colors flex items-center gap-1.5 cursor-pointer whitespace-nowrap",
             activeTab === 'terminal'
-              ? "bg-[#181a24] text-white border-t-2 border-blue-500"
-              : "text-slate-400 hover:text-slate-200 hover:bg-[#161821]"
+              ? "bg-[#FFFFFF] text-[#1F1E1D] border-t-2 border-blue-500"
+              : "text-[#6B6A67] hover:text-slate-200 hover:bg-[#FAF9F5]"
           )}
         >
           <TerminalIcon size={13} className="text-amber-400" />
@@ -461,8 +461,8 @@ export function CodeWorkspaceDrawer({
           className={clsx(
             "px-3 py-2 font-medium rounded-t-lg transition-colors flex items-center gap-1.5 cursor-pointer whitespace-nowrap",
             activeTab === 'rungraph'
-              ? "bg-[#181a24] text-white border-t-2 border-blue-500"
-              : "text-slate-400 hover:text-slate-200 hover:bg-[#161821]"
+              ? "bg-[#FFFFFF] text-[#1F1E1D] border-t-2 border-blue-500"
+              : "text-[#6B6A67] hover:text-slate-200 hover:bg-[#FAF9F5]"
           )}
         >
           <Sparkles size={13} className="text-purple-400" />
@@ -474,8 +474,8 @@ export function CodeWorkspaceDrawer({
           className={clsx(
             "px-3 py-2 font-medium rounded-t-lg transition-colors flex items-center gap-1.5 cursor-pointer whitespace-nowrap",
             activeTab === 'git'
-              ? "bg-[#181a24] text-white border-t-2 border-blue-500"
-              : "text-slate-400 hover:text-slate-200 hover:bg-[#161821]"
+              ? "bg-[#FFFFFF] text-[#1F1E1D] border-t-2 border-blue-500"
+              : "text-[#6B6A67] hover:text-slate-200 hover:bg-[#FAF9F5]"
           )}
         >
           <GitBranch size={13} className="text-orange-400" />
@@ -487,8 +487,8 @@ export function CodeWorkspaceDrawer({
           className={clsx(
             "px-3 py-2 font-medium rounded-t-lg transition-colors flex items-center gap-1.5 cursor-pointer whitespace-nowrap",
             activeTab === 'playground'
-              ? "bg-[#181a24] text-white border-t-2 border-blue-500"
-              : "text-slate-400 hover:text-slate-200 hover:bg-[#161821]"
+              ? "bg-[#FFFFFF] text-[#1F1E1D] border-t-2 border-blue-500"
+              : "text-[#6B6A67] hover:text-slate-200 hover:bg-[#FAF9F5]"
           )}
         >
           <Play size={13} className="text-cyan-400" />
@@ -500,8 +500,8 @@ export function CodeWorkspaceDrawer({
           className={clsx(
             "px-3 py-2 font-medium rounded-t-lg transition-colors flex items-center gap-1.5 cursor-pointer whitespace-nowrap",
             activeTab === 'memory'
-              ? "bg-[#181a24] text-white border-t-2 border-blue-500"
-              : "text-slate-400 hover:text-slate-200 hover:bg-[#161821]"
+              ? "bg-[#FFFFFF] text-[#1F1E1D] border-t-2 border-blue-500"
+              : "text-[#6B6A67] hover:text-slate-200 hover:bg-[#FAF9F5]"
           )}
         >
           <Cpu size={13} className="text-indigo-400" />
@@ -513,8 +513,8 @@ export function CodeWorkspaceDrawer({
           className={clsx(
             "px-3 py-2 font-medium rounded-t-lg transition-colors flex items-center gap-1.5 cursor-pointer whitespace-nowrap",
             activeTab === 'files'
-              ? "bg-[#181a24] text-white border-t-2 border-blue-500"
-              : "text-slate-400 hover:text-slate-200 hover:bg-[#161821]"
+              ? "bg-[#FFFFFF] text-[#1F1E1D] border-t-2 border-blue-500"
+              : "text-[#6B6A67] hover:text-slate-200 hover:bg-[#FAF9F5]"
           )}
         >
           <Folder size={13} className="text-amber-400" />
@@ -526,8 +526,8 @@ export function CodeWorkspaceDrawer({
           className={clsx(
             "px-3 py-2 font-medium rounded-t-lg transition-colors flex items-center gap-1.5 cursor-pointer whitespace-nowrap",
             activeTab === 'processes'
-              ? "bg-[#181a24] text-white border-t-2 border-emerald-500"
-              : "text-slate-400 hover:text-slate-200 hover:bg-[#161821]"
+              ? "bg-[#FFFFFF] text-[#1F1E1D] border-t-2 border-emerald-500"
+              : "text-[#6B6A67] hover:text-slate-200 hover:bg-[#FAF9F5]"
           )}
         >
           <Activity size={13} className="text-emerald-400" />
@@ -539,8 +539,8 @@ export function CodeWorkspaceDrawer({
           className={clsx(
             "px-3 py-2 font-medium rounded-t-lg transition-colors flex items-center gap-1.5 cursor-pointer whitespace-nowrap",
             activeTab === 'preview'
-              ? "bg-[#181a24] text-white border-t-2 border-cyan-500"
-              : "text-slate-400 hover:text-slate-200 hover:bg-[#161821]"
+              ? "bg-[#FFFFFF] text-[#1F1E1D] border-t-2 border-cyan-500"
+              : "text-[#6B6A67] hover:text-slate-200 hover:bg-[#FAF9F5]"
           )}
         >
           <Eye size={13} className="text-cyan-400" />
@@ -554,9 +554,9 @@ export function CodeWorkspaceDrawer({
         {activeTab === 'editor' && (
           <div className="flex flex-col h-full space-y-3">
             {/* Editor Toolbar */}
-            <div className="flex items-center justify-between gap-2 p-2 bg-[#171922] rounded-xl border border-[#272b3b] text-xs">
+            <div className="flex items-center justify-between gap-2 p-2 bg-[#FAF9F5] rounded-xl border border-[#FFFFFF] text-xs">
               <div className="flex items-center gap-2 min-w-0">
-                <FileText size={14} className="text-slate-400 shrink-0" />
+                <FileText size={14} className="text-[#6B6A67] shrink-0" />
                 <input
                   type="text"
                   value={filePath}
@@ -577,7 +577,7 @@ export function CodeWorkspaceDrawer({
                         }
                       }));
                     }}
-                    className="px-2.5 py-1 text-emerald-300 hover:text-white bg-emerald-600/20 hover:bg-emerald-600/30 border border-emerald-500/40 rounded-lg transition-colors flex items-center gap-1 text-[11px] font-semibold cursor-pointer shadow-sm"
+                    className="px-2.5 py-1 text-emerald-300 hover:text-[#1F1E1D] bg-emerald-600/20 hover:bg-emerald-600/30 border border-emerald-500/40 rounded-lg transition-colors flex items-center gap-1 text-[11px] font-semibold cursor-pointer shadow-sm"
                     title="Run live interactive HTML sandbox"
                   >
                     <Play size={11} fill="currentColor" />
@@ -587,7 +587,7 @@ export function CodeWorkspaceDrawer({
 
                 <button
                   onClick={handleDownloadZip}
-                  className="px-2.5 py-1 text-amber-300 hover:text-white bg-amber-600/20 hover:bg-amber-600/30 border border-amber-500/40 rounded-lg transition-colors flex items-center gap-1 text-[11px] font-semibold cursor-pointer"
+                  className="px-2.5 py-1 text-amber-300 hover:text-[#1F1E1D] bg-amber-600/20 hover:bg-amber-600/30 border border-amber-500/40 rounded-lg transition-colors flex items-center gap-1 text-[11px] font-semibold cursor-pointer"
                   title="Export file inside a ZIP archive bundle"
                 >
                   <Archive size={11} />
@@ -596,7 +596,7 @@ export function CodeWorkspaceDrawer({
 
                 <button
                   onClick={handleCopy}
-                  className="px-2.5 py-1 text-slate-300 hover:text-white bg-[#202330] hover:bg-[#282d3e] rounded-lg transition-colors flex items-center gap-1 text-[11px] cursor-pointer"
+                  className="px-2.5 py-1 text-[#6B6A67] hover:text-[#1F1E1D] bg-[#FFFFFF] hover:bg-[#FFFFFF] rounded-lg transition-colors flex items-center gap-1 text-[11px] cursor-pointer"
                   title="Copy code"
                 >
                   {isCopied ? <Check size={12} className="text-emerald-400" /> : <Copy size={12} />}
@@ -605,7 +605,7 @@ export function CodeWorkspaceDrawer({
 
                 <button
                   onClick={handleDownload}
-                  className="px-2.5 py-1 text-slate-300 hover:text-white bg-[#202330] hover:bg-[#282d3e] rounded-lg transition-colors flex items-center gap-1 text-[11px] cursor-pointer"
+                  className="px-2.5 py-1 text-[#6B6A67] hover:text-[#1F1E1D] bg-[#FFFFFF] hover:bg-[#FFFFFF] rounded-lg transition-colors flex items-center gap-1 text-[11px] cursor-pointer"
                   title="Download file"
                 >
                   <Download size={12} />
@@ -616,7 +616,7 @@ export function CodeWorkspaceDrawer({
                   <button
                     onClick={handleSave}
                     disabled={isSaving}
-                    className="px-3 py-1 text-white bg-blue-600 hover:bg-blue-500 rounded-lg transition-colors flex items-center gap-1 text-[11px] font-semibold cursor-pointer disabled:opacity-50"
+                    className="px-3 py-1 text-[#1F1E1D] bg-blue-600 hover:bg-blue-500 rounded-lg transition-colors flex items-center gap-1 text-[11px] font-semibold cursor-pointer disabled:opacity-50"
                   >
                     <span>{isSaving ? 'Saving...' : 'Save File'}</span>
                   </button>
@@ -625,8 +625,8 @@ export function CodeWorkspaceDrawer({
             </div>
 
             {/* Editable code textarea with monospace font */}
-            <div className="flex-1 min-h-[360px] bg-[#0d0e13] border border-[#232635] rounded-xl overflow-hidden flex flex-col font-mono text-xs">
-              <div className="px-3 py-1.5 bg-[#14161f] border-b border-[#232635] flex items-center justify-between text-[11px] text-slate-400 select-none">
+            <div className="flex-1 min-h-[360px] bg-[#FAF9F5] border border-[#FFFFFF] rounded-xl overflow-hidden flex flex-col font-mono text-xs">
+              <div className="px-3 py-1.5 bg-[#FAF9F5] border-b border-[#FFFFFF] flex items-center justify-between text-[11px] text-[#6B6A67] select-none">
                 <span>{filePath.split('.').pop()?.toUpperCase() || 'CODE'} Source</span>
                 <span className="tabular-nums">{fileContent.split('\n').length} lines · {fileContent.length} chars</span>
               </div>
@@ -643,7 +643,7 @@ export function CodeWorkspaceDrawer({
         {/* TAB 2: TERMINAL SANDBOX */}
         {activeTab === 'terminal' && (
           <div className="flex flex-col h-full space-y-3 font-mono text-xs">
-            <div className="flex items-center justify-between text-xs text-slate-400 bg-[#161822] p-2.5 rounded-xl border border-[#262a39]">
+            <div className="flex items-center justify-between text-xs text-[#6B6A67] bg-[#FAF9F5] p-2.5 rounded-xl border border-[#FFFFFF]">
               <div className="flex items-center gap-2">
                 <TerminalIcon size={14} className="text-amber-400" />
                 <span className="font-semibold text-slate-200">Terminal Process Console</span>
@@ -660,19 +660,19 @@ export function CodeWorkspaceDrawer({
                 )}
                 <button
                   onClick={() => setTerminalLogs(['Console cleared.'])}
-                  className="px-2 py-1 text-slate-400 hover:text-white rounded hover:bg-[#222533]"
+                  className="px-2 py-1 text-[#6B6A67] hover:text-[#1F1E1D] rounded hover:bg-[#FFFFFF]"
                 >
                   Clear
                 </button>
                 <button
                   onClick={() => handleRunTerminal('ls -la')}
-                  className="px-2.5 py-1 bg-[#202434] hover:bg-[#282d42] text-slate-200 rounded text-[11px]"
+                  className="px-2.5 py-1 bg-[#FFFFFF] hover:bg-[#FFFFFF] text-slate-200 rounded text-[11px]"
                 >
                   ls -la
                 </button>
                 <button
                   onClick={() => handleRunTerminal('npm test')}
-                  className="px-2.5 py-1 bg-[#202434] hover:bg-[#282d42] text-slate-200 rounded text-[11px]"
+                  className="px-2.5 py-1 bg-[#FFFFFF] hover:bg-[#FFFFFF] text-slate-200 rounded text-[11px]"
                 >
                   npm test
                 </button>
@@ -680,14 +680,14 @@ export function CodeWorkspaceDrawer({
             </div>
 
             {/* Output log viewer */}
-            <div className="flex-1 min-h-[340px] max-h-[480px] p-3.5 bg-[#090a0f] border border-[#202331] rounded-xl overflow-y-auto space-y-1.5 font-mono text-xs text-slate-200">
+            <div className="flex-1 min-h-[340px] max-h-[480px] p-3.5 bg-[#FAF9F5] border border-[#FFFFFF] rounded-xl overflow-y-auto space-y-1.5 font-mono text-xs text-slate-200">
               {terminalLogs.map((log, idx) => (
                 <div key={idx} className={clsx(
                   "whitespace-pre-wrap leading-relaxed",
                   log.startsWith('$') ? "text-blue-400 font-bold" :
                   log.includes('[ERROR]') ? "text-rose-400" :
                   log.includes('PASSED') || log.includes('Success') ? "text-emerald-400" :
-                  "text-slate-300"
+                  "text-[#6B6A67]"
                 )}>
                   {log}
                 </div>
@@ -703,7 +703,7 @@ export function CodeWorkspaceDrawer({
             {/* Terminal Command Input Form */}
             <form 
               onSubmit={(e) => { e.preventDefault(); handleRunTerminal(); }}
-              className="flex items-center gap-2 bg-[#14161f] border border-[#252838] p-1.5 rounded-xl"
+              className="flex items-center gap-2 bg-[#FAF9F5] border border-[#FFFFFF] p-1.5 rounded-xl"
             >
               <span className="text-blue-400 font-bold pl-2">$</span>
               <input
@@ -716,7 +716,7 @@ export function CodeWorkspaceDrawer({
               <button
                 type="submit"
                 disabled={isTerminalRunning || !terminalInput.trim()}
-                className="px-3 py-1.5 bg-blue-600 hover:bg-blue-500 text-white rounded-lg font-medium text-xs disabled:opacity-40"
+                className="px-3 py-1.5 bg-blue-600 hover:bg-blue-500 text-[#1F1E1D] rounded-lg font-medium text-xs disabled:opacity-40"
               >
                 Execute
               </button>
@@ -727,18 +727,18 @@ export function CodeWorkspaceDrawer({
         {/* TAB 3: RUN-GRAPH */}
         {activeTab === 'rungraph' && (
           <div className="space-y-4">
-            <div className="p-3 bg-[#151720] border border-[#262938] rounded-xl text-xs">
-              <h4 className="font-bold text-white mb-1 flex items-center gap-2">
+            <div className="p-3 bg-[#FAF9F5] border border-[#FFFFFF] rounded-xl text-xs">
+              <h4 className="font-bold text-[#1F1E1D] mb-1 flex items-center gap-2">
                 <Sparkles size={14} className="text-purple-400" />
                 Autonomous Coding Execution Stepper
               </h4>
-              <p className="text-slate-400 text-[11px] leading-relaxed">
+              <p className="text-[#6B6A67] text-[11px] leading-relaxed">
                 Visual pipeline showing active phases of code generation, repository verification, diff application, and git synchronization.
               </p>
             </div>
 
             {/* Stepper Pipeline */}
-            <div className="space-y-3 relative before:absolute before:inset-y-4 before:left-4 before:w-0.5 before:bg-[#252837]">
+            <div className="space-y-3 relative before:absolute before:inset-y-4 before:left-4 before:w-0.5 before:bg-[#FFFFFF]">
               {[
                 { phase: 'Phase 1', title: 'Intent Classification & Scope Guard', status: 'completed', desc: 'Verified user coding intent and scoped affected files' },
                 { phase: 'Phase 2', title: 'Repository & Codebase Architecture Scan', status: 'completed', desc: 'Fetched file tree and verified module dependencies' },
@@ -751,14 +751,14 @@ export function CodeWorkspaceDrawer({
                     "w-7 h-7 rounded-full flex items-center justify-center shrink-0 z-10 text-[11px] font-bold border",
                     step.status === 'completed' ? "bg-emerald-500/20 text-emerald-400 border-emerald-500/50" :
                     step.status === 'running' ? "bg-blue-500/20 text-blue-400 border-blue-500/60 animate-pulse" :
-                    "bg-[#1a1c25] text-slate-500 border-[#2b2e3e]"
+                    "bg-[#FFFFFF] text-slate-500 border-[#FFFFFF]"
                   )}>
                     {step.status === 'completed' ? <Check size={13} className="stroke-[3]" /> : idx + 1}
                   </div>
 
-                  <div className="flex-1 p-3 bg-[#161822] border border-[#242735] rounded-xl">
+                  <div className="flex-1 p-3 bg-[#FAF9F5] border border-[#FFFFFF] rounded-xl">
                     <div className="flex items-center justify-between text-xs font-semibold">
-                      <span className="text-white">{step.title}</span>
+                      <span className="text-[#1F1E1D]">{step.title}</span>
                       <span className={clsx(
                         "text-[10px] uppercase font-mono tracking-wider",
                         step.status === 'completed' ? "text-emerald-400" :
@@ -768,7 +768,7 @@ export function CodeWorkspaceDrawer({
                         {step.status}
                       </span>
                     </div>
-                    <p className="text-[11px] text-slate-400 mt-1">
+                    <p className="text-[11px] text-[#6B6A67] mt-1">
                       {step.desc}
                     </p>
                   </div>
@@ -781,61 +781,61 @@ export function CodeWorkspaceDrawer({
         {/* TAB 4: GIT & PR */}
         {activeTab === 'git' && (
           <div className="space-y-4 text-xs">
-            <div className="p-3 bg-[#151720] border border-[#262938] rounded-xl">
-              <h4 className="font-bold text-white mb-1 flex items-center gap-2">
+            <div className="p-3 bg-[#FAF9F5] border border-[#FFFFFF] rounded-xl">
+              <h4 className="font-bold text-[#1F1E1D] mb-1 flex items-center gap-2">
                 <GitBranch size={14} className="text-orange-400" />
                 Automated Git Branching & GitHub Commit Creator
               </h4>
-              <p className="text-slate-400 text-[11px]">
+              <p className="text-[#6B6A67] text-[11px]">
                 Stage current workspace edits directly to your connected GitHub repository and create branches.
               </p>
             </div>
 
             {activeRepo ? (
-              <div className="space-y-3 p-4 bg-[#14161f] border border-[#242735] rounded-xl">
+              <div className="space-y-3 p-4 bg-[#FAF9F5] border border-[#FFFFFF] rounded-xl">
                 <div>
-                  <label className="block text-[11px] font-medium text-slate-400 mb-1">Target Repository & Branch</label>
-                  <div className="p-2.5 bg-[#0d0e13] border border-[#212330] rounded-lg text-slate-200 font-mono text-xs">
+                  <label className="block text-[11px] font-medium text-[#6B6A67] mb-1">Target Repository & Branch</label>
+                  <div className="p-2.5 bg-[#FAF9F5] border border-[#FFFFFF] rounded-lg text-slate-200 font-mono text-xs">
                     {activeRepo.owner}/{activeRepo.repo} @ <span className="text-blue-400 font-bold">{activeRepo.branch}</span>
                   </div>
                 </div>
 
                 <div>
-                  <label className="block text-[11px] font-medium text-slate-400 mb-1">File To Commit</label>
+                  <label className="block text-[11px] font-medium text-[#6B6A67] mb-1">File To Commit</label>
                   <input
                     type="text"
                     value={filePath}
                     onChange={(e) => setFilePath(e.target.value)}
-                    className="w-full p-2.5 bg-[#0d0e13] border border-[#212330] rounded-lg text-slate-200 font-mono text-xs focus:outline-none"
+                    className="w-full p-2.5 bg-[#FAF9F5] border border-[#FFFFFF] rounded-lg text-slate-200 font-mono text-xs focus:outline-none"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-[11px] font-medium text-slate-400 mb-1">Commit Message</label>
+                  <label className="block text-[11px] font-medium text-[#6B6A67] mb-1">Commit Message</label>
                   <textarea
                     rows={2}
                     value={commitMessage}
                     onChange={(e) => setCommitMessage(e.target.value)}
-                    className="w-full p-2.5 bg-[#0d0e13] border border-[#212330] rounded-lg text-slate-200 font-mono text-xs focus:outline-none resize-none"
+                    className="w-full p-2.5 bg-[#FAF9F5] border border-[#FFFFFF] rounded-lg text-slate-200 font-mono text-xs focus:outline-none resize-none"
                   />
                 </div>
 
                 <button
                   onClick={handleCommitToGitHub}
-                  className="w-full py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white font-semibold rounded-xl transition-colors cursor-pointer flex items-center justify-center gap-2"
+                  className="w-full py-2.5 bg-emerald-600 hover:bg-emerald-500 text-[#1F1E1D] font-semibold rounded-xl transition-colors cursor-pointer flex items-center justify-center gap-2"
                 >
                   <GitBranch size={14} />
                   <span>Commit File to GitHub</span>
                 </button>
 
                 {commitStatus && (
-                  <div className="p-2.5 bg-[#1b1e2a] border border-[#2e3347] rounded-lg text-slate-300 font-mono text-[11px]">
+                  <div className="p-2.5 bg-[#FFFFFF] border border-[#FFFFFF] rounded-lg text-[#6B6A67] font-mono text-[11px]">
                     {commitStatus}
                   </div>
                 )}
               </div>
             ) : (
-              <div className="p-6 text-center bg-[#14161f] border border-[#242735] rounded-xl text-slate-400">
+              <div className="p-6 text-center bg-[#FAF9F5] border border-[#FFFFFF] rounded-xl text-[#6B6A67]">
                 <p className="mb-3">No GitHub repository connected yet.</p>
                 <p className="text-[11px] text-slate-500">Connect in Settings → Tools & Integrations to enable one-click commits and PR creation.</p>
               </div>
@@ -847,15 +847,15 @@ export function CodeWorkspaceDrawer({
         {activeTab === 'playground' && (
           <div className="space-y-4 text-xs font-mono">
             {/* JS/TS Quick Evaluator */}
-            <div className="p-3 bg-[#151720] border border-[#262938] rounded-xl space-y-2">
+            <div className="p-3 bg-[#FAF9F5] border border-[#FFFFFF] rounded-xl space-y-2">
               <div className="flex items-center justify-between">
-                <span className="font-bold text-white flex items-center gap-2">
+                <span className="font-bold text-[#1F1E1D] flex items-center gap-2">
                   <Play size={13} className="text-cyan-400" />
                   JavaScript Expression Runner
                 </span>
                 <button
                   onClick={handleRunPlayground}
-                  className="px-2.5 py-1 bg-cyan-600 hover:bg-cyan-500 text-white rounded font-medium text-[11px] cursor-pointer"
+                  className="px-2.5 py-1 bg-cyan-600 hover:bg-cyan-500 text-[#1F1E1D] rounded font-medium text-[11px] cursor-pointer"
                 >
                   Evaluate
                 </button>
@@ -864,49 +864,49 @@ export function CodeWorkspaceDrawer({
                 rows={3}
                 value={playgroundCode}
                 onChange={(e) => setPlaygroundCode(e.target.value)}
-                className="w-full p-2.5 bg-[#0c0d12] border border-[#222533] rounded-lg text-slate-200 font-mono text-xs focus:outline-none resize-none"
+                className="w-full p-2.5 bg-[#FAF9F5] border border-[#FFFFFF] rounded-lg text-slate-200 font-mono text-xs focus:outline-none resize-none"
               />
               {playgroundOutput && (
-                <div className="p-2.5 bg-[#090a0e] border border-[#212433] rounded-lg text-emerald-400 font-mono text-[11px] whitespace-pre-wrap">
+                <div className="p-2.5 bg-[#FAF9F5] border border-[#FFFFFF] rounded-lg text-emerald-400 font-mono text-[11px] whitespace-pre-wrap">
                   {playgroundOutput}
                 </div>
               )}
             </div>
 
             {/* Regex Evaluator */}
-            <div className="p-3 bg-[#151720] border border-[#262938] rounded-xl space-y-2">
+            <div className="p-3 bg-[#FAF9F5] border border-[#FFFFFF] rounded-xl space-y-2">
               <div className="flex items-center justify-between">
-                <span className="font-bold text-white flex items-center gap-2">
+                <span className="font-bold text-[#1F1E1D] flex items-center gap-2">
                   <Code2 size={13} className="text-amber-400" />
                   Live Regex Tester
                 </span>
                 <button
                   onClick={handleTestRegex}
-                  className="px-2.5 py-1 bg-amber-600 hover:bg-amber-500 text-white rounded font-medium text-[11px] cursor-pointer"
+                  className="px-2.5 py-1 bg-amber-600 hover:bg-amber-500 text-[#1F1E1D] rounded font-medium text-[11px] cursor-pointer"
                 >
                   Test Pattern
                 </button>
               </div>
               <div>
-                <label className="text-[10px] text-slate-400">Regular Expression:</label>
+                <label className="text-[10px] text-[#6B6A67]">Regular Expression:</label>
                 <input
                   type="text"
                   value={regexPattern}
                   onChange={(e) => setRegexPattern(e.target.value)}
-                  className="w-full p-2 bg-[#0c0d12] border border-[#222533] rounded-lg text-slate-200 font-mono text-xs focus:outline-none"
+                  className="w-full p-2 bg-[#FAF9F5] border border-[#FFFFFF] rounded-lg text-slate-200 font-mono text-xs focus:outline-none"
                 />
               </div>
               <div>
-                <label className="text-[10px] text-slate-400">Test Input Text:</label>
+                <label className="text-[10px] text-[#6B6A67]">Test Input Text:</label>
                 <input
                   type="text"
                   value={regexTestStr}
                   onChange={(e) => setRegexTestStr(e.target.value)}
-                  className="w-full p-2 bg-[#0c0d12] border border-[#222533] rounded-lg text-slate-200 font-mono text-xs focus:outline-none"
+                  className="w-full p-2 bg-[#FAF9F5] border border-[#FFFFFF] rounded-lg text-slate-200 font-mono text-xs focus:outline-none"
                 />
               </div>
               {regexMatches.length > 0 && (
-                <div className="p-2 bg-[#090a0e] border border-[#212433] rounded-lg text-amber-300 font-mono text-[11px]">
+                <div className="p-2 bg-[#FAF9F5] border border-[#FFFFFF] rounded-lg text-amber-300 font-mono text-[11px]">
                   Matches: {JSON.stringify(regexMatches)}
                 </div>
               )}
@@ -917,25 +917,25 @@ export function CodeWorkspaceDrawer({
         {/* TAB 6: MEMORY & TOKENS */}
         {activeTab === 'memory' && (
           <div className="space-y-4 text-xs font-sans">
-            <div className="p-3 bg-[#151720] border border-[#262938] rounded-xl">
-              <h4 className="font-bold text-white mb-1 flex items-center gap-2">
+            <div className="p-3 bg-[#FAF9F5] border border-[#FFFFFF] rounded-xl">
+              <h4 className="font-bold text-[#1F1E1D] mb-1 flex items-center gap-2">
                 <Cpu size={14} className="text-indigo-400" />
                 Session Token Budget & Long-Term Memory
               </h4>
-              <p className="text-slate-400 text-[11px]">
+              <p className="text-[#6B6A67] text-[11px]">
                 Monitor token consumption and manage facts remembered across your conversations.
               </p>
             </div>
 
             {/* Token Budget Gauge */}
-            <div className="p-4 bg-[#14161f] border border-[#242735] rounded-xl space-y-3 font-mono">
+            <div className="p-4 bg-[#FAF9F5] border border-[#FFFFFF] rounded-xl space-y-3 font-mono">
               <div className="flex items-center justify-between text-xs">
-                <span className="text-slate-300">Context Window Used</span>
-                <span className="text-slate-400 tabular-nums">
+                <span className="text-[#6B6A67]">Context Window Used</span>
+                <span className="text-[#6B6A67] tabular-nums">
                   {memoryStats.estimatedTokens.toLocaleString()} / {memoryStats.maxContext.toLocaleString()} tokens
                 </span>
               </div>
-              <div className="w-full h-2 bg-[#202330] rounded-full overflow-hidden">
+              <div className="w-full h-2 bg-[#FFFFFF] rounded-full overflow-hidden">
                 <div 
                   className="h-full bg-blue-500 rounded-full transition-all"
                   style={{ width: `${Math.min(100, (memoryStats.estimatedTokens / memoryStats.maxContext) * 100)}%` }}
@@ -956,7 +956,7 @@ export function CodeWorkspaceDrawer({
             </div>
 
             {/* Pinned Architectural Facts */}
-            <div className="p-4 bg-[#14161f] border border-[#242735] rounded-xl space-y-3">
+            <div className="p-4 bg-[#FAF9F5] border border-[#FFFFFF] rounded-xl space-y-3">
               <div className="flex items-center justify-between">
                 <span className="font-semibold text-slate-200 text-xs">Active Project Memories</span>
                 <span className="text-[10px] text-slate-500 font-mono">{memoryStats.activeFacts.length} facts</span>
@@ -964,7 +964,7 @@ export function CodeWorkspaceDrawer({
 
               <div className="space-y-2">
                 {memoryStats.activeFacts.map((fact, idx) => (
-                  <div key={idx} className="p-2.5 bg-[#0e1015] border border-[#222533] rounded-lg text-[11px] text-slate-300 flex items-center justify-between gap-2">
+                  <div key={idx} className="p-2.5 bg-[#FAF9F5] border border-[#FFFFFF] rounded-lg text-[11px] text-[#6B6A67] flex items-center justify-between gap-2">
                     <span className="truncate">{fact}</span>
                     <button
                       onClick={() => setMemoryStats(prev => ({ ...prev, activeFacts: prev.activeFacts.filter((_, i) => i !== idx) }))}
@@ -982,7 +982,7 @@ export function CodeWorkspaceDrawer({
                   value={newFact}
                   onChange={(e) => setNewFact(e.target.value)}
                   placeholder="Remember fact (e.g. Use strict type checking)..."
-                  className="flex-1 p-2 bg-[#0d0e13] border border-[#222533] rounded-lg text-slate-200 text-xs focus:outline-none"
+                  className="flex-1 p-2 bg-[#FAF9F5] border border-[#FFFFFF] rounded-lg text-slate-200 text-xs focus:outline-none"
                 />
                 <button
                   onClick={() => {
@@ -991,7 +991,7 @@ export function CodeWorkspaceDrawer({
                       setNewFact('');
                     }
                   }}
-                  className="px-3 py-2 bg-[#202330] hover:bg-[#282d3e] text-white rounded-lg text-xs font-medium cursor-pointer"
+                  className="px-3 py-2 bg-[#FFFFFF] hover:bg-[#FFFFFF] text-[#1F1E1D] rounded-lg text-xs font-medium cursor-pointer"
                 >
                   Add Fact
                 </button>
@@ -1003,13 +1003,13 @@ export function CodeWorkspaceDrawer({
         {/* TAB: WORKSPACE FILES & PROJECT MANAGER */}
         {activeTab === 'files' && (
           <div className="space-y-4 text-xs font-sans">
-            <div className="p-3 bg-[#151720] border border-[#262938] rounded-xl flex items-center justify-between gap-3">
+            <div className="p-3 bg-[#FAF9F5] border border-[#FFFFFF] rounded-xl flex items-center justify-between gap-3">
               <div>
-                <h4 className="font-bold text-white mb-0.5 flex items-center gap-2">
+                <h4 className="font-bold text-[#1F1E1D] mb-0.5 flex items-center gap-2">
                   <Folder size={14} className="text-amber-400" />
                   Persistent Linux Workspace Explorer
                 </h4>
-                <p className="text-slate-400 text-[11px]">
+                <p className="text-[#6B6A67] text-[11px]">
                   Real disk files stored on the backend. Click any file to edit, or export the entire project as a ZIP bundle.
                 </p>
               </div>
@@ -1018,7 +1018,7 @@ export function CodeWorkspaceDrawer({
                 <button
                   onClick={loadWorkspaceFiles}
                   disabled={isLoadingFiles}
-                  className="p-1.5 bg-[#202330] hover:bg-[#282d3e] text-slate-300 rounded-lg transition-colors cursor-pointer"
+                  className="p-1.5 bg-[#FFFFFF] hover:bg-[#FFFFFF] text-[#6B6A67] rounded-lg transition-colors cursor-pointer"
                   title="Refresh files"
                 >
                   <RefreshCw size={13} className={isLoadingFiles ? "animate-spin" : ""} />
@@ -1035,7 +1035,7 @@ export function CodeWorkspaceDrawer({
             </div>
 
             {/* Create New File bar */}
-            <div className="p-3 bg-[#14161f] border border-[#242735] rounded-xl flex items-center justify-between gap-2">
+            <div className="p-3 bg-[#FAF9F5] border border-[#FFFFFF] rounded-xl flex items-center justify-between gap-2">
               {showNewFileInput ? (
                 <div className="flex items-center gap-2 flex-1">
                   <input
@@ -1043,25 +1043,25 @@ export function CodeWorkspaceDrawer({
                     value={newFileName}
                     onChange={(e) => setNewFileName(e.target.value)}
                     placeholder="e.g. server.js, app.py, styles.css..."
-                    className="flex-1 bg-[#0d0e13] border border-[#2e3345] rounded-lg px-2.5 py-1 text-slate-100 font-mono text-xs focus:outline-none"
+                    className="flex-1 bg-[#FAF9F5] border border-[#FFFFFF] rounded-lg px-2.5 py-1 text-slate-100 font-mono text-xs focus:outline-none"
                     autoFocus
                   />
                   <button
                     onClick={handleCreateWorkspaceFile}
-                    className="px-3 py-1 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-xs font-bold cursor-pointer"
+                    className="px-3 py-1 bg-emerald-600 hover:bg-emerald-500 text-[#1F1E1D] rounded-lg text-xs font-bold cursor-pointer"
                   >
                     Create
                   </button>
                   <button
                     onClick={() => setShowNewFileInput(false)}
-                    className="px-2 py-1 bg-white/5 hover:bg-white/10 text-slate-300 rounded-lg text-xs cursor-pointer"
+                    className="px-2 py-1 bg-white/5 hover:bg-white/10 text-[#6B6A67] rounded-lg text-xs cursor-pointer"
                   >
                     Cancel
                   </button>
                 </div>
               ) : (
                 <div className="flex items-center justify-between w-full">
-                  <span className="text-slate-400 text-xs">Workspace Files ({workspaceFiles.length} items)</span>
+                  <span className="text-[#6B6A67] text-xs">Workspace Files ({workspaceFiles.length} items)</span>
                   <button
                     onClick={() => setShowNewFileInput(true)}
                     className="px-2.5 py-1 bg-blue-600/20 hover:bg-blue-600/30 border border-blue-500/40 text-blue-300 rounded-lg text-xs font-semibold flex items-center gap-1 cursor-pointer"
@@ -1074,7 +1074,7 @@ export function CodeWorkspaceDrawer({
             </div>
 
             {/* Workspace File List */}
-            <div className="bg-[#12131a] border border-[#222533] rounded-xl divide-y divide-[#1e202d] overflow-hidden">
+            <div className="bg-[#FAF9F5] border border-[#FFFFFF] rounded-xl divide-y divide-[#FFFFFF] overflow-hidden">
               {workspaceFiles.length === 0 ? (
                 <div className="p-8 text-center text-slate-500">
                   <Folder size={32} className="mx-auto mb-2 opacity-30 text-amber-400" />
@@ -1085,7 +1085,7 @@ export function CodeWorkspaceDrawer({
                 workspaceFiles.map((file) => (
                   <div
                     key={file.path}
-                    className="p-2.5 flex items-center justify-between hover:bg-[#181a24] transition-colors group cursor-pointer"
+                    className="p-2.5 flex items-center justify-between hover:bg-[#FFFFFF] transition-colors group cursor-pointer"
                     onClick={() => !file.isDirectory && handleOpenFile(file.path)}
                   >
                     <div className="flex items-center gap-2.5 min-w-0">
@@ -1124,13 +1124,13 @@ export function CodeWorkspaceDrawer({
         {/* TAB: BACKGROUND PROCESSES & DAEMONS */}
         {activeTab === 'processes' && (
           <div className="space-y-4 text-xs font-sans">
-            <div className="p-3 bg-[#151720] border border-[#262938] rounded-xl flex items-center justify-between gap-3">
+            <div className="p-3 bg-[#FAF9F5] border border-[#FFFFFF] rounded-xl flex items-center justify-between gap-3">
               <div>
-                <h4 className="font-bold text-white mb-0.5 flex items-center gap-2">
+                <h4 className="font-bold text-[#1F1E1D] mb-0.5 flex items-center gap-2">
                   <Activity size={14} className="text-emerald-400" />
                   Daemon & Background Process Manager
                 </h4>
-                <p className="text-slate-400 text-[11px]">
+                <p className="text-[#6B6A67] text-[11px]">
                   Persistent servers, bots, and tasks running in the Linux execution environment.
                 </p>
               </div>
@@ -1138,7 +1138,7 @@ export function CodeWorkspaceDrawer({
               <button
                 onClick={loadProcesses}
                 disabled={isLoadingProcesses}
-                className="p-1.5 bg-[#202330] hover:bg-[#282d3e] text-slate-300 rounded-lg transition-colors cursor-pointer"
+                className="p-1.5 bg-[#FFFFFF] hover:bg-[#FFFFFF] text-[#6B6A67] rounded-lg transition-colors cursor-pointer"
                 title="Refresh processes"
               >
                 <RefreshCw size={13} className={isLoadingProcesses ? "animate-spin" : ""} />
@@ -1146,7 +1146,7 @@ export function CodeWorkspaceDrawer({
             </div>
 
             {/* Launch new background job form */}
-            <div className="p-3.5 bg-[#14161f] border border-[#242735] rounded-xl space-y-2.5">
+            <div className="p-3.5 bg-[#FAF9F5] border border-[#FFFFFF] rounded-xl space-y-2.5">
               <span className="font-bold text-slate-200 text-xs block">Start New Background Server or Bot</span>
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
                 <input
@@ -1154,21 +1154,21 @@ export function CodeWorkspaceDrawer({
                   value={newProcessCmd}
                   onChange={(e) => setNewProcessCmd(e.target.value)}
                   placeholder="Command (e.g. node server.js)"
-                  className="sm:col-span-2 bg-[#0d0e13] border border-[#2e3345] rounded-lg px-2.5 py-1.5 text-slate-100 font-mono text-xs focus:outline-none"
+                  className="sm:col-span-2 bg-[#FAF9F5] border border-[#FFFFFF] rounded-lg px-2.5 py-1.5 text-slate-100 font-mono text-xs focus:outline-none"
                 />
                 <input
                   type="number"
                   value={newProcessPort}
                   onChange={(e) => setNewProcessPort(e.target.value)}
                   placeholder="Port (e.g. 5173)"
-                  className="bg-[#0d0e13] border border-[#2e3345] rounded-lg px-2.5 py-1.5 text-slate-100 font-mono text-xs focus:outline-none"
+                  className="bg-[#FAF9F5] border border-[#FFFFFF] rounded-lg px-2.5 py-1.5 text-slate-100 font-mono text-xs focus:outline-none"
                 />
               </div>
               <div className="flex justify-end">
                 <button
                   onClick={handleStartProcess}
                   disabled={!newProcessCmd.trim()}
-                  className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-xs font-bold transition-colors cursor-pointer disabled:opacity-40"
+                  className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-[#1F1E1D] rounded-lg text-xs font-bold transition-colors cursor-pointer disabled:opacity-40"
                 >
                   Start Daemon
                 </button>
@@ -1178,21 +1178,21 @@ export function CodeWorkspaceDrawer({
             {/* Running Process Cards */}
             <div className="space-y-2">
               {managedProcesses.length === 0 ? (
-                <div className="p-8 bg-[#12131a] border border-[#222533] rounded-xl text-center text-slate-500">
+                <div className="p-8 bg-[#FAF9F5] border border-[#FFFFFF] rounded-xl text-center text-slate-500">
                   <Activity size={32} className="mx-auto mb-2 opacity-30 text-emerald-400" />
                   <p className="text-xs">No background processes running.</p>
                   <p className="text-[11px] text-slate-600 mt-1">Start a web server, bot, or cron script using the form above or by prompting Nova in chat.</p>
                 </div>
               ) : (
                 managedProcesses.map((proc) => (
-                  <div key={proc.id} className="p-3 bg-[#13151d] border border-[#252837] rounded-xl space-y-2">
+                  <div key={proc.id} className="p-3 bg-[#FAF9F5] border border-[#FFFFFF] rounded-xl space-y-2">
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2">
                         <span className={clsx(
                           "w-2 h-2 rounded-full",
                           proc.status === 'running' ? "bg-emerald-400 animate-pulse" : "bg-slate-500"
                         )} />
-                        <span className="font-bold text-white text-xs">{proc.name}</span>
+                        <span className="font-bold text-[#1F1E1D] text-xs">{proc.name}</span>
                         <span className="text-[10px] text-slate-500 font-mono">PID {proc.pid}</span>
                       </div>
 
@@ -1211,7 +1211,7 @@ export function CodeWorkspaceDrawer({
                         )}
                         <button
                           onClick={() => handleViewProcessLogs(proc.id)}
-                          className="px-2 py-0.5 bg-white/5 hover:bg-white/10 border border-white/10 text-slate-300 rounded text-[10px] cursor-pointer"
+                          className="px-2 py-0.5 bg-white/5 hover:bg-white/10 border border-white/10 text-[#6B6A67] rounded text-[10px] cursor-pointer"
                         >
                           Logs
                         </button>
@@ -1226,7 +1226,7 @@ export function CodeWorkspaceDrawer({
                       </div>
                     </div>
 
-                    <div className="font-mono text-[11px] text-slate-400 bg-[#0c0d12] p-2 rounded border border-[#1f222e] truncate">
+                    <div className="font-mono text-[11px] text-[#6B6A67] bg-[#FAF9F5] p-2 rounded border border-[#FFFFFF] truncate">
                       $ {proc.command}
                     </div>
 
@@ -1243,17 +1243,17 @@ export function CodeWorkspaceDrawer({
 
             {/* Selected Process Log Drawer */}
             {selectedProcId && (
-              <div className="p-3 bg-[#0a0b10] border border-[#2b2e40] rounded-xl font-mono text-[11px] space-y-2">
-                <div className="flex items-center justify-between text-xs text-slate-400">
-                  <span className="font-bold text-white">Live Logs: {selectedProcId}</span>
+              <div className="p-3 bg-[#1F1E1D] border border-[#FFFFFF] rounded-xl font-mono text-[11px] space-y-2">
+                <div className="flex items-center justify-between text-xs text-[#6B6A67]">
+                  <span className="font-bold text-[#1F1E1D]">Live Logs: {selectedProcId}</span>
                   <button
                     onClick={() => setSelectedProcId(null)}
-                    className="text-slate-500 hover:text-white"
+                    className="text-slate-500 hover:text-[#1F1E1D]"
                   >
                     Close
                   </button>
                 </div>
-                <pre className="max-h-48 overflow-y-auto whitespace-pre-wrap break-all text-slate-300 scrollbar-thin">
+                <pre className="max-h-48 overflow-y-auto whitespace-pre-wrap break-all text-[#6B6A67] scrollbar-thin">
                   {selectedProcLogs.join('\n') || '(No logs recorded yet)'}
                 </pre>
               </div>
@@ -1265,10 +1265,10 @@ export function CodeWorkspaceDrawer({
         {activeTab === 'preview' && (
           <div className="flex flex-col h-full space-y-3 font-sans text-xs">
             {/* Preview Toolbar */}
-            <div className="flex flex-wrap items-center justify-between gap-2 p-2 bg-[#171922] rounded-xl border border-[#272b3b]">
+            <div className="flex flex-wrap items-center justify-between gap-2 p-2 bg-[#FAF9F5] rounded-xl border border-[#FFFFFF]">
               <div className="flex items-center gap-2">
                 <Eye size={14} className="text-cyan-400" />
-                <span className="font-bold text-white text-xs">Port:</span>
+                <span className="font-bold text-[#1F1E1D] text-xs">Port:</span>
                 <input
                   type="number"
                   value={customPortInput}
@@ -1279,26 +1279,26 @@ export function CodeWorkspaceDrawer({
                       if (p) setPreviewPort(p);
                     }
                   }}
-                  className="w-18 bg-[#0e1017] border border-[#2e3345] rounded px-2 py-0.5 text-center font-mono text-xs text-cyan-300 focus:outline-none"
+                  className="w-18 bg-[#FAF9F5] border border-[#FFFFFF] rounded px-2 py-0.5 text-center font-mono text-xs text-cyan-300 focus:outline-none"
                 />
                 <button
                   onClick={() => {
                     const p = parseInt(customPortInput, 10);
                     if (p) setPreviewPort(p);
                   }}
-                  className="px-2 py-0.5 bg-blue-600 hover:bg-blue-500 text-white rounded text-[11px] font-semibold cursor-pointer"
+                  className="px-2 py-0.5 bg-blue-600 hover:bg-blue-500 text-[#1F1E1D] rounded text-[11px] font-semibold cursor-pointer"
                 >
                   Go
                 </button>
               </div>
 
               {/* Viewport switchers */}
-              <div className="flex items-center gap-1 bg-[#10121a] p-1 rounded-lg border border-[#242735]">
+              <div className="flex items-center gap-1 bg-[#FAF9F5] p-1 rounded-lg border border-[#FFFFFF]">
                 <button
                   onClick={() => setPreviewDevice('desktop')}
                   className={clsx(
                     "p-1 rounded cursor-pointer transition-colors",
-                    previewDevice === 'desktop' ? "bg-blue-600 text-white" : "text-slate-400 hover:text-white"
+                    previewDevice === 'desktop' ? "bg-blue-600 text-[#1F1E1D]" : "text-[#6B6A67] hover:text-[#1F1E1D]"
                   )}
                   title="Desktop View"
                 >
@@ -1308,7 +1308,7 @@ export function CodeWorkspaceDrawer({
                   onClick={() => setPreviewDevice('tablet')}
                   className={clsx(
                     "p-1 rounded cursor-pointer transition-colors",
-                    previewDevice === 'tablet' ? "bg-blue-600 text-white" : "text-slate-400 hover:text-white"
+                    previewDevice === 'tablet' ? "bg-blue-600 text-[#1F1E1D]" : "text-[#6B6A67] hover:text-[#1F1E1D]"
                   )}
                   title="Tablet View (768px)"
                 >
@@ -1318,7 +1318,7 @@ export function CodeWorkspaceDrawer({
                   onClick={() => setPreviewDevice('mobile')}
                   className={clsx(
                     "p-1 rounded cursor-pointer transition-colors",
-                    previewDevice === 'mobile' ? "bg-blue-600 text-white" : "text-slate-400 hover:text-white"
+                    previewDevice === 'mobile' ? "bg-blue-600 text-[#1F1E1D]" : "text-[#6B6A67] hover:text-[#1F1E1D]"
                   )}
                   title="Mobile View (375px)"
                 >
@@ -1330,7 +1330,7 @@ export function CodeWorkspaceDrawer({
               <div className="flex items-center gap-1.5">
                 <button
                   onClick={() => setPreviewKey(k => k + 1)}
-                  className="p-1.5 text-slate-400 hover:text-white bg-[#202330] rounded-lg transition-colors cursor-pointer"
+                  className="p-1.5 text-[#6B6A67] hover:text-[#1F1E1D] bg-[#FFFFFF] rounded-lg transition-colors cursor-pointer"
                   title="Reload preview"
                 >
                   <RefreshCw size={13} />
@@ -1339,7 +1339,7 @@ export function CodeWorkspaceDrawer({
                   href={`/api/preview/${previewPort}/`}
                   target="_blank"
                   rel="noreferrer"
-                  className="px-2 py-1 text-cyan-300 hover:text-white bg-cyan-600/20 hover:bg-cyan-600/30 border border-cyan-500/40 rounded-lg text-[11px] font-semibold flex items-center gap-1 cursor-pointer"
+                  className="px-2 py-1 text-cyan-300 hover:text-[#1F1E1D] bg-cyan-600/20 hover:bg-cyan-600/30 border border-cyan-500/40 rounded-lg text-[11px] font-semibold flex items-center gap-1 cursor-pointer"
                 >
                   <span>Open Window</span>
                   <ArrowUpRight size={12} />
@@ -1348,7 +1348,7 @@ export function CodeWorkspaceDrawer({
             </div>
 
             {/* Embedded Responsive Preview Sandbox */}
-            <div className="flex-1 min-h-[480px] bg-[#090a0f] border border-[#202331] rounded-xl overflow-hidden flex items-center justify-center p-2">
+            <div className="flex-1 min-h-[480px] bg-[#FAF9F5] border border-[#FFFFFF] rounded-xl overflow-hidden flex items-center justify-center p-2">
               <div className={clsx(
                 "h-full bg-white rounded-lg overflow-hidden transition-all duration-300 shadow-2xl",
                 previewDevice === 'desktop' ? "w-full" :

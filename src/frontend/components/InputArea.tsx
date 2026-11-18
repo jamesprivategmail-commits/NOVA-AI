@@ -267,8 +267,8 @@ export const InputArea = React.memo(function InputArea({
             <div className="flex items-center gap-2 truncate">
               <img src={attachment.data} alt={attachment.name} className="w-7 h-7 rounded-lg object-cover shrink-0 border border-white/10" />
               <div className="min-w-0">
-                <span className="truncate text-xs font-medium text-white block">{attachment.name}</span>
-                <span className="text-[10px] text-slate-400">Image attachment</span>
+                <span className="truncate text-xs font-medium text-[#1F1E1D] block">{attachment.name}</span>
+                <span className="text-[10px] text-[#6B6A67]">Image attachment</span>
               </div>
             </div>
           ) : attachment.kind === 'zip' ? (
@@ -277,7 +277,7 @@ export const InputArea = React.memo(function InputArea({
                 <Archive size={15} />
               </div>
               <div className="min-w-0">
-                <span className="truncate text-xs font-bold text-white block">{attachment.name}</span>
+                <span className="truncate text-xs font-bold text-[#1F1E1D] block">{attachment.name}</span>
                 <span className="text-[10px] text-amber-400 font-mono">
                   📦 {attachment.zipStats?.fileCount || 0} files unpacked · {((attachment.zipStats?.totalSize || 0) / 1024).toFixed(1)} KB
                 </span>
@@ -326,7 +326,7 @@ export const InputArea = React.memo(function InputArea({
             <button
               type="button"
               onClick={() => setAttachment(null)}
-              className="p-1.5 hover:bg-white/10 rounded-lg text-slate-400 hover:text-white transition-colors cursor-pointer"
+              className="p-1.5 hover:bg-white/10 rounded-lg text-[#6B6A67] hover:text-[#1F1E1D] transition-colors cursor-pointer"
               title="Remove attachment"
             >
               <X size={14} />
@@ -368,7 +368,7 @@ export const InputArea = React.memo(function InputArea({
               ? ''
               : 'bg-white/[0.05] hover:bg-white/[0.1] border-[var(--line)] text-[var(--text-primary)]'
           )}
-          style={imageMode ? { background: 'var(--accent)', color: '#1a1714', borderColor: 'transparent' } : undefined}
+          style={imageMode ? { background: 'var(--accent)', color: '#FAF9F5', borderColor: 'transparent' } : undefined}
           title={imageMode ? 'Image mode ON' : 'Generate image'}
         >
           <ImageIcon size={17} />
@@ -398,7 +398,7 @@ export const InputArea = React.memo(function InputArea({
           className={clsx(
             'w-9 h-9 sm:w-10 sm:h-10 rounded-full flex items-center justify-center shrink-0 transition-all cursor-pointer',
             isDictating
-              ? 'bg-rose-600 text-white animate-pulse'
+              ? 'bg-rose-600 text-[#1F1E1D] animate-pulse'
               : 'bg-white/[0.05] hover:bg-white/[0.1] border border-[var(--line)] text-[var(--text-primary)]'
           )}
           title={isDictating ? 'Listening... click to stop' : 'Voice dictation (speech-to-text)'}
@@ -411,7 +411,7 @@ export const InputArea = React.memo(function InputArea({
           <button
             type="button"
             onClick={onStop}
-            className="w-9 h-9 sm:w-10 sm:h-10 bg-rose-600 hover:bg-rose-500 text-white rounded-full transition-all flex items-center justify-center shrink-0 cursor-pointer shadow-[var(--shadow-sm)]"
+            className="w-9 h-9 sm:w-10 sm:h-10 bg-rose-600 hover:bg-rose-500 text-[#1F1E1D] rounded-full transition-all flex items-center justify-center shrink-0 cursor-pointer shadow-[var(--shadow-sm)]"
             title="Stop generation"
           >
             <Square size={13} fill="currentColor" />
@@ -421,7 +421,7 @@ export const InputArea = React.memo(function InputArea({
             type="button"
             onClick={handleSend}
             className="w-9 h-9 sm:w-10 sm:h-10 rounded-full transition-all flex items-center justify-center shrink-0 cursor-pointer active:scale-95 shadow-[var(--shadow-sm)] hover:brightness-110"
-            style={{ background: 'var(--accent)', color: '#1a1714' }}
+            style={{ background: 'var(--accent)', color: '#FAF9F5' }}
             title="Send message"
           >
             <Send size={15} fill="currentColor" />
