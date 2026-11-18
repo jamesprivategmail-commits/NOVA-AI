@@ -222,17 +222,20 @@ export function Sidebar({
             {searchQuery ? 'No matching conversations' : 'No chats in this folder'}
           </div>
         ) : (
-          filteredChats.map((chat) => (
+          filteredChats.map((chat, index) => (
             <div
               key={chat.id}
               onClick={() => onSelectChat(chat.id)}
               className={clsx(
-                "group relative flex items-center justify-between px-2.5 py-2 rounded-lg cursor-pointer transition-all text-xs font-medium",
+                "group relative flex items-center justify-between px-2.5 py-2 rounded-lg cursor-pointer transition-all text-xs font-medium stagger-item",
                 currentChatId === chat.id
                   ? "accent-bar text-white"
                   : "hover:bg-white/[0.04] text-slate-400 hover:text-white"
               )}
-              style={currentChatId === chat.id ? { background: 'var(--accent-soft)' } : undefined}
+              style={{
+                ...(currentChatId === chat.id ? { background: 'var(--accent-soft)' } : undefined),
+                animationDelay: `${Math.min(index * 28, 350)}ms`,
+              }}
             >
               <div className="flex items-center gap-1.5 truncate pr-3 flex-1">
                 {chat.isPinned && (

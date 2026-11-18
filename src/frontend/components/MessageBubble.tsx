@@ -14,6 +14,8 @@ import { BuildTestCard } from './tools/BuildTestCard';
 import { terminalManager } from '../utils/terminalManager';
 import { parseMessageContent } from '../utils/toolEventParser';
 import { getStoredActiveRepo, getStoredGitHubCodingMode, setStoredGitHubCodingMode, ActiveRepoState } from '../utils/github';
+import { getPersonaForProvider, getPersona, type NovaPersona } from '../models/personas';
+import { NovaOrb } from './NovaOrb';
 import { clsx } from 'clsx';
 
 interface MessageBubbleProps {
@@ -25,6 +27,8 @@ interface MessageBubbleProps {
   activeRepo?: ActiveRepoState | null;
   codingModeEnabled?: boolean;
   onEnableCodingMode?: () => void;
+  /** Active persona (falls back to provider stored on the message) */
+  persona?: NovaPersona;
 }
 
 export const MessageBubble = React.memo(function MessageBubble({
@@ -35,7 +39,8 @@ export const MessageBubble = React.memo(function MessageBubble({
   onToggleStar: propOnToggleStar,
   activeRepo: propActiveRepo,
   codingModeEnabled: propCodingModeEnabled,
-  onEnableCodingMode
+  onEnableCodingMode,
+  persona: personaProp
 }: MessageBubbleProps) {
   const isUser = message.role === 'user';
   const [copied, setCopied] = useState(false);
@@ -45,6 +50,7 @@ export const MessageBubble = React.memo(function MessageBubble({
   const [previewImage, setPreviewImage] = useState<string | null>(null);
 
   const activeRepo = propActiveRepo !== undefined ? propActiveRepo : getStoredActiveRepo();
+  const persona = personaProp || getPersonaForProvider(message.providerUsed);
   const codingModeEnabled = propCodingModeEnabled !== undefined ? propCodingModeEnabled : getStoredGitHubCodingMode();
   const [isSpeaking, setIsSpeaking] = useState(false);
 
@@ -251,10 +257,10 @@ export const MessageBubble = React.memo(function MessageBubble({
             </div>
           ) : (
             <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-full presence-ring overflow-hidden flex items-center justify-center">
-              <img
-                src="/void-logo.jpg"
-                alt="VOID AI"
-                className="w-full h-full object-cover"
+              <NovaOrb
+                size={34}
+                state={isStreaming ? 'thinking' : isSpeaking ? 'speaking' : 'idle'}
+                label={persona.name}
               />
             </div>
           )}
@@ -271,7 +277,7 @@ export const MessageBubble = React.memo(function MessageBubble({
             isUser ? "flex-row-reverse" : "flex-row"
           )}>
             <span className={clsx("text-xs font-medium", isUser ? "text-slate-300" : "text-white")}>
-              {isUser ? 'You' : <span>VOID <span className="text-gradient">AI</span></span>}
+              {isUser ? 'You' : <span>{persona.name.split(' ')[0]} <span className="text-gradient" style={{ opacity: 0.9 }}>{persona.name.split(' ').slice(1).join(' ')}</span></span>}
             </span>
             <span className="text-[10px] text-[#8d8d91]">
               {new Date(message.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}

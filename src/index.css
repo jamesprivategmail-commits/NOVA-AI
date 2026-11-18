@@ -453,3 +453,171 @@
   50%      { transform: translateY(-5px); }
 }
 .animate-floatY { animation: floatY 6s ease-in-out infinite; }
+
+/* ============================================================
+   Nova mascot — <NovaOrb />
+   ============================================================ */
+.nova-orb {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+}
+.nova-orb__svg { display: block; overflow: visible; }
+
+/* idle — gentle breathing + slow float */
+.nova-orb--idle .nova-orb__body {
+  animation: nova-breathe 5.2s ease-in-out infinite, nova-float 9s ease-in-out infinite;
+  transform-origin: 50% 50%;
+}
+.nova-orb--idle .nova-orb__halo { animation: nova-halo 5.2s ease-in-out infinite; transform-origin: 50% 50%; }
+
+/* listening — soft pulse */
+.nova-orb--listening .nova-orb__body { animation: nova-pulse 2.1s ease-in-out infinite; transform-origin: 50% 50%; }
+
+/* thinking — orbiting particles + slow ripple */
+.nova-orb--thinking .nova-orb__orbit { animation: nova-orbit 6s linear infinite; transform-origin: 50% 50%; }
+.nova-orb--thinking .nova-orb__body { animation: nova-breathe 3.4s ease-in-out infinite; transform-origin: 50% 50%; }
+
+/* speaking — subtle shimmer sweep + talking mouth */
+.nova-orb__shimmer { animation: nova-shimmer 1.6s ease-in-out infinite; transform-origin: 50% 50%; }
+.nova-orb__mouth { animation: nova-talk 0.9s ease-in-out infinite; transform-origin: 50% 58px; }
+
+.nova-orb__ripple {
+  position: absolute; inset: -6%;
+  border-radius: 9999px;
+  border: 1px solid var(--accent-muted);
+  opacity: 0;
+  animation: nova-ripple 2.6s ease-out infinite;
+}
+.nova-orb__ripple--2 { animation-delay: 1.3s; }
+
+@keyframes nova-breathe {
+  0%, 100% { transform: scale(1); }
+  50%      { transform: scale(1.045); }
+}
+@keyframes nova-float {
+  0%, 100% { transform: translateY(0); }
+  50%      { transform: translateY(-3px); }
+}
+@keyframes nova-halo {
+  0%, 100% { opacity: 0.4; }
+  50%      { opacity: 0.7; }
+}
+@keyframes nova-pulse {
+  0%, 100% { transform: scale(1); }
+  50%      { transform: scale(1.07); }
+}
+@keyframes nova-orbit {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(360deg); }
+}
+@keyframes nova-ripple {
+  0%   { transform: scale(0.85); opacity: 0.55; }
+  100% { transform: scale(1.35); opacity: 0; }
+}
+@keyframes nova-shimmer {
+  0%   { transform: translateX(-26px) rotate(0deg); opacity: 0; }
+  30%  { opacity: 1; }
+  100% { transform: translateX(96px) rotate(0deg); opacity: 0; }
+}
+@keyframes nova-talk {
+  0%, 100% { transform: scaleY(1); }
+  50%      { transform: scaleY(0.45); }
+}
+
+/* ============================================================
+   Round-two motion pass
+   ============================================================ */
+
+/* Animated gradient wordmark */
+.text-gradient-animated {
+  background-size: 220% 220%;
+  animation: gradient-pan 7s ease-in-out infinite;
+}
+@keyframes gradient-pan {
+  0%, 100% { background-position: 0% 50%; }
+  50%      { background-position: 100% 50%; }
+}
+
+/* Page-level view transition between screens */
+.view-enter {
+  animation: viewIn 0.35s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+@keyframes viewIn {
+  from { opacity: 0; transform: translateY(10px) scale(0.995); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+/* Message entry — fade + rise (slightly deeper than round one) */
+@keyframes msgRise {
+  from { opacity: 0; transform: translateY(10px) scale(0.995); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+.animate-msgRise { animation: msgRise 0.3s cubic-bezier(0.22, 1, 0.36, 1) both; }
+
+/* Hover lift — spring-ish micro-interaction */
+.hover-lift {
+  transition: transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.25s ease,
+              border-color 0.2s ease, background 0.2s ease, color 0.2s ease;
+  will-change: transform;
+}
+.hover-lift:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px -8px rgba(0, 0, 0, 0.5), 0 0 0 1px var(--accent-muted);
+}
+.hover-lift:active { transform: translateY(0) scale(0.98); transition-duration: 0.08s; }
+
+/* Sidebar item stagger on open */
+@keyframes staggerIn {
+  from { opacity: 0; transform: translateX(-8px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+.stagger-item { animation: staggerIn 0.3s cubic-bezier(0.22, 1, 0.36, 1) both; }
+
+/* Dropdown menu items — soft stagger */
+.nova-menu-item { animation: staggerIn 0.28s cubic-bezier(0.22, 1, 0.36, 1) both; }
+
+/* Animated presence indicator (small pulsing dot) */
+.presence-dot {
+  position: relative;
+  display: inline-block;
+  width: 7px; height: 7px;
+  border-radius: 9999px;
+  background: var(--accent);
+}
+.presence-dot::after {
+  content: "";
+  position: absolute; inset: -3px;
+  border-radius: 9999px;
+  border: 1px solid var(--accent-muted);
+  animation: presence-pulse 2.2s ease-out infinite;
+}
+@keyframes presence-pulse {
+  0%   { transform: scale(0.7); opacity: 0.8; }
+  100% { transform: scale(1.6); opacity: 0; }
+}
+
+/* Animated Today date chip */
+.date-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  padding: 0.3rem 0.8rem;
+  margin-bottom: 0.85rem;
+  border-radius: 9999px;
+  font-size: 0.72rem;
+  font-weight: 500;
+  letter-spacing: 0.02em;
+  color: var(--text-secondary);
+  background: var(--glass-bg);
+  border: 1px solid var(--glass-border);
+  backdrop-filter: blur(10px);
+}
+.date-chip__dot {
+  width: 6px; height: 6px;
+  border-radius: 9999px;
+  background: var(--accent);
+  animation: dot-breathe 2.4s ease-in-out infinite;
+}

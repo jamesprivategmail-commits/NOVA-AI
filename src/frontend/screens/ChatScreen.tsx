@@ -54,6 +54,8 @@ import { CommandPalette } from '../components/CommandPalette';
 import { AppearanceMenu } from '../components/AppearanceMenu';
 import { ShortcutsModal } from '../components/ShortcutsModal';
 import { ModelSelectorDropdown } from '../components/ModelSelectorDropdown';
+import { NovaOrb } from '../components/NovaOrb';
+import { getPersona, getTimeGreeting, PROMPT_LIBRARY } from '../models/personas';
 import { CodeWorkspaceDrawer, WorkspaceTab } from '../components/workspace/CodeWorkspaceDrawer';
 import { PromptStudioModal } from '../components/workspace/PromptStudioModal';
 import { LiveHtmlPreviewModal } from '../components/workspace/LiveHtmlPreviewModal';
@@ -102,6 +104,7 @@ export function ChatScreen({ userId }: ChatScreenProps) {
     return localStorage.getItem('void_ai_selected_model') || 'auto';
   });
   const [showShortcuts, setShowShortcuts] = useState(false);
+  const [promptLibOpen, setPromptLibOpen] = useState(false);
 
   const handleSelectProviderModel = (provider: 'groq' | 'cohere' | 'bazaarlink' | 'gemini', model: string) => {
     setSelectedProvider(provider);
@@ -708,7 +711,7 @@ export function ChatScreen({ userId }: ChatScreenProps) {
   };
 
   return (
-    <div className="flex h-screen h-[100dvh] w-full bg-transparent text-white overflow-hidden relative overscroll-none select-none">
+    <div className="view-enter flex h-screen h-[100dvh] w-full bg-transparent text-white overflow-hidden relative overscroll-none select-none">
       {/* Crystal-clear starry void background enhancement — sharp & high-contrast */}
       <div className="fixed inset-0 pointer-events-none z-0 bg-gradient-to-b from-black/25 via-transparent to-black/45" />
       {/* Mobile Backdrop Overlay when Sidebar is expanded */}
@@ -797,7 +800,7 @@ export function ChatScreen({ userId }: ChatScreenProps) {
 
             <div className="flex items-center gap-2">
               <span className="font-display font-bold text-sm tracking-tight text-white whitespace-nowrap">
-                VOID <span className="text-gradient">AI</span>
+                NOVA <span className="text-gradient text-gradient-animated">AI</span>
               </span>
               <span className="hidden sm:inline text-[10px] font-mono text-slate-500">
                 · 2026
@@ -891,45 +894,79 @@ export function ChatScreen({ userId }: ChatScreenProps) {
           className="flex-1 min-h-0 overflow-y-auto relative flex flex-col justify-between smooth-scroll-container touch-scroll select-text"
         >
           {messages.length === 0 ? (
-            /* Clean 2026 NOVA/VOID Welcome Screen */
+            /* Clean 2026 NOVA Welcome Screen — Nova mascot, time-aware greeting, prompt library */
             <div className="flex-1 flex flex-col items-center justify-center px-4 max-w-2xl mx-auto w-full">
-              <div className="relative mb-6 animate-riseIn">
-                <div className="w-24 h-24 rounded-[1.75rem] glass-strong p-2.5 flex items-center justify-center animate-floatY overflow-hidden">
-                  <img
-                    src="/void-logo.jpg"
-                    alt="VOID AI"
-                    className="w-full h-full object-cover rounded-[1.25rem]"
-                  />
+              <div className="relative mb-5 animate-riseIn">
+                <div className="relative glass-strong rounded-[1.75rem] p-2.5 overflow-hidden">
+                  <NovaOrb size={80} state="idle" label="Nova" />
                 </div>
               </div>
-              <h1 className="font-display text-2xl sm:text-3xl font-bold text-white mb-1.5 tracking-tight animate-riseIn">
-                How can I help you today?
+
+              {/* Animated Today date chip */}
+              <div className="date-chip animate-riseIn" style={{ animationDelay: '60ms' }}>
+                <span className="date-chip__dot" />
+                {new Date().toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric' })}
+              </div>
+
+              <h1 className="font-display text-2xl sm:text-3xl font-bold text-white mb-1.5 tracking-tight animate-riseIn" style={{ animationDelay: '100ms' }}>
+                {getTimeGreeting()}. How can I help you today?
               </h1>
-              <p className="text-sm text-slate-400 mb-8 font-normal animate-riseIn">Next-generation real-time multimodal intelligence</p>
+              <p className="text-sm text-slate-400 mb-6 font-normal animate-riseIn" style={{ animationDelay: '160ms' }}>Next-generation real-time multimodal intelligence</p>
+
+              {/* Prompt library — one-click starter prompts */}
+              <div className="relative w-full max-w-lg mb-4 animate-riseIn" style={{ animationDelay: '220ms' }}>
+                <button
+                  onClick={() => setPromptLibOpen(o => !o)}
+                  className="chip !rounded-xl !px-4 !py-3 w-full justify-between !text-sm"
+                  aria-expanded={promptLibOpen}
+                >
+                  <span className="flex items-center gap-2">
+                    <span style={{ color: 'var(--accent)' }}>✦</span>
+                    <span className="text-white font-medium">Prompt library</span>
+                    <span className="text-slate-500 text-xs">· {PROMPT_LIBRARY.length} crafted starters</span>
+                  </span>
+                  <span className={clsx('text-slate-400 transition-transform duration-200', promptLibOpen && 'rotate-180')}>▾</span>
+                </button>
+                {promptLibOpen && (
+                  <div className="absolute left-0 right-0 top-full mt-2 z-30 rounded-2xl bg-[#14151a] border border-[#272a36] shadow-2xl p-2 max-h-72 overflow-y-auto animate-fadeIn">
+                    {PROMPT_LIBRARY.map((p, i) => (
+                      <button
+                        key={p.label}
+                        onClick={() => { setPromptLibOpen(false); handleSend(p.prompt); }}
+                        className="w-full text-left px-3 py-2.5 rounded-xl hover:bg-[#1d202b] transition-colors cursor-pointer nova-menu-item"
+                        style={{ animationDelay: `${i * 25}ms` }}
+                      >
+                        <span className="block text-xs font-semibold text-white">{p.label}</span>
+                        <span className="block text-[11px] text-slate-500 truncate mt-0.5">{p.prompt}</span>
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
 
               {/* Quick action prompts with 2026 obsidian styling */}
-              <div className="w-full grid grid-cols-2 gap-2.5 max-w-lg">
+              <div className="w-full grid grid-cols-2 gap-2.5 max-w-lg animate-riseIn" style={{ animationDelay: '280ms' }}>
                 <button
                   onClick={() => handleSend("Explain quantum computing algorithms with interactive examples.")}
-                  className="chip !rounded-xl !px-4 !py-3.5 justify-center text-center min-h-[56px] text-[13px] sm:text-sm leading-snug"
+                  className="chip !rounded-xl !px-4 !py-3.5 justify-center text-center min-h-[56px] text-[13px] sm:text-sm leading-snug hover-lift"
                 >
                   Quantum algorithms & code
                 </button>
                 <button
                   onClick={() => handleSend("Build a high-performance REST and WebSocket API architecture.")}
-                  className="chip !rounded-xl !px-4 !py-3.5 justify-center text-center min-h-[56px] text-[13px] sm:text-sm leading-snug"
+                  className="chip !rounded-xl !px-4 !py-3.5 justify-center text-center min-h-[56px] text-[13px] sm:text-sm leading-snug hover-lift"
                 >
                   Design API architecture
                 </button>
                 <button
                   onClick={() => handleSend("Audit my code for security vulnerabilities and optimize memory.")}
-                  className="chip !rounded-xl !px-4 !py-3.5 justify-center text-center min-h-[56px] text-[13px] sm:text-sm leading-snug"
+                  className="chip !rounded-xl !px-4 !py-3.5 justify-center text-center min-h-[56px] text-[13px] sm:text-sm leading-snug hover-lift"
                 >
                   Security audit & profiling
                 </button>
                 <button
                   onClick={() => handleSend("Summarize the latest 2026 tech breakthroughs and research.")}
-                  className="chip !rounded-xl !px-4 !py-3.5 justify-center text-center min-h-[56px] text-[13px] sm:text-sm leading-snug"
+                  className="chip !rounded-xl !px-4 !py-3.5 justify-center text-center min-h-[56px] text-[13px] sm:text-sm leading-snug hover-lift"
                 >
                   2026 Research & Insights
                 </button>
@@ -947,6 +984,7 @@ export function ChatScreen({ userId }: ChatScreenProps) {
                   onToggleStar={handleToggleStar}
                   activeRepo={activeRepo}
                   codingModeEnabled={codingMode}
+                  persona={getPersona(selectedProvider, selectedModel)}
                   onEnableCodingMode={handleEnableCodingMode}
                 />
               ))}
@@ -964,6 +1002,7 @@ export function ChatScreen({ userId }: ChatScreenProps) {
                   isStreaming={true}
                   activeRepo={activeRepo}
                   codingModeEnabled={codingMode}
+                  persona={getPersona(selectedProvider, selectedModel)}
                   onEnableCodingMode={() => {
                     setCodingMode(true);
                     setStoredGitHubCodingMode(true);
@@ -972,7 +1011,7 @@ export function ChatScreen({ userId }: ChatScreenProps) {
               )}
 
               {/* Thinking Indicator when waiting for stream start */}
-              {isLoading && !streamingMessage && <ThinkingIndicator />}
+              {isLoading && !streamingMessage && <ThinkingIndicator persona={getPersona(selectedProvider, selectedModel)} />}
 
               <div ref={messagesEndRef} />
             </div>

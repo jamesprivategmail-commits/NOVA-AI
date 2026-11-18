@@ -1,6 +1,8 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Cpu, Zap, ChevronDown, Check, Sliders, Sparkles, Activity } from 'lucide-react';
+import { Cpu, ChevronDown, Check, Sliders } from 'lucide-react';
 import { clsx } from 'clsx';
+import { NOVA_PERSONAS, getPersona } from '../models/personas';
+import { NovaOrb } from './NovaOrb';
 
 export interface ModelOption {
   provider: 'groq' | 'cohere' | 'bazaarlink' | 'gemini';
@@ -113,6 +115,7 @@ export function ModelSelectorDropdown({
   }, [isOpen]);
 
   const currentOption = AVAILABLE_MODELS.find(m => m.id === selectedModel) || AVAILABLE_MODELS[0];
+  const currentPersona = getPersona(currentOption.provider, currentOption.id);
 
   const handleTempChange = (val: number) => {
     setTemperature(val);
@@ -133,9 +136,9 @@ export function ModelSelectorDropdown({
         )}
         title="Select AI Model & Inspect Latency Matrix"
       >
-        <div className="w-2 h-2 rounded-full bg-blue-400 shrink-0" />
+        <NovaOrb size={16} className="shrink-0" label={currentPersona.name} />
         <span className="font-semibold truncate max-w-[120px] sm:max-w-[170px]">
-          {currentOption.name.replace(' Versatile', '').replace(' Instant', '')}
+          {currentPersona.name}
         </span>
 
         {/* Real-time telemetry snippet if available */}
@@ -159,50 +162,54 @@ export function ModelSelectorDropdown({
           <div className="px-3 py-2 border-b border-[#222430] flex items-center justify-between">
             <div className="flex items-center gap-2">
               <Cpu size={14} className="text-blue-400" />
-              <span className="text-xs font-bold tracking-tight">AI Engine Matrix</span>
+              <span className="text-xs font-bold tracking-tight">Choose your Nova</span>
             </div>
             <span className="text-[10px] font-mono text-slate-500">2026 Router</span>
           </div>
 
           {/* Model Choices List */}
           <div className="py-1.5 space-y-1">
-            {AVAILABLE_MODELS.map((model) => {
-              const isSelected = selectedModel === model.id;
+            {NOVA_PERSONAS.map((persona, i) => {
+              const isSelected = selectedModel === persona.modelId;
               return (
                 <div
-                  key={model.id}
+                  key={persona.modelId}
                   onClick={() => {
-                    onSelect(model.provider, model.id);
+                    onSelect(persona.provider, persona.modelId);
                     setIsOpen(false);
                   }}
                   className={clsx(
-                    "p-2.5 rounded-xl cursor-pointer transition-all border",
+                    "p-2.5 rounded-xl cursor-pointer transition-all border nova-menu-item",
                     isSelected
                       ? "bg-[#1d202b] border-[#383d4f] text-white"
                       : "bg-transparent border-transparent hover:bg-[#181a22] text-slate-300 hover:text-white"
                   )}
+                  style={{ animationDelay: `${i * 35}ms` }}
                 >
                   <div className="flex items-start justify-between gap-2">
-                    <div className="min-w-0">
-                      <div className="flex items-center gap-2">
-                        <span className="text-xs font-bold truncate">{model.name}</span>
-                        {isSelected && (
-                          <span className="text-[10px] text-blue-400 font-mono flex items-center gap-0.5">
-                            <Check size={11} className="stroke-[3]" /> Active
-                          </span>
-                        )}
+                    <div className="flex items-start gap-2.5 min-w-0">
+                      <NovaOrb size={30} className="shrink-0 mt-0.5" label={persona.name} />
+                      <div className="min-w-0">
+                        <div className="flex items-center gap-2">
+                          <span className="text-xs font-bold truncate">{persona.name}</span>
+                          {isSelected && (
+                            <span className="text-[10px] text-blue-400 font-mono flex items-center gap-0.5">
+                              <Check size={11} className="stroke-[3]" /> Active
+                            </span>
+                          )}
+                        </div>
+                        <p className="text-[11px] text-slate-400 line-clamp-2 mt-0.5">
+                          {persona.personality}
+                        </p>
+                        <p className="text-[10px] text-slate-500 truncate mt-0.5 font-mono">
+                          {persona.engine}
+                        </p>
                       </div>
-                      <p className="text-[11px] text-slate-400 truncate mt-0.5">
-                        {model.tagline}
-                      </p>
-                      <p className="text-[10px] text-slate-500 line-clamp-1 mt-0.5">
-                        {model.recommendedFor}
-                      </p>
                     </div>
 
                     <div className="text-right shrink-0 font-mono tabular-nums text-[10px]">
-                      <div className="text-slate-300 font-medium">{model.speed}</div>
-                      <div className="text-slate-500 mt-0.5">{model.latencyBadge}</div>
+                      <div className="text-slate-300 font-medium">{AVAILABLE_MODELS.find(m => m.id === persona.modelId)?.speed}</div>
+                      <div className="text-slate-500 mt-0.5">{AVAILABLE_MODELS.find(m => m.id === persona.modelId)?.latencyBadge}</div>
                     </div>
                   </div>
                 </div>

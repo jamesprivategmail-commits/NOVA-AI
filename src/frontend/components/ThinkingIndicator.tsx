@@ -1,8 +1,14 @@
 import React from 'react';
+import { NovaOrb } from './NovaOrb';
+import { getPersona, type NovaPersona } from '../models/personas';
 
 const STEPS = ['Understanding your question', 'Gathering context', 'Composing a response'];
 
-export function ThinkingIndicator() {
+export function ThinkingIndicator({ persona }: { persona?: NovaPersona }) {
+  const activePersona = persona || getPersona(
+    (typeof localStorage !== 'undefined' && localStorage.getItem('void_ai_selected_provider')) || 'groq',
+    (typeof localStorage !== 'undefined' && localStorage.getItem('void_ai_selected_model')) || 'auto'
+  );
   const [step, setStep] = React.useState(0);
 
   React.useEffect(() => {
@@ -15,18 +21,13 @@ export function ThinkingIndicator() {
   return (
     <div className="w-full py-3 px-3 sm:px-4 animate-fadeIn">
       <div className="max-w-3xl mx-auto flex gap-2.5 items-start">
-        {/* Assistant avatar — quiet presence ring */}
-        <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-full presence-ring overflow-hidden shrink-0 mt-0.5">
-          <img
-            src="/void-logo.jpg"
-            alt="VOID AI"
-            className="w-full h-full object-cover"
-          />
-        </div>
+        {/* Nova mascot — thinking state */}
+        <NovaOrb size={36} state="thinking" label={activePersona.name} className="shrink-0 mt-0.5" />
 
         <div className="flex flex-col gap-2 pt-1">
           <div className="flex items-center gap-1.5">
-            <span className="text-xs font-medium text-slate-200">VOID AI</span>
+            <span className="presence-dot" aria-hidden="true" />
+            <span className="text-xs font-medium text-slate-200">{activePersona.name}</span>
             <span className="text-[11px] text-slate-500">is thinking</span>
           </div>
 
