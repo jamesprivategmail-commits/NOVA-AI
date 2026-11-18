@@ -73,22 +73,22 @@ export function Sidebar({
   return (
     <aside
       className={clsx(
-        "fixed inset-y-0 left-0 z-40 md:relative md:z-30 flex flex-col h-full nova-glass text-white transition-all duration-200 ease-out w-64 sm:w-72 shrink-0 border-r border-[#2e3354] text-xs select-none",
+        "fixed inset-y-0 left-0 z-40 md:relative md:z-30 flex flex-col h-full nova-glass text-white transition-all duration-200 ease-out w-64 sm:w-72 shrink-0 border-r border-[var(--nova-border)] text-xs select-none",
         !isOpen && "-translate-x-full md:w-0 md:-translate-x-full overflow-hidden opacity-0 pointer-events-none"
       )}
     >
       {/* Top Drawer Header */}
-      <div className="p-3 border-b border-[#2e3354] flex items-center justify-between">
+      <div className="p-3 border-b border-[var(--nova-border)] flex items-center justify-between">
         <div className="flex items-center gap-2.5">
-          <div className="w-10 h-10 rounded-lg bg-black/80 border border-[#2e3354] p-0.5 flex items-center justify-center overflow-hidden">
+          <div className="w-10 h-10 rounded-xl p-[1.5px] flex items-center justify-center overflow-hidden" style={{ background: 'linear-gradient(135deg, var(--nova-accent), var(--nova-accent-2))'">
             <img 
               src="/void-logo.jpg"
-              alt="VOID Logo" 
-              className="w-full h-full object-cover"
+              alt="NOVA" 
+              className="w-full h-full object-cover rounded-[10px]"
             />
           </div>
-          <span className="font-bold text-sm text-white">
-            VOID AI
+          <span className="font-bold text-sm nova-gradient-text tracking-tight">
+            NOVA
           </span>
         </div>
 
@@ -99,8 +99,8 @@ export function Sidebar({
             className={clsx(
               "w-[34px] h-[34px] rounded-lg border flex items-center justify-center transition-all cursor-pointer shrink-0",
               isSearching 
-                ? "bg-[#181b30] border-[#3b4168] text-white" 
-                : "bg-[#14172a] hover:bg-[#181b30] border-[#2e3354] text-[#9aa3c7] hover:text-white"
+                ? "bg-white/[0.06] border-[var(--nova-border-strong)] text-white" 
+                : "bg-white/[0.04] hover:bg-white/[0.06] border-[var(--nova-border)] text-[var(--nova-text-2)] hover:text-white"
             )}
             title="Search Conversations"
           >
@@ -111,7 +111,7 @@ export function Sidebar({
           {onClose && (
             <button
               onClick={onClose}
-              className="w-[34px] h-[34px] rounded-lg border bg-[#14172a] hover:bg-[#181b30] border-[#2e3354] text-[#9aa3c7] hover:text-white flex items-center justify-center transition-all cursor-pointer shrink-0 md:hidden"
+              className="w-[34px] h-[34px] rounded-lg border bg-white/[0.04] hover:bg-white/[0.06] border-[var(--nova-border)] text-[var(--nova-text-2)] hover:text-white flex items-center justify-center transition-all cursor-pointer shrink-0 md:hidden"
               title="Close sidebar"
             >
               <X size={17} />
@@ -122,20 +122,20 @@ export function Sidebar({
 
       {/* Expandable Search Input */}
       {isSearching && (
-        <div className="p-2 border-b border-[#2e3354] relative">
+        <div className="p-2 border-b border-[var(--nova-border)] relative">
           <input
             type="text"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             placeholder="Search recent chats..."
             autoFocus
-            className="w-full bg-[#14172a] border border-[#2e3354] text-white text-[11px] rounded-lg pl-8 pr-8 py-2 outline-none focus:border-[#3b4168]"
+            className="w-full bg-white/[0.04] border border-[var(--nova-border)] text-white text-[11px] rounded-lg pl-8 pr-8 py-2 outline-none focus:border-[var(--nova-border-strong)]"
           />
-          <Search size={14} className="absolute left-4.5 top-4 text-[#9aa3c7]" />
+          <Search size={14} className="absolute left-4.5 top-4 text-[var(--nova-text-2)]" />
           {searchQuery && (
             <button 
               onClick={() => setSearchQuery('')}
-              className="absolute right-4.5 top-4 text-[#9aa3c7] hover:text-white cursor-pointer"
+              className="absolute right-4.5 top-4 text-[var(--nova-text-2)] hover:text-white cursor-pointer"
             >
               <X size={14} />
             </button>
@@ -144,10 +144,10 @@ export function Sidebar({
       )}
 
       {/* Primary Action: New Chat — increased by 20% */}
-      <div className="p-2.5 border-b border-[#2e3354] space-y-2">
+      <div className="p-2.5 border-b border-[var(--nova-border)] space-y-2">
         <button
           onClick={onNewChat}
-          className="w-full flex items-center justify-center gap-2 bg-gradient-to-br from-violet-600 to-indigo-600 hover:opacity-90 text-white font-medium py-2.5 px-3.5 rounded-lg transition-all cursor-pointer text-[13px] sm:text-sm"
+          className="w-full flex items-center justify-center gap-2 nova-btn-primary font-semibold py-2.5 px-3.5 rounded-xl transition-all cursor-pointer text-[13px] sm:text-sm"
         >
           <Plus size={18} />
           <span>New Chat</span>
@@ -156,7 +156,7 @@ export function Sidebar({
         {onOpenGitHub && (
           <button
             onClick={onOpenGitHub}
-            className="w-full flex items-center justify-between p-2 rounded-lg bg-[#14172a] hover:bg-[#181b30] border border-[#2e3354] text-white transition-colors cursor-pointer text-xs"
+            className="w-full flex items-center justify-between p-2 rounded-lg bg-white/[0.04] hover:bg-white/[0.06] border border-[var(--nova-border)] text-white transition-colors cursor-pointer text-xs"
             title="Open GitHub Workspace & Settings"
           >
             <div className="flex items-center gap-2">
@@ -165,13 +165,13 @@ export function Sidebar({
               </svg>
               <span className="font-semibold text-[11px]">GitHub Workspace</span>
             </div>
-            <span className="text-[10px] text-[#3f86ff] font-mono">Workspace</span>
+            <span className="text-[10px] text-[var(--nova-accent-2)] font-mono">Workspace</span>
           </button>
         )}
       </div>
 
       {/* Folder & Tag Filter Segmented Control */}
-      <div className="px-2.5 py-1.5 flex items-center gap-1 border-b border-[#2d303b] text-[11px] overflow-x-auto">
+      <div className="px-2.5 py-1.5 flex items-center gap-1 border-b border-[var(--nova-border)] text-[11px] overflow-x-auto">
         {[
           { id: 'all', label: 'All' },
           { id: 'pinned', label: 'Pinned' },
@@ -184,7 +184,7 @@ export function Sidebar({
             className={clsx(
               "px-2 py-1 rounded-md transition-colors cursor-pointer shrink-0 font-medium",
               activeFolder === tab.id
-                ? "bg-[#252837] text-white"
+                ? "bg-[var(--nova-accent-soft)] text-white border border-[var(--nova-accent-border)]"
                 : "text-slate-400 hover:text-white"
             )}
           >
@@ -195,7 +195,7 @@ export function Sidebar({
 
       {/* Recents Section Header */}
       <div className="px-3 pt-2.5 pb-1 flex items-center justify-between">
-        <span className="text-[10px] font-medium text-[#9aa3c7] uppercase tracking-wide">
+        <span className="text-[10px] font-medium text-[var(--nova-text-2)] uppercase tracking-wide">
           {activeFolder === 'pinned' ? 'Pinned Chats' : 'Conversations'}
         </span>
         {chats.length > 0 && onClearAllHistory && (
@@ -205,7 +205,7 @@ export function Sidebar({
                 onClearAllHistory();
               }
             }}
-            className="text-[11px] text-[#9aa3c7] hover:text-white transition-colors cursor-pointer py-0.5 px-1.5 rounded hover:bg-[#181b30]"
+            className="text-[11px] text-[var(--nova-text-2)] hover:text-white transition-colors cursor-pointer py-0.5 px-1.5 rounded hover:bg-white/[0.06]"
             title="Clear History"
           >
             Clear all
@@ -216,7 +216,7 @@ export function Sidebar({
       {/* Conversations List */}
       <div className="flex-1 overflow-y-auto px-2 space-y-1">
         {filteredChats.length === 0 ? (
-          <div className="p-4 text-center text-[11px] text-[#9aa3c7]">
+          <div className="p-4 text-center text-[11px] text-[var(--nova-text-2)]">
             {searchQuery ? 'No matching conversations' : 'No chats in this folder'}
           </div>
         ) : (
@@ -227,8 +227,8 @@ export function Sidebar({
               className={clsx(
                 "group relative flex items-center justify-between px-2.5 py-2 rounded-lg cursor-pointer transition-all text-xs font-medium",
                 currentChatId === chat.id
-                  ? "bg-[#181b30] text-white"
-                  : "hover:bg-[#14172a] text-[#9aa3c7] hover:text-white"
+                  ? "bg-white/[0.06] text-white"
+                  : "hover:bg-white/[0.04] text-[var(--nova-text-2)] hover:text-white"
               )}
             >
               <div className="flex items-center gap-1.5 truncate pr-3 flex-1">
@@ -238,14 +238,14 @@ export function Sidebar({
                 <span className="truncate text-xs leading-tight">{chat.title || 'Untitled Chat'}</span>
               </div>
 
-              <div className="absolute right-1.5 flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity bg-[#181b30] px-1 py-0.5 rounded shadow-sm">
+              <div className="absolute right-1.5 flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity bg-white/[0.06] px-1 py-0.5 rounded shadow-sm">
                 {onTogglePinChat && (
                   <button
                     onClick={(e) => {
                       e.stopPropagation();
                       onTogglePinChat(chat.id, !chat.isPinned);
                     }}
-                    className="p-1 text-[#9aa3c7] hover:text-amber-400 cursor-pointer"
+                    className="p-1 text-[var(--nova-text-2)] hover:text-amber-400 cursor-pointer"
                     title={chat.isPinned ? "Unpin chat" : "Pin chat to top"}
                   >
                     <Pin size={12} className={chat.isPinned ? "fill-amber-400" : ""} />
@@ -257,7 +257,7 @@ export function Sidebar({
                       e.stopPropagation();
                       onExportChat(chat.id);
                     }}
-                    className="p-1 text-[#9aa3c7] hover:text-blue-400 cursor-pointer"
+                    className="p-1 text-[var(--nova-text-2)] hover:text-blue-400 cursor-pointer"
                     title="Export chat as Markdown"
                   >
                     <Download size={12} />
@@ -271,7 +271,7 @@ export function Sidebar({
                       onRenameChat(chat.id, newTitle.trim());
                     }
                   }}
-                  className="p-1 text-[#9aa3c7] hover:text-white cursor-pointer"
+                  className="p-1 text-[var(--nova-text-2)] hover:text-white cursor-pointer"
                   title="Rename"
                 >
                   <Edit2 size={12} />
@@ -283,7 +283,7 @@ export function Sidebar({
                       onDeleteChat(chat.id);
                     }
                   }}
-                  className="p-1 text-[#9aa3c7] hover:text-rose-400 cursor-pointer"
+                  className="p-1 text-[var(--nova-text-2)] hover:text-rose-400 cursor-pointer"
                   title="Delete"
                 >
                   <Trash2 size={12} />
@@ -295,26 +295,26 @@ export function Sidebar({
       </div>
 
       {/* Bottom Footer */}
-      <div className="p-2.5 border-t border-[#2e3354] flex flex-col gap-2">
+      <div className="p-2.5 border-t border-[var(--nova-border)] flex flex-col gap-2">
         <div className="flex items-center justify-between gap-2">
           <button
             onClick={onOpenSettings}
-            className="flex-1 flex items-center gap-2.5 p-1.5 rounded-lg hover:bg-[#14172a] transition-all text-left cursor-pointer min-w-0"
+            className="flex-1 flex items-center gap-2.5 p-1.5 rounded-lg hover:bg-white/[0.04] transition-all text-left cursor-pointer min-w-0"
             title="Open Settings & Profile"
           >
-            <div className="w-[34px] h-[34px] rounded-full bg-gradient-to-br from-violet-600 to-indigo-600 text-white font-bold text-xs flex items-center justify-center shrink-0">
+            <div className="w-[34px] h-[34px] rounded-full nova-btn-primary text-white font-bold text-xs flex items-center justify-center shrink-0">
               {userName ? userName.slice(0, 2).toUpperCase() : 'MT'}
             </div>
             <div className="min-w-0 flex-1">
               <div className="text-xs font-medium text-white truncate leading-tight">{userName}</div>
-              <div className="text-[10px] text-[#9aa3c7] truncate leading-none mt-0.5">{userEmail}</div>
+              <div className="text-[10px] text-[var(--nova-text-2)] truncate leading-none mt-0.5">{userEmail}</div>
             </div>
           </button>
 
           {/* Settings button — increased by 20% to 38px */}
           <button
             onClick={onOpenSettings}
-            className="w-[38px] h-[38px] rounded-lg bg-[#14172a] hover:bg-[#181b30] text-[#9aa3c7] hover:text-white flex items-center justify-center transition-colors cursor-pointer shrink-0"
+            className="w-[38px] h-[38px] rounded-lg bg-white/[0.04] hover:bg-white/[0.06] text-[var(--nova-text-2)] hover:text-white flex items-center justify-center transition-colors cursor-pointer shrink-0"
             title="Settings & Control Center"
           >
             <Settings size={18} />
