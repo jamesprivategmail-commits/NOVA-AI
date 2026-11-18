@@ -108,6 +108,11 @@ export function ChatScreen({ userId }: ChatScreenProps) {
     localStorage.setItem('void_ai_selected_model', model);
   };
 
+  // Apply the persisted accent theme before first paint of the chrome
+  useEffect(() => {
+    applyStoredAccent();
+  }, []);
+
   // Keyboard Shortcuts (⌘K for command palette, ⌘E for editor, ⌘T for terminal)
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -912,7 +917,7 @@ export function ChatScreen({ userId }: ChatScreenProps) {
           {messages.length === 0 ? (
             /* Clean 2026 NOVA/VOID Welcome Screen */
             <div className="flex-1 flex flex-col items-center justify-center px-4 max-w-2xl mx-auto w-full">
-              <div className="w-24 h-24 rounded-2xl bg-black/80 border border-violet-500/40 p-1.5 flex items-center justify-center mb-5 overflow-hidden shadow-[0_0_40px_rgba(139,92,246,0.35)] nova-pulse ring-1 ring-white/10">
+              <div className="w-24 h-24 rounded-2xl bg-black/80 border border-[var(--nova-accent-border)] p-1.5 flex items-center justify-center mb-5 overflow-hidden nova-pulse ring-1 ring-white/10">
                 <img 
                   src="/void-logo.jpg"
                   alt="VOID AI" 

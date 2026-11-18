@@ -254,7 +254,7 @@ export function CommandPalette({
       <div className="fixed inset-0" onClick={onClose} />
 
       <div 
-        className="relative w-full max-w-xl bg-[#131628] border border-[#2a2d39] rounded-2xl shadow-2xl overflow-hidden flex flex-col z-10 select-none text-white"
+        className="relative w-full max-w-xl nova-glass-strong rounded-2xl shadow-2xl overflow-hidden flex flex-col z-10 select-none text-white"
         onKeyDown={handleKeyDown}
       >
         {/* Search Input Bar */}
@@ -279,7 +279,7 @@ export function CommandPalette({
               <X size={14} />
             </button>
           )}
-          <kbd className="hidden sm:inline-block px-1.5 py-0.5 text-[10px] font-mono font-medium text-slate-400 bg-[#191c33] border border-[#2e313f] rounded">
+          <kbd className="hidden sm:inline-block px-1.5 py-0.5 text-[10px] font-mono font-medium text-[var(--nova-text-3)] bg-white/[0.05] border border-[var(--nova-border)] rounded">
             ESC
           </kbd>
         </div>
@@ -301,14 +301,14 @@ export function CommandPalette({
                   className={clsx(
                     "flex items-center justify-between gap-3 px-3 py-2.5 rounded-xl cursor-pointer transition-all",
                     isSelected 
-                      ? "bg-[#1b1f3a] text-white" 
-                      : "text-slate-300 hover:bg-[#1a1c24] hover:text-white"
+                      ? "bg-white/[0.08] text-white" 
+                      : "text-[var(--nova-text-2)] hover:bg-white/[0.05] hover:text-white"
                   )}
                 >
                   <div className="flex items-center gap-3 min-w-0">
                     <div className={clsx(
                       "w-7 h-7 rounded-lg flex items-center justify-center shrink-0 border",
-                      isSelected ? "bg-[#272b3c] border-[#3a3f55]" : "bg-[#181b30] border-[#262835]"
+                      isSelected ? "bg-[var(--nova-accent-soft)] border-[var(--nova-accent-border)]" : "bg-white/[0.04] border-[var(--nova-border)]"
                     )}>
                       {item.icon}
                     </div>
@@ -329,7 +329,7 @@ export function CommandPalette({
 
                   <div className="flex items-center gap-2 shrink-0">
                     {item.shortcut && (
-                      <kbd className="px-1.5 py-0.5 text-[10px] font-mono text-slate-400 bg-[#151830] border border-[#2a2d3b] rounded">
+                      <kbd className="px-1.5 py-0.5 text-[10px] font-mono text-[var(--nova-text-3)] bg-white/[0.05] border border-[var(--nova-border)] rounded">
                         {item.shortcut}
                       </kbd>
                     )}
@@ -344,7 +344,7 @@ export function CommandPalette({
         </div>
 
         {/* Footer shortcuts hint */}
-        <div className="px-4 py-2 bg-[#101116] border-t border-[#222530] flex items-center justify-between text-[11px] text-slate-500">
+        <div className="px-4 py-2 bg-transparent border-t border-[var(--nova-border)] flex items-center justify-between text-[11px] text-[var(--nova-text-3)]">
           <div className="flex items-center gap-3">
             <span><kbd className="font-mono text-[10px] text-slate-400">↑↓</kbd> to navigate</span>
             <span><kbd className="font-mono text-[10px] text-slate-400">↵</kbd> to select</span>
