@@ -186,7 +186,7 @@ export const MessageBubble = React.memo(function MessageBubble({
       return (
         <code
           {...rest}
-          className="bg-[#21262D] text-sky-300 px-1.5 py-0.5 rounded text-xs font-mono border border-[#30363D] inline-block"
+          className="bg-[var(--bg-3)] px-1.5 py-0.5 rounded-md text-xs font-mono border border-[var(--line)] inline-block"
         >
           {children}
         </code>
@@ -194,21 +194,21 @@ export const MessageBubble = React.memo(function MessageBubble({
     },
     table(props: any) {
       return (
-        <div className="overflow-x-auto my-4 border border-[#30363D] rounded-xl shadow-md">
-          <table className="w-full text-left text-sm text-slate-200 border-collapse">
+        <div className="overflow-x-auto my-4 border border-[var(--line)] rounded-xl shadow-[var(--shadow-sm)]">
+          <table className="w-full text-left text-sm text-[var(--text-primary)] border-collapse">
             {props.children}
           </table>
         </div>
       );
     },
     thead(props: any) {
-      return <thead className="bg-[#161B22] border-b border-[#30363D] text-xs font-semibold uppercase text-slate-300">{props.children}</thead>;
+      return <thead className="bg-[var(--bg-2)] border-b border-[var(--line)] text-xs font-semibold uppercase text-[var(--text-secondary)]">{props.children}</thead>;
     },
     th(props: any) {
-      return <th className="px-4 py-2.5 font-bold border-r border-[#30363D] last:border-r-0">{props.children}</th>;
+      return <th className="px-4 py-2.5 font-semibold border-r border-[var(--line)] last:border-r-0">{props.children}</th>;
     },
     td(props: any) {
-      return <td className="px-4 py-2 border-t border-[#30363D] border-r border-[#30363D] last:border-r-0 hover:bg-[#21262D]/50 transition-colors">{props.children}</td>;
+      return <td className="px-4 py-2 border-t border-[var(--line)] border-r border-[var(--line)] last:border-r-0 hover:bg-white/[0.03] transition-colors">{props.children}</td>;
     },
     a(props: any) {
       return (
@@ -216,7 +216,8 @@ export const MessageBubble = React.memo(function MessageBubble({
           href={props.href}
           target="_blank"
           rel="noopener noreferrer"
-          className="text-blue-400 hover:text-blue-300 underline underline-offset-4 inline-flex items-center gap-1 font-medium transition-colors"
+          className="inline-flex items-center gap-1 font-medium underline underline-offset-4 transition-colors"
+          style={{ color: 'var(--accent-hover)' }}
         >
           {props.children}
           <ExternalLink size={12} className="shrink-0" />
@@ -241,7 +242,7 @@ export const MessageBubble = React.memo(function MessageBubble({
   return (
     <div
       className={clsx(
-        "group w-full py-2.5 px-3 sm:px-4 transition-colors contain-paint animate-messageIn",
+        "group w-full py-3 px-3 sm:px-5 transition-colors contain-paint animate-messageIn",
         isUser ? "bg-transparent" : "bg-transparent"
       )}
     >
@@ -252,7 +253,7 @@ export const MessageBubble = React.memo(function MessageBubble({
         {/* Avatar */}
         <div className="shrink-0 mt-0.5">
           {isUser ? (
-            <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-full flex items-center justify-center text-xs font-bold bg-white/[0.06] border border-white/15 text-slate-200">
+            <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-full flex items-center justify-center text-xs font-semibold bg-white/[0.06] border border-white/15 text-[var(--text-secondary)] shadow-[var(--shadow-xs)]">
               <User size={14} />
             </div>
           ) : (
@@ -276,12 +277,12 @@ export const MessageBubble = React.memo(function MessageBubble({
             "flex items-center gap-1.5 sm:gap-2 mb-0.5",
             isUser ? "flex-row-reverse" : "flex-row"
           )}>
-            <span className={clsx("text-xs font-medium", isUser ? "text-slate-300" : "text-white")}>
-              {isUser ? 'You' : <span>{persona.name.split(' ')[0]} <span className="text-gradient" style={{ opacity: 0.9 }}>{persona.name.split(' ').slice(1).join(' ')}</span></span>}
-            </span>
-            <span className="text-[10px] text-[#8d8d91]">
-              {new Date(message.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-            </span>
+          <span className={clsx("text-xs font-medium", isUser ? "text-[var(--text-secondary)]" : "text-[var(--text-primary)]")}>
+            {isUser ? 'You' : <span>{persona.name.split(' ')[0]} <span className="text-gradient" style={{ opacity: 0.9 }}>{persona.name.split(' ').slice(1).join(' ')}</span></span>}
+          </span>
+          <span className="text-[10px] text-[var(--text-muted)]">
+            {new Date(message.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+          </span>
           </div>
 
           {/* Edit Mode vs Content */}
@@ -290,18 +291,18 @@ export const MessageBubble = React.memo(function MessageBubble({
               <textarea
                 value={editText}
                 onChange={(e) => setEditText(e.target.value)}
-                className="w-full bg-[#252527] border border-[#38383b] focus:border-[#454547] rounded-xl p-3 text-white min-h-[110px] outline-none text-sm"
+                className="w-full bg-[var(--bg-2)] border border-[var(--line)] focus:border-[var(--accent-muted)] rounded-xl p-3 text-[var(--text-primary)] min-h-[110px] outline-none text-sm transition-colors"
               />
               <div className="flex items-center gap-2 justify-end">
                 <button
                   onClick={() => setIsEditing(false)}
-                  className="px-3 py-1.5 text-xs font-medium text-[#8d8d91] hover:text-white bg-[#202022] hover:bg-[#38383b] rounded-lg transition-colors cursor-pointer"
+                  className="btn btn-ghost px-3 py-1.5 text-xs"
                 >
                   Cancel
                 </button>
                 <button
                   onClick={handleSaveEdit}
-                  className="px-4 py-1.5 text-xs font-medium bg-[#3f86ff] hover:opacity-90 text-white rounded-lg transition-all cursor-pointer"
+                  className="btn btn-primary px-4 py-1.5 text-xs"
                 >
                   Save
                 </button>
@@ -311,8 +312,8 @@ export const MessageBubble = React.memo(function MessageBubble({
             <div className={clsx(
               "text-sm leading-relaxed w-full",
               isUser
-                ? "bg-[#252527] text-white rounded-2xl rounded-tr-sm p-3.5 sm:p-4 max-w-[95%] sm:max-w-[85%] text-left"
-                : "bg-transparent text-white w-full max-w-none text-left"
+                ? "bubble-user text-[var(--text-primary)] p-3.5 sm:p-4 max-w-[92%] sm:max-w-[85%] text-left"
+                : "bubble-model text-[var(--text-primary)] p-4 sm:p-5 w-full max-w-none text-left"
             )}>
               <div className={clsx(
                 "prose prose-invert max-w-none text-sm leading-relaxed w-full",
@@ -323,8 +324,8 @@ export const MessageBubble = React.memo(function MessageBubble({
                 "prose-p:my-1.5 prose-p:leading-relaxed",
                 "prose-ul:my-1.5 prose-ul:pl-4 sm:prose-ul:pl-5 prose-ul:list-disc prose-li:my-0.5",
                 "prose-ol:my-1.5 prose-ol:pl-4 sm:prose-ol:pl-5 prose-ol:list-decimal prose-li:my-0.5",
-                "prose-blockquote:border-l-2 prose-blockquote:border-[#3f86ff] prose-blockquote:bg-[#252527] prose-blockquote:py-1.5 prose-blockquote:px-3 prose-blockquote:rounded-r-lg prose-blockquote:text-[#8d8d91] prose-blockquote:not-italic prose-blockquote:my-2",
-                "prose-hr:border-[#38383b] prose-hr:my-3",
+                "prose-blockquote:border-l-2 prose-blockquote:border-[var(--accent-muted)] prose-blockquote:bg-white/[0.03] prose-blockquote:py-1.5 prose-blockquote:px-3 prose-blockquote:rounded-r-lg prose-blockquote:text-[var(--text-secondary)] prose-blockquote:not-italic prose-blockquote:my-2",
+                "prose-hr:border-[var(--line)] prose-hr:my-3",
                 isStreaming && "streaming-cursor"
               )}>
                 {/* 1. AI Narration / Conversation before tool */}
@@ -408,7 +409,7 @@ export const MessageBubble = React.memo(function MessageBubble({
             )}>
               <button
                 onClick={handleCopy}
-                className="p-1.5 text-[#8d8d91] hover:text-white hover:bg-[#252527] rounded-md transition-colors flex items-center gap-1 text-xs cursor-pointer"
+                className="p-1.5 text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-white/[0.06] rounded-md transition-colors flex items-center gap-1 text-xs cursor-pointer"
                 title="Copy text"
               >
                 {copied ? (

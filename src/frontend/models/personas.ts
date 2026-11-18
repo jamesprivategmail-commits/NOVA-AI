@@ -24,7 +24,7 @@ export interface NovaPersona {
 export const NOVA_PERSONAS: NovaPersona[] = [
   {
     name: 'Nova Prime',
-    personality: 'The calm center of Nova.Routes anything you ask to wherever it will be answered best.',
+    personality: 'The still point of the constellation. Reads the room, routes your question to the mind best built for it.',
     provider: 'groq',
     modelId: 'auto',
     engine: 'VOID Dynamic Router · Multi-Pool Failover',
@@ -32,7 +32,7 @@ export const NOVA_PERSONAS: NovaPersona[] = [
   },
   {
     name: 'Nova Swift',
-    personality: 'Quick, crisp, always first to reply. Made for coding sprints and live chat.',
+    personality: 'First to answer, never first to stumble. Built for coding sprints, quick drafts and live back-and-forth.',
     provider: 'groq',
     modelId: 'qwen/qwen3.8-27b',
     engine: 'Groq LPUs · High Speed Reasoning',
@@ -40,7 +40,7 @@ export const NOVA_PERSONAS: NovaPersona[] = [
   },
   {
     name: 'Nova Sage',
-    personality: 'The deep thinker. Takes a breath, sees the whole architecture, then answers.',
+    personality: 'Thinks before it speaks. Takes the long view, maps the whole architecture, then answers with care.',
     provider: 'groq',
     modelId: 'openai/gpt-oss-120b',
     engine: 'Groq LPUs · Deep Parameter Intelligence',
@@ -48,7 +48,7 @@ export const NOVA_PERSONAS: NovaPersona[] = [
   },
   {
     name: 'Nova Anchor',
-    personality: 'Precise and well-grounded. Loves structure, citations and clean tool use.',
+    personality: 'Grounded and exact. Loves structure, clean citations, and getting the details right the first time.',
     provider: 'cohere',
     modelId: 'command-r-08-2024',
     engine: 'Cohere API · Enterprise Grounding',
@@ -56,7 +56,7 @@ export const NOVA_PERSONAS: NovaPersona[] = [
   },
   {
     name: 'Nova Oracle',
-    personality: 'Sees the long view. Vast context, fast mind, comfortable with multimodal work.',
+    personality: 'Holds the long view. Vast context, sharp eyes, at home across text, images and everything between.',
     provider: 'gemini',
     modelId: 'gemini-2.5-flash',
     engine: 'Google AI · Next-Gen Multimodal Reasoning',
@@ -64,7 +64,7 @@ export const NOVA_PERSONAS: NovaPersona[] = [
   },
   {
     name: 'Nova Steady',
-    personality: 'The reliable understudy. Calm, dependable answers when the rest are busy.',
+    personality: 'The reliable understudy. Calm, honest answers, always on call when the others are busy.',
     provider: 'bazaarlink',
     modelId: 'bazaarlink-fast',
     engine: 'BazaarLink · Chain-of-Thought',

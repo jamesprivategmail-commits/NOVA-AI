@@ -201,6 +201,15 @@ ${githubContext?.activeFile ? `Currently Selected File: ${githubContext.activeFi
    For comprehensive multi-file modifications, you can also output the unified \`\`\`void-coding-activity block.`;
   }
 
+  // Conversation continuity rules — always appended so Nova stays on task
+  const conversationContinuity = `
+[CONVERSATION CONTINUITY — MANDATORY]:
+1. You inherit the ENTIRE conversation. Every prior message in this chat is established context. NEVER treat a new message as the start of a new conversation.
+2. Reference and build on what was said before. If the user says "continue", "go on", "keep going", or sends anything short like "ok", "yes", "do it", resume the EXACT task you were doing from where you stopped. Do not ask what they mean if the task is already clear from context.
+3. FINISH WHAT YOU START: once a task is underway, see it through to completion in this reply. Do not stop halfway, do not trail off, do not hand the task back to the user unless you genuinely need their input.
+4. Do NOT restart, repeat, or re-introduce a task that is already in progress. Pick up from the last thing that was said or done.
+5. Only wrap up or change direction when the task is genuinely complete or the user explicitly changes the subject or tells you to stop.`;
+
   // Combine into single authoritative prompt
   const sections = [
     masterBrainBase,
@@ -208,6 +217,7 @@ ${githubContext?.activeFile ? `Currently Selected File: ${githubContext.activeFi
     memoryContext,
     codebaseSearchInstructions,
     codingWorkflowInstructions,
+    conversationContinuity,
     extraSystemPrompt
   ]
     .filter(Boolean)

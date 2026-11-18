@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
-import { 
-  Plus, Search, X, Edit2, Trash2, Settings, User, Pin, PinOff, Download, Folder, Tag
+import {
+  Plus, Search, X, Edit2, Trash2, Settings, Pin, Download, MessageSquare, Github
 } from 'lucide-react';
 import { Chat } from '../../models/types';
 import { clsx } from 'clsx';
@@ -33,6 +33,85 @@ interface SidebarProps {
   isAdmin?: boolean;
   isSupportStaff?: boolean;
   walletBalance?: number;
+}
+
+/** One conversation row — consistent icon + label alignment, hover action tray. */
+function ChatRow({
+  chat,
+  active,
+  index,
+  onSelect,
+  onTogglePin,
+  onExport,
+  onRename,
+  onDelete,
+}: {
+  chat: Chat;
+  active: boolean;
+  index: number;
+  onSelect: () => void;
+  onTogglePin?: () => void;
+  onExport?: () => void;
+  onRename: () => void;
+  onDelete: () => void;
+}) {
+  return (
+    <div
+      onClick={onSelect}
+      className={clsx(
+        'group relative flex items-center gap-2 px-2.5 py-2 rounded-xl cursor-pointer transition-colors text-[13px] font-medium stagger-item',
+        active
+          ? 'accent-bar bg-[var(--accent-soft)] text-[var(--text-primary)]'
+          : 'text-[var(--text-secondary)] hover:bg-white/[0.05] hover:text-[var(--text-primary)]'
+      )}
+      style={{ animationDelay: `${Math.min(index * 28, 350)}ms` }}
+    >
+      <MessageSquare
+        size={13}
+        className={clsx('shrink-0', active ? 'text-[var(--accent)]' : 'opacity-60 group-hover:opacity-90')}
+      />
+      {chat.isPinned && (
+        <Pin size={11} className="text-amber-400 shrink-0 fill-amber-400 rotate-45" />
+      )}
+      <span className="truncate flex-1 leading-tight min-w-0 pr-2">{chat.title || 'Untitled Chat'}</span>
+
+      {/* Hover action tray */}
+      <div className="absolute right-1.5 flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity bg-[var(--bg-2)] border border-[var(--line)] px-0.5 py-0.5 rounded-lg shadow-md">
+        {onTogglePin && (
+          <button
+            onClick={(e) => { e.stopPropagation(); onTogglePin(); }}
+            className="p-1 text-[var(--text-muted)] hover:text-amber-400 cursor-pointer transition-colors"
+            title={chat.isPinned ? 'Unpin chat' : 'Pin chat to top'}
+          >
+            <Pin size={12} className={chat.isPinned ? 'fill-amber-400' : ''} />
+          </button>
+        )}
+        {onExport && (
+          <button
+            onClick={(e) => { e.stopPropagation(); onExport(); }}
+            className="p-1 text-[var(--text-muted)] hover:text-[var(--text-primary)] cursor-pointer transition-colors"
+            title="Export chat as Markdown"
+          >
+            <Download size={12} />
+          </button>
+        )}
+        <button
+          onClick={(e) => { e.stopPropagation(); onRename(); }}
+          className="p-1 text-[var(--text-muted)] hover:text-[var(--text-primary)] cursor-pointer transition-colors"
+          title="Rename"
+        >
+          <Edit2 size={12} />
+        </button>
+        <button
+          onClick={(e) => { e.stopPropagation(); onDelete(); }}
+          className="p-1 text-[var(--text-muted)] hover:text-rose-400 cursor-pointer transition-colors"
+          title="Delete"
+        >
+          <Trash2 size={12} />
+        </button>
+      </div>
+    </div>
+  );
 }
 
 export function Sidebar({
@@ -73,106 +152,123 @@ export function Sidebar({
   return (
     <aside
       className={clsx(
-        "fixed inset-y-0 left-0 z-40 md:relative md:z-30 flex flex-col h-full glass-strong text-white transition-all duration-200 ease-out w-64 sm:w-72 shrink-0 border-r border-white/5 text-xs select-none",
-        !isOpen && "-translate-x-full md:w-0 md:-translate-x-full overflow-hidden opacity-0 pointer-events-none"
+        'fixed inset-y-0 left-0 z-40 md:relative md:z-30 flex flex-col h-full glass-strong text-white transition-all duration-200 ease-out w-64 sm:w-72 shrink-0 border-r border-[var(--line)] text-xs select-none',
+        !isOpen && '-translate-x-full md:w-0 md:-translate-x-full overflow-hidden opacity-0 pointer-events-none'
       )}
     >
-      {/* Top Drawer Header */}
-      <div className="p-3 border-b border-[#38383b] flex items-center justify-between">
+      {/* ── Brand ─────────────────────────────────────────── */}
+      <div className="p-3.5 border-b border-[var(--line)] flex items-center justify-between">
         <div className="flex items-center gap-2.5">
-          <div className="w-10 h-10 rounded-lg bg-black/80 border border-[#38383b] p-0.5 flex items-center justify-center overflow-hidden">
-            <img 
+          <div className="w-9 h-9 rounded-xl bg-black/40 border border-[var(--line)] p-0.5 flex items-center justify-center overflow-hidden shadow-[var(--shadow-xs)]">
+            <img
               src="/void-logo.jpg"
-              alt="VOID Logo" 
+              alt="VOID Logo"
               className="w-full h-full object-cover"
             />
           </div>
-          <span className="font-display text-base font-medium text-white tracking-tight">
+          <span className="font-display text-base font-medium text-[var(--text-primary)] tracking-tight">
             VOID <span className="text-gradient">AI</span>
           </span>
         </div>
 
         <div className="flex items-center gap-1.5">
-          {/* Search button — 34px */}
-          <button 
+          <button
             onClick={() => setIsSearching(!isSearching)}
             className={clsx(
-              "w-[34px] h-[34px] rounded-lg border flex items-center justify-center transition-all cursor-pointer shrink-0",
-              isSearching 
-                ? "bg-[#252527] border-[#454547] text-white" 
-                : "bg-[#202022] hover:bg-[#252527] border-[#38383b] text-[#8d8d91] hover:text-white"
+              'w-8 h-8 rounded-lg border flex items-center justify-center transition-colors cursor-pointer shrink-0',
+              isSearching
+                ? 'bg-[var(--bg-3)] border-[var(--line-strong)] text-[var(--text-primary)]'
+                : 'bg-white/[0.03] hover:bg-white/[0.07] border-[var(--line)] text-[var(--text-muted)] hover:text-[var(--text-primary)]'
             )}
             title="Search Conversations"
           >
-            <Search size={17} />
+            <Search size={16} />
           </button>
 
           {/* Close drawer on mobile */}
           {onClose && (
             <button
               onClick={onClose}
-              className="w-[34px] h-[34px] rounded-lg border bg-[#202022] hover:bg-[#252527] border-[#38383b] text-[#8d8d91] hover:text-white flex items-center justify-center transition-all cursor-pointer shrink-0 md:hidden"
+              className="w-8 h-8 rounded-lg bg-white/[0.03] hover:bg-white/[0.07] border border-[var(--line)] text-[var(--text-muted)] hover:text-[var(--text-primary)] flex items-center justify-center transition-colors cursor-pointer shrink-0 md:hidden"
               title="Close sidebar"
             >
-              <X size={17} />
+              <X size={16} />
             </button>
           )}
         </div>
       </div>
 
-      {/* Expandable Search Input */}
+      {/* ── Search ────────────────────────────────────────── */}
       {isSearching && (
-        <div className="p-2 border-b border-[#38383b] relative">
+        <div className="p-2.5 border-b border-[var(--line)] relative animate-fadeIn">
           <input
             type="text"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             placeholder="Search recent chats..."
             autoFocus
-            className="w-full bg-[#202022] border border-[#38383b] text-white text-[11px] rounded-lg pl-8 pr-8 py-2 outline-none focus:border-[#454547]"
+            className="w-full bg-[var(--bg-2)] border border-[var(--line)] text-[var(--text-primary)] text-[12px] rounded-lg pl-8 pr-8 py-2 outline-none focus:border-[var(--accent-muted)] transition-colors"
           />
-          <Search size={14} className="absolute left-4.5 top-4 text-[#8d8d91]" />
+          <Search size={13} className="absolute left-[18px] top-[19px] text-[var(--text-muted)]" />
           {searchQuery && (
-            <button 
+            <button
               onClick={() => setSearchQuery('')}
-              className="absolute right-4.5 top-4 text-[#8d8d91] hover:text-white cursor-pointer"
+              className="absolute right-[18px] top-[19px] text-[var(--text-muted)] hover:text-[var(--text-primary)] cursor-pointer"
             >
-              <X size={14} />
+              <X size={13} />
             </button>
           )}
         </div>
       )}
 
-      {/* Primary Action: New Chat — increased by 20% */}
-      <div className="p-2.5 border-b border-[#38383b] space-y-2">
+      {/* ── Actions ───────────────────────────────────────── */}
+      <div className="p-3 border-b border-[var(--line)] space-y-2">
         <button
           onClick={onNewChat}
-          className="w-full flex items-center justify-center gap-2 font-medium py-2.5 px-3.5 rounded-xl transition-all cursor-pointer text-[13px] sm:text-sm"
-          style={{ background: 'var(--accent)', color: '#1a1714' }}
+          className="btn btn-primary w-full py-2.5 px-3.5 text-[13px]"
         >
-          <Plus size={18} />
+          <Plus size={17} />
           <span>New Chat</span>
         </button>
 
         {onOpenGitHub && (
           <button
             onClick={onOpenGitHub}
-            className="w-full flex items-center justify-between p-2 rounded-lg bg-[#202022] hover:bg-[#252527] border border-[#38383b] text-white transition-colors cursor-pointer text-xs"
+            className="btn btn-ghost w-full justify-between p-2 px-2.5 text-xs"
             title="Open GitHub Workspace & Settings"
           >
-            <div className="flex items-center gap-2">
-              <svg className="w-3.5 h-3.5 fill-current shrink-0" viewBox="0 0 24 24">
-                <path fillRule="evenodd" clipRule="evenodd" d="M12 2C6.477 2 2 6.484 2 12.017c0 4.425 2.865 8.18 6.839 9.504.5.092.682-.217.682-.483 0-.237-.008-.868-.013-1.703-2.782.605-3.369-1.343-3.369-1.343-.454-1.158-1.11-1.466-1.11-1.466-.908-.62.069-.608.069-.608 1.003.07 1.53 1.032 1.53 1.032.892 1.53 2.341 1.088 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.113-4.555-4.951 0-1.093.39-1.988 1.029-2.688-.103-.253-.446-1.272.098-2.65 0 0 .84-.27 2.75 1.026A9.564 9.564 0 0112 6.844c.85.004 1.705.115 2.504.337 1.909-1.296 2.747-1.027 2.747-1.027.546 1.379.202 2.398.1 2.651.64.7 1.028 1.595 1.028 2.688 0 3.848-2.339 4.695-4.566 4.943.359.309.678.92.678 1.855 0 1.338-.012 2.419-.012 2.747 0 .268.18.58.688.482A10.019 10.019 0 0022 12.017C22 6.484 17.522 2 12 2z" />
-              </svg>
-              <span className="font-semibold text-[11px]">GitHub Workspace</span>
-            </div>
-            <span className="text-[10px] text-[#3f86ff] font-mono">Workspace</span>
+            <span className="flex items-center gap-2 min-w-0">
+              <Github size={15} className="text-[var(--accent)] shrink-0" />
+              <span className="font-semibold text-[11px] truncate">GitHub Workspace</span>
+            </span>
+            <span className="text-[10px] text-[var(--text-muted)] font-mono shrink-0">Workspace</span>
           </button>
         )}
       </div>
 
-      {/* Folder & Tag Filter Segmented Control */}
-      <div className="px-2.5 py-1.5 flex items-center gap-1 border-b border-[#2d303b] text-[11px] overflow-x-auto">
+      {/* ── Chats ─────────────────────────────────────────── */}
+      <div className="px-3 pt-3 pb-1.5 flex items-center justify-between">
+        <span className="section-label">
+          {activeFolder === 'pinned' ? 'Pinned' : 'Chats'}
+          <span className="ml-1.5 font-mono normal-case tracking-normal opacity-70">{filteredChats.length}</span>
+        </span>
+        {chats.length > 0 && onClearAllHistory && (
+          <button
+            onClick={() => {
+              if (confirm('Clear all conversation history?')) {
+                onClearAllHistory();
+              }
+            }}
+            className="text-[11px] text-[var(--text-muted)] hover:text-rose-300 transition-colors cursor-pointer py-0.5 px-1.5 rounded hover:bg-white/[0.05]"
+            title="Clear History"
+          >
+            Clear all
+          </button>
+        )}
+      </div>
+
+      {/* Filter segmented control */}
+      <div className="px-3 pb-1.5 flex items-center gap-1 text-[11px] overflow-x-auto no-scrollbar">
         {[
           { id: 'all', label: 'All' },
           { id: 'pinned', label: 'Pinned' },
@@ -183,147 +279,71 @@ export function Sidebar({
             key={tab.id}
             onClick={() => setActiveFolder(tab.id)}
             className={clsx(
-              "px-2 py-1 rounded-md transition-colors cursor-pointer shrink-0 font-medium",
+              'px-2 py-1 rounded-md transition-colors cursor-pointer shrink-0 font-medium',
               activeFolder === tab.id
-                ? "text-white"
-                : "text-slate-400 hover:text-white"
+                ? 'text-[var(--text-primary)] bg-[var(--accent-soft)] border border-[var(--accent-muted)]'
+                : 'text-[var(--text-muted)] hover:text-[var(--text-secondary)] border border-transparent'
             )}
-            style={activeFolder === tab.id ? { background: 'var(--accent-soft)' } : undefined}
           >
             {tab.label}
           </button>
         ))}
       </div>
 
-      {/* Recents Section Header */}
-      <div className="px-3 pt-2.5 pb-1 flex items-center justify-between">
-        <span className="text-[10px] font-medium text-[#8d8d91] uppercase tracking-wide">
-          {activeFolder === 'pinned' ? 'Pinned Chats' : 'Conversations'}
-        </span>
-        {chats.length > 0 && onClearAllHistory && (
-          <button
-            onClick={() => {
-              if (confirm('Clear all conversation history?')) {
-                onClearAllHistory();
-              }
-            }}
-            className="text-[11px] text-[#8d8d91] hover:text-white transition-colors cursor-pointer py-0.5 px-1.5 rounded hover:bg-[#252527]"
-            title="Clear History"
-          >
-            Clear all
-          </button>
-        )}
-      </div>
-
-      {/* Conversations List */}
-      <div className="flex-1 overflow-y-auto px-2 space-y-1">
+      <div className="flex-1 overflow-y-auto px-2.5 space-y-0.5">
         {filteredChats.length === 0 ? (
-          <div className="p-4 text-center text-[11px] text-[#8d8d91]">
+          <div className="p-4 text-center text-[11px] text-[var(--text-muted)]">
             {searchQuery ? 'No matching conversations' : 'No chats in this folder'}
           </div>
         ) : (
           filteredChats.map((chat, index) => (
-            <div
+            <ChatRow
               key={chat.id}
-              onClick={() => onSelectChat(chat.id)}
-              className={clsx(
-                "group relative flex items-center justify-between px-2.5 py-2 rounded-lg cursor-pointer transition-all text-xs font-medium stagger-item",
-                currentChatId === chat.id
-                  ? "accent-bar text-white"
-                  : "hover:bg-white/[0.04] text-slate-400 hover:text-white"
-              )}
-              style={{
-                ...(currentChatId === chat.id ? { background: 'var(--accent-soft)' } : undefined),
-                animationDelay: `${Math.min(index * 28, 350)}ms`,
+              chat={chat}
+              active={currentChatId === chat.id}
+              index={index}
+              onSelect={() => onSelectChat(chat.id)}
+              onTogglePin={onTogglePinChat ? () => onTogglePinChat(chat.id, !chat.isPinned) : undefined}
+              onExport={onExportChat ? () => onExportChat(chat.id) : undefined}
+              onRename={() => {
+                const newTitle = prompt('Rename chat:', chat.title);
+                if (newTitle && newTitle.trim()) {
+                  onRenameChat(chat.id, newTitle.trim());
+                }
               }}
-            >
-              <div className="flex items-center gap-1.5 truncate pr-3 flex-1">
-                {chat.isPinned && (
-                  <Pin size={11} className="text-amber-400 shrink-0 fill-amber-400 rotate-45" />
-                )}
-                <span className="truncate text-xs leading-tight">{chat.title || 'Untitled Chat'}</span>
-              </div>
-
-              <div className="absolute right-1.5 flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity bg-[#252527] px-1 py-0.5 rounded shadow-sm">
-                {onTogglePinChat && (
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      onTogglePinChat(chat.id, !chat.isPinned);
-                    }}
-                    className="p-1 text-[#8d8d91] hover:text-amber-400 cursor-pointer"
-                    title={chat.isPinned ? "Unpin chat" : "Pin chat to top"}
-                  >
-                    <Pin size={12} className={chat.isPinned ? "fill-amber-400" : ""} />
-                  </button>
-                )}
-                {onExportChat && (
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      onExportChat(chat.id);
-                    }}
-                    className="p-1 text-[#8d8d91] hover:text-blue-400 cursor-pointer"
-                    title="Export chat as Markdown"
-                  >
-                    <Download size={12} />
-                  </button>
-                )}
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    const newTitle = prompt('Rename chat:', chat.title);
-                    if (newTitle && newTitle.trim()) {
-                      onRenameChat(chat.id, newTitle.trim());
-                    }
-                  }}
-                  className="p-1 text-[#8d8d91] hover:text-white cursor-pointer"
-                  title="Rename"
-                >
-                  <Edit2 size={12} />
-                </button>
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    if (confirm('Delete chat?')) {
-                      onDeleteChat(chat.id);
-                    }
-                  }}
-                  className="p-1 text-[#8d8d91] hover:text-rose-400 cursor-pointer"
-                  title="Delete"
-                >
-                  <Trash2 size={12} />
-                </button>
-              </div>
-            </div>
+              onDelete={() => {
+                if (confirm('Delete chat?')) {
+                  onDeleteChat(chat.id);
+                }
+              }}
+            />
           ))
         )}
       </div>
 
-      {/* Bottom Footer */}
-      <div className="p-2.5 border-t border-[#38383b] flex flex-col gap-2">
+      {/* ── Account ───────────────────────────────────────── */}
+      <div className="p-3 border-t border-[var(--line)]">
         <div className="flex items-center justify-between gap-2">
           <button
             onClick={onOpenSettings}
-            className="flex-1 flex items-center gap-2.5 p-1.5 rounded-lg hover:bg-[#202022] transition-all text-left cursor-pointer min-w-0"
+            className="flex-1 flex items-center gap-2.5 p-1.5 rounded-xl hover:bg-white/[0.05] transition-colors text-left cursor-pointer min-w-0"
             title="Open Settings & Profile"
           >
-            <div className="w-[34px] h-[34px] rounded-full presence-ring bg-[#3f3a34] text-white font-medium text-xs flex items-center justify-center shrink-0">
+            <div className="w-9 h-9 rounded-full bg-[var(--accent-soft)] border border-[var(--accent-muted)] text-[var(--accent-hover)] font-semibold text-[11px] flex items-center justify-center shrink-0">
               {userName ? userName.slice(0, 2).toUpperCase() : 'MT'}
             </div>
             <div className="min-w-0 flex-1">
-              <div className="text-xs font-medium text-white truncate leading-tight">{userName}</div>
-              <div className="text-[10px] text-[#8d8d91] truncate leading-none mt-0.5">{userEmail}</div>
+              <div className="text-xs font-medium text-[var(--text-primary)] truncate leading-tight">{userName}</div>
+              <div className="text-[10px] text-[var(--text-muted)] truncate leading-none mt-0.5">{userEmail}</div>
             </div>
           </button>
 
-          {/* Settings button — increased by 20% to 38px */}
           <button
             onClick={onOpenSettings}
-            className="w-[38px] h-[38px] rounded-lg bg-[#202022] hover:bg-[#252527] text-[#8d8d91] hover:text-white flex items-center justify-center transition-colors cursor-pointer shrink-0"
+            className="btn btn-ghost w-9 h-9 !p-0"
             title="Settings & Control Center"
           >
-            <Settings size={18} />
+            <Settings size={17} />
           </button>
         </div>
       </div>

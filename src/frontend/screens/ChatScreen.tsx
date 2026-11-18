@@ -761,24 +761,24 @@ export function ChatScreen({ userId }: ChatScreenProps) {
       <div className="flex-1 flex flex-col h-full min-h-0 relative min-w-0 bg-transparent z-10 overflow-hidden">
         {/* Broadcast System Banner Notice */}
         {activeBroadcast && (
-          <div className="bg-[#191b24] border-b border-[#292d3b] p-2 px-3 flex items-center justify-between text-xs text-white z-30">
-            <div className="flex items-center gap-2 min-w-0">
-              <div className="p-1 bg-blue-600 rounded-lg text-white font-bold shrink-0">
+          <div className="glass-strong border-b border-[var(--line)] p-2 px-3 flex items-center justify-between text-xs text-white z-30">
+            <div className="flex items-center gap-2.5 min-w-0">
+              <div className="p-1.5 rounded-lg text-white font-bold shrink-0" style={{ background: 'var(--accent)', color: '#1a1714' }}>
                 <Radio size={12} />
               </div>
               <div className="min-w-0">
-                <div className="font-bold text-white flex items-center gap-1.5 text-xs">
+                <div className="font-semibold text-[var(--text-primary)] flex items-center gap-1.5 text-xs">
                   <span>{activeBroadcast.title}</span>
-                  <span className="text-[9px] uppercase font-mono text-slate-400">
+                  <span className="text-[9px] uppercase font-mono text-[var(--text-muted)]">
                     · Official Broadcast
                   </span>
                 </div>
-                <p className="text-slate-300 truncate text-[10px]">{activeBroadcast.message}</p>
+                <p className="text-[var(--text-secondary)] truncate text-[10px]">{activeBroadcast.message}</p>
               </div>
             </div>
             <button
               onClick={() => setDismissedBroadcastIds(prev => [...prev, activeBroadcast.id])}
-              className="p-1 text-slate-400 hover:text-white hover:bg-zinc-800 rounded transition-colors shrink-0"
+              className="p-1 text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-white/[0.06] rounded transition-colors shrink-0"
               title="Dismiss Notice"
             >
               <X size={14} />
@@ -786,23 +786,23 @@ export function ChatScreen({ userId }: ChatScreenProps) {
           </div>
         )}
 
-        {/* 2026 Top Bar Contract — Zone 1: Brand | Zone 2: Engine & Preset | Zone 3: Actions */}
+        {/* Top Bar — Zone 1: Brand | Zone 2: Engine & Preset | Zone 3: Actions */}
         <header className="h-14 px-3 sm:px-4 sticky top-0 z-20 glass-header-2026 flex items-center justify-between gap-4 select-none w-full min-w-0">
           {/* Zone 1: Sidebar Toggle + Brand wordmark */}
           <div className="flex items-center gap-2.5 shrink-0">
             <button
               onClick={() => setIsSidebarOpen(!isSidebarOpen)}
-              className="w-9 h-9 rounded-lg bg-[#181a22] hover:bg-[#202330] border border-[#2a2d3d] text-slate-300 hover:text-white flex items-center justify-center transition-colors cursor-pointer shrink-0"
+              className="btn btn-ghost w-9 h-9 !p-0"
               title="Toggle sidebar"
             >
               <Menu size={17} />
             </button>
 
             <div className="flex items-center gap-2">
-              <span className="font-display font-bold text-sm tracking-tight text-white whitespace-nowrap">
+              <span className="font-display font-semibold text-sm tracking-tight text-[var(--text-primary)] whitespace-nowrap">
                 NOVA <span className="text-gradient text-gradient-animated">AI</span>
               </span>
-              <span className="hidden sm:inline text-[10px] font-mono text-slate-500">
+              <span className="hidden sm:inline text-[10px] font-mono text-[var(--text-muted)] tracking-wide">
                 · 2026
               </span>
             </div>
@@ -819,10 +819,10 @@ export function ChatScreen({ userId }: ChatScreenProps) {
 
             <button
               onClick={() => setShowPromptStudio(true)}
-              className="h-9 px-2.5 rounded-lg bg-[#14151a] hover:bg-[#1a1c23] border border-[#262833] text-slate-300 hover:text-white text-xs font-medium hidden md:flex items-center gap-1.5 transition-colors cursor-pointer shrink-0"
+              className="btn btn-ghost h-9 px-2.5 text-xs hidden md:flex"
               title="Prompt Engineering Studio & Custom System Directives"
             >
-              <Sliders size={13} className="text-amber-400" />
+              <Sliders size={13} style={{ color: 'var(--accent)' }} />
               <span>Persona</span>
             </button>
           </div>
@@ -832,12 +832,12 @@ export function ChatScreen({ userId }: ChatScreenProps) {
             {/* Global Command Bar Button (⌘K) */}
             <button
               onClick={() => setShowCommandPalette(true)}
-              className="h-9 px-2.5 sm:px-3 rounded-lg bg-[#14151a] hover:bg-[#1f222e] border border-[#262833] hover:border-[#383d4f] text-slate-300 hover:text-white text-xs font-medium flex items-center gap-2 transition-all cursor-pointer"
+              className="btn btn-ghost h-9 px-2.5 sm:px-3 text-xs"
               title="Global Command Palette (Press ⌘K or Ctrl+K)"
             >
-              <Command size={13} className="text-blue-400" />
+              <Command size={13} style={{ color: 'var(--accent)' }} />
               <span className="hidden lg:inline text-xs">Commands</span>
-              <kbd className="hidden sm:inline-block px-1.5 py-0.5 text-[10px] font-mono text-slate-400 bg-[#1e2029] border border-[#2d303e] rounded">
+              <kbd className="hidden sm:inline-block px-1.5 py-0.5 text-[10px] font-mono text-[var(--text-muted)] bg-white/[0.05] border border-[var(--line)] rounded">
                 ⌘K
               </kbd>
             </button>
@@ -846,29 +846,29 @@ export function ChatScreen({ userId }: ChatScreenProps) {
             <button
               onClick={() => setShowWorkspace(!showWorkspace)}
               className={clsx(
-                "h-9 px-2.5 sm:px-3 rounded-lg border text-xs font-medium flex items-center gap-1.5 transition-all cursor-pointer",
+                'btn h-9 px-2.5 sm:px-3 text-xs',
                 showWorkspace
-                  ? "bg-blue-600 border-blue-500 text-white shadow-sm"
-                  : "bg-[#14151a] hover:bg-[#1f222e] border-[#262833] text-slate-300 hover:text-white"
+                  ? 'btn-primary'
+                  : 'btn-ghost'
               )}
               title="Toggle Interactive Code Workspace & Sandbox Terminal (⌘E)"
             >
-              <Code2 size={14} className={showWorkspace ? "text-white" : "text-emerald-400"} />
+              <Code2 size={14} className={showWorkspace ? 'opacity-80' : ''} style={showWorkspace ? undefined : { color: 'var(--accent)' }} />
               <span className="hidden sm:inline">Workspace</span>
             </button>
 
             <button
               onClick={() => setShowSubscription(true)}
-              className="h-9 px-3 rounded-lg bg-[#181a24] hover:bg-[#202330] border border-[#2d3040] text-white text-xs font-medium hidden sm:flex items-center gap-1 whitespace-nowrap transition-all cursor-pointer"
+              className="btn btn-ghost h-9 px-3 text-xs hidden sm:flex"
               title="Upgrade Plan"
             >
-              <span className="text-blue-400 text-xs">✦</span>
+              <span style={{ color: 'var(--accent)' }} className="text-xs">✦</span>
               <span>Plus</span>
             </button>
 
             <button
               onClick={() => setShowShortcuts(true)}
-              className="w-9 h-9 rounded-xl bg-white/[0.04] hover:bg-white/[0.08] border border-white/10 text-slate-300 hover:text-white hidden md:flex items-center justify-center transition-all cursor-pointer shrink-0"
+              className="btn btn-ghost w-9 h-9 !p-0 hidden md:flex"
               title="Keyboard shortcuts (press ?)"
             >
               <kbd className="kbd">?</kbd>
@@ -878,7 +878,7 @@ export function ChatScreen({ userId }: ChatScreenProps) {
 
             <button
               onClick={() => setShowSettings(true)}
-              className="w-9 h-9 rounded-xl text-white font-medium text-xs flex items-center justify-center transition-all cursor-pointer shrink-0"
+              className="w-9 h-9 rounded-full font-semibold text-[11px] flex items-center justify-center transition-all cursor-pointer shrink-0 hover:brightness-110 active:scale-95 shadow-[var(--shadow-sm)]"
               style={{ background: 'var(--accent)', color: '#1a1714' }}
               title="Account Settings"
             >
@@ -897,7 +897,7 @@ export function ChatScreen({ userId }: ChatScreenProps) {
             /* Clean 2026 NOVA Welcome Screen — Nova mascot, time-aware greeting, prompt library */
             <div className="flex-1 flex flex-col items-center justify-center px-4 max-w-2xl mx-auto w-full">
               <div className="relative mb-5 animate-riseIn">
-                <div className="relative glass-strong rounded-[1.75rem] p-2.5 overflow-hidden">
+              <div className="relative glass-strong rounded-[1.75rem] p-3 overflow-hidden shadow-[var(--shadow-md)]">
                   <NovaOrb size={80} state="idle" label="Nova" />
                 </div>
               </div>
@@ -908,10 +908,10 @@ export function ChatScreen({ userId }: ChatScreenProps) {
                 {new Date().toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric' })}
               </div>
 
-              <h1 className="font-display text-2xl sm:text-3xl font-bold text-white mb-1.5 tracking-tight animate-riseIn" style={{ animationDelay: '100ms' }}>
+              <h1 className="font-display text-2xl sm:text-3xl font-semibold text-[var(--text-primary)] mb-1.5 tracking-tight animate-riseIn" style={{ animationDelay: '100ms' }}>
                 {getTimeGreeting()}. How can I help you today?
               </h1>
-              <p className="text-sm text-slate-400 mb-6 font-normal animate-riseIn" style={{ animationDelay: '160ms' }}>Next-generation real-time multimodal intelligence</p>
+              <p className="text-sm text-[var(--text-secondary)] mb-6 font-normal animate-riseIn" style={{ animationDelay: '160ms' }}>Next-generation real-time multimodal intelligence</p>
 
               {/* Prompt library — one-click starter prompts */}
               <div className="relative w-full max-w-lg mb-4 animate-riseIn" style={{ animationDelay: '220ms' }}>
@@ -923,21 +923,21 @@ export function ChatScreen({ userId }: ChatScreenProps) {
                   <span className="flex items-center gap-2">
                     <span style={{ color: 'var(--accent)' }}>✦</span>
                     <span className="text-white font-medium">Prompt library</span>
-                    <span className="text-slate-500 text-xs">· {PROMPT_LIBRARY.length} crafted starters</span>
+                    <span className="text-[var(--text-muted)] text-xs">· {PROMPT_LIBRARY.length} crafted starters</span>
                   </span>
-                  <span className={clsx('text-slate-400 transition-transform duration-200', promptLibOpen && 'rotate-180')}>▾</span>
+                  <span className={clsx('text-[var(--text-muted)] transition-transform duration-200', promptLibOpen && 'rotate-180')}>▾</span>
                 </button>
                 {promptLibOpen && (
-                  <div className="absolute left-0 right-0 top-full mt-2 z-30 rounded-2xl bg-[#14151a] border border-[#272a36] shadow-2xl p-2 max-h-72 overflow-y-auto animate-fadeIn">
+                  <div className="absolute left-0 right-0 top-full mt-2 z-30 rounded-2xl glass-strong p-2 max-h-72 overflow-y-auto animate-fadeIn">
                     {PROMPT_LIBRARY.map((p, i) => (
                       <button
                         key={p.label}
                         onClick={() => { setPromptLibOpen(false); handleSend(p.prompt); }}
-                        className="w-full text-left px-3 py-2.5 rounded-xl hover:bg-[#1d202b] transition-colors cursor-pointer nova-menu-item"
+                        className="w-full text-left px-3 py-2.5 rounded-xl hover:bg-white/[0.06] transition-colors cursor-pointer nova-menu-item"
                         style={{ animationDelay: `${i * 25}ms` }}
                       >
-                        <span className="block text-xs font-semibold text-white">{p.label}</span>
-                        <span className="block text-[11px] text-slate-500 truncate mt-0.5">{p.prompt}</span>
+                        <span className="block text-xs font-semibold text-[var(--text-primary)]">{p.label}</span>
+                        <span className="block text-[11px] text-[var(--text-muted)] truncate mt-0.5">{p.prompt}</span>
                       </button>
                     ))}
                   </div>
@@ -1030,8 +1030,8 @@ export function ChatScreen({ userId }: ChatScreenProps) {
           )}
         </div>
 
-        {/* Fixed Bottom Input Area — flex flow docked, never overlaps messages or mobile keyboard */}
-        <div className="shrink-0 w-full bg-black/85 backdrop-blur-md pt-1.5 pb-2 px-2 z-10 flex flex-col items-center border-t border-white/5">
+        {/* Bottom Input Dock — flex flow docked, never overlaps messages or mobile keyboard */}
+        <div className="shrink-0 w-full glass-header-2026 pt-1.5 pb-2 px-2 z-10 flex flex-col items-center">
           {/* Quick-prompt chips row */}
           {!isLoading && messages.length > 0 && (
             <div className="w-full max-w-3xl flex items-center gap-1.5 px-1 pb-1.5 overflow-x-auto no-scrollbar">
@@ -1053,8 +1053,8 @@ export function ChatScreen({ userId }: ChatScreenProps) {
             onOpenLiveVoice={() => setShowLiveVoice(true)}
             onImageGenerate={handleImageGenerate}
           />
-          <div className="text-[10px] text-[#8d8d91] text-center px-2 pt-0.5 select-none">
-            VOID AI can make mistakes. Check important info.
+          <div className="text-[10px] text-[var(--text-muted)] text-center px-2 pt-1 select-none">
+            Nova can make mistakes. Check important info.
           </div>
         </div>
       </div>

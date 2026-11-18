@@ -246,23 +246,23 @@ export const InputArea = React.memo(function InputArea({
 
       {/* Drag & Drop Overlay */}
       {isDragging && (
-        <div className="absolute inset-x-2 -top-12 bottom-1 bg-blue-950/80 backdrop-blur-md border-2 border-dashed border-blue-400 rounded-2xl z-30 flex items-center justify-center gap-3 text-white text-xs font-semibold shadow-2xl animate-fadeIn">
-          <Archive size={20} className="text-blue-400 animate-bounce" />
+        <div className="absolute inset-x-2 -top-12 bottom-1 bg-[var(--bg-2)]/90 backdrop-blur-md border-2 border-dashed border-[var(--accent-muted)] rounded-2xl z-30 flex items-center justify-center gap-3 text-[var(--text-primary)] text-xs font-semibold shadow-[var(--shadow-lg)] animate-fadeIn">
+          <Archive size={20} className="animate-bounce" style={{ color: 'var(--accent)' }} />
           <span>Drop ZIP archive, HTML, or code file here to analyze</span>
         </div>
       )}
 
       {/* Attachment Processing Loader */}
       {isProcessingFile && (
-        <div className="mb-1.5 p-2 px-3 bg-[#161822] border border-blue-500/30 rounded-xl flex items-center gap-2.5 text-xs text-blue-300 animate-fadeIn">
-          <Loader2 size={14} className="animate-spin text-blue-400" />
+        <div className="mb-1.5 p-2 px-3 bg-[var(--bg-2)] border border-[var(--accent-muted)] rounded-xl flex items-center gap-2.5 text-xs text-[var(--text-secondary)] animate-fadeIn">
+          <Loader2 size={14} className="animate-spin" style={{ color: 'var(--accent)' }} />
           <span>Unpacking and parsing file contents for AI analysis...</span>
         </div>
       )}
 
       {/* Attachment Preview Card */}
       {attachment && !isProcessingFile && (
-        <div className="mb-1.5 p-2 px-3 bg-[#12131a] border border-white/10 rounded-xl flex items-center justify-between gap-3 text-xs text-slate-200 shadow-lg animate-fadeIn">
+        <div className="mb-1.5 p-2 px-3 glass rounded-xl flex items-center justify-between gap-3 text-xs text-[var(--text-primary)] animate-fadeIn">
           {attachment.kind === 'image' ? (
             <div className="flex items-center gap-2 truncate">
               <img src={attachment.data} alt={attachment.name} className="w-7 h-7 rounded-lg object-cover shrink-0 border border-white/10" />
@@ -285,12 +285,12 @@ export const InputArea = React.memo(function InputArea({
             </div>
           ) : (
             <div className="flex items-center gap-2.5 truncate">
-              <div className="w-7 h-7 rounded-lg bg-blue-500/10 border border-blue-500/30 text-blue-400 flex items-center justify-center shrink-0">
+              <div className="w-7 h-7 rounded-lg border flex items-center justify-center shrink-0" style={{ background: 'var(--accent-soft)', borderColor: 'var(--accent-muted)', color: 'var(--accent-hover)' }}>
                 <FileText size={15} />
               </div>
               <div className="min-w-0">
-                <span className="truncate text-xs font-medium text-white block">{attachment.name}</span>
-                <span className="text-[10px] text-slate-400 font-mono">
+                <span className="truncate text-xs font-medium text-[var(--text-primary)] block">{attachment.name}</span>
+                <span className="text-[10px] text-[var(--text-muted)] font-mono">
                   {attachment.mimeType} · {attachment.data.length} chars
                 </span>
               </div>
@@ -352,7 +352,7 @@ export const InputArea = React.memo(function InputArea({
         <button
           type="button"
           onClick={() => fileInputRef.current?.click()}
-          className="w-9 h-9 sm:w-10 sm:h-10 rounded-full bg-[#252527] hover:bg-[#38383b] text-white flex items-center justify-center shrink-0 transition-colors cursor-pointer"
+          className="w-9 h-9 sm:w-10 sm:h-10 rounded-full bg-white/[0.05] hover:bg-white/[0.1] border border-[var(--line)] text-[var(--text-primary)] flex items-center justify-center shrink-0 transition-colors cursor-pointer"
           title="Attach image or file"
         >
           <Plus size={19} />
@@ -363,11 +363,13 @@ export const InputArea = React.memo(function InputArea({
           type="button"
           onClick={() => setImageMode(!imageMode)}
           className={clsx(
-            "w-9 h-9 sm:w-10 sm:h-10 rounded-full flex items-center justify-center shrink-0 transition-all cursor-pointer",
-            imageMode ? "text-[#1a1714]" : "bg-[#252527] hover:bg-[#38383b] text-white"
+            'w-9 h-9 sm:w-10 sm:h-10 rounded-full flex items-center justify-center shrink-0 transition-all cursor-pointer border',
+            imageMode
+              ? ''
+              : 'bg-white/[0.05] hover:bg-white/[0.1] border-[var(--line)] text-[var(--text-primary)]'
           )}
-          style={imageMode ? { background: 'var(--accent)' } : undefined}
-          title={imageMode ? "Image mode ON" : "Generate image"}
+          style={imageMode ? { background: 'var(--accent)', color: '#1a1714', borderColor: 'transparent' } : undefined}
+          title={imageMode ? 'Image mode ON' : 'Generate image'}
         >
           <ImageIcon size={17} />
         </button>
@@ -384,8 +386,8 @@ export const InputArea = React.memo(function InputArea({
           autoCorrect="on"
           spellCheck={true}
           className={clsx(
-            "flex-1 min-h-[38px] max-h-[110px] bg-transparent text-white placeholder:text-[#8d8d91] border-0 focus:ring-0 resize-none py-2 px-1 outline-none text-base sm:text-sm leading-snug font-sans",
-            imageMode && "placeholder:text-[#3f86ff]"
+            "flex-1 min-h-[38px] max-h-[110px] bg-transparent text-[var(--text-primary)] placeholder:text-[var(--text-muted)] border-0 focus:ring-0 resize-none py-2 px-1 outline-none text-base sm:text-sm leading-snug font-sans",
+            imageMode && "placeholder:text-[var(--accent-hover)]"
           )}
         />
 
@@ -394,10 +396,12 @@ export const InputArea = React.memo(function InputArea({
           type="button"
           onClick={handleToggleDictation}
           className={clsx(
-            "w-9 h-9 sm:w-10 sm:h-10 rounded-full flex items-center justify-center shrink-0 transition-all cursor-pointer",
-            isDictating ? "bg-rose-600 text-white animate-pulse" : "bg-[#252527] hover:bg-[#38383b] text-white"
+            'w-9 h-9 sm:w-10 sm:h-10 rounded-full flex items-center justify-center shrink-0 transition-all cursor-pointer',
+            isDictating
+              ? 'bg-rose-600 text-white animate-pulse'
+              : 'bg-white/[0.05] hover:bg-white/[0.1] border border-[var(--line)] text-[var(--text-primary)]'
           )}
-          title={isDictating ? "Listening... click to stop" : "Voice dictation (speech-to-text)"}
+          title={isDictating ? 'Listening... click to stop' : 'Voice dictation (speech-to-text)'}
         >
           {isDictating ? <MicOff size={16} /> : <Mic size={16} />}
         </button>
@@ -407,7 +411,7 @@ export const InputArea = React.memo(function InputArea({
           <button
             type="button"
             onClick={onStop}
-            className="w-9 h-9 sm:w-10 sm:h-10 bg-rose-600 hover:bg-rose-500 text-white rounded-full transition-all flex items-center justify-center shrink-0 cursor-pointer shadow-md"
+            className="w-9 h-9 sm:w-10 sm:h-10 bg-rose-600 hover:bg-rose-500 text-white rounded-full transition-all flex items-center justify-center shrink-0 cursor-pointer shadow-[var(--shadow-sm)]"
             title="Stop generation"
           >
             <Square size={13} fill="currentColor" />
@@ -416,7 +420,7 @@ export const InputArea = React.memo(function InputArea({
           <button
             type="button"
             onClick={handleSend}
-            className="w-9 h-9 sm:w-10 sm:h-10 text-white rounded-full transition-all flex items-center justify-center shrink-0 cursor-pointer active:scale-95 shadow-md"
+            className="w-9 h-9 sm:w-10 sm:h-10 rounded-full transition-all flex items-center justify-center shrink-0 cursor-pointer active:scale-95 shadow-[var(--shadow-sm)] hover:brightness-110"
             style={{ background: 'var(--accent)', color: '#1a1714' }}
             title="Send message"
           >
@@ -426,7 +430,7 @@ export const InputArea = React.memo(function InputArea({
           <button
             type="button"
             onClick={onOpenLiveVoice}
-            className="w-9 h-9 sm:w-10 sm:h-10 bg-[#252527] hover:bg-[#38383b] text-white rounded-full transition-all flex items-center justify-center shrink-0 cursor-pointer"
+            className="w-9 h-9 sm:w-10 sm:h-10 bg-white/[0.05] hover:bg-white/[0.1] border border-[var(--line)] text-[var(--text-primary)] rounded-full transition-all flex items-center justify-center shrink-0 cursor-pointer"
             title="Live voice conversation mode"
           >
             <AudioLines size={16} />
