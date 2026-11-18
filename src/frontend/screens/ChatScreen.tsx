@@ -51,6 +51,7 @@ import {
 import { sendMessageToGroq, setClientSystemKeys } from '../../api/client';
 import { memoryManager } from '../../memory/context';
 import { CommandPalette } from '../components/CommandPalette';
+import { AccentThemePicker, applyStoredAccent } from '../components/AccentThemePicker';
 import { ModelSelectorDropdown } from '../components/ModelSelectorDropdown';
 import { CodeWorkspaceDrawer, WorkspaceTab } from '../components/workspace/CodeWorkspaceDrawer';
 import { PromptStudioModal } from '../components/workspace/PromptStudioModal';
@@ -888,6 +889,9 @@ export function ChatScreen({ userId }: ChatScreenProps) {
               <span className="text-blue-400 text-xs">✦</span>
               <span>Plus</span>
             </button>
+
+            {/* Accent theme picker (retints the whole Nova UI live) */}
+            <AccentThemePicker />
 
             <button
               onClick={() => setShowSettings(true)}
