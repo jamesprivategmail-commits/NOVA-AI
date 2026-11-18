@@ -51,6 +51,8 @@ import {
 import { sendMessageToGroq, setClientSystemKeys } from '../../api/client';
 import { memoryManager } from '../../memory/context';
 import { CommandPalette } from '../components/CommandPalette';
+import { AppearanceMenu } from '../components/AppearanceMenu';
+import { ShortcutsModal } from '../components/ShortcutsModal';
 import { ModelSelectorDropdown } from '../components/ModelSelectorDropdown';
 import { CodeWorkspaceDrawer, WorkspaceTab } from '../components/workspace/CodeWorkspaceDrawer';
 import { PromptStudioModal } from '../components/workspace/PromptStudioModal';
@@ -99,6 +101,7 @@ export function ChatScreen({ userId }: ChatScreenProps) {
   const [selectedModel, setSelectedModel] = useState<string>(() => {
     return localStorage.getItem('void_ai_selected_model') || 'auto';
   });
+  const [showShortcuts, setShowShortcuts] = useState(false);
 
   const handleSelectProviderModel = (provider: 'groq' | 'cohere' | 'bazaarlink' | 'gemini', model: string) => {
     setSelectedProvider(provider);
@@ -117,6 +120,12 @@ export function ChatScreen({ userId }: ChatScreenProps) {
         e.preventDefault();
         setWorkspaceTab('editor');
         setShowWorkspace(prev => !prev);
+      } else if (e.key === '?' && !e.metaKey && !e.ctrlKey && !e.altKey) {
+        const el = document.activeElement;
+        if (!el || (el.tagName !== 'INPUT' && el.tagName !== 'TEXTAREA' && !(el as HTMLElement).isContentEditable)) {
+          e.preventDefault();
+          setShowShortcuts(prev => !prev);
+        }
       } else if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 't') {
         e.preventDefault();
         setWorkspaceTab('terminal');
@@ -775,7 +784,7 @@ export function ChatScreen({ userId }: ChatScreenProps) {
         )}
 
         {/* 2026 Top Bar Contract — Zone 1: Brand | Zone 2: Engine & Preset | Zone 3: Actions */}
-        <header className="h-14 px-3 sm:px-4 sticky top-0 z-20 bg-[#0d0e13]/90 backdrop-blur-md border-b border-[#232634] flex items-center justify-between gap-4 select-none w-full min-w-0">
+        <header className="h-14 px-3 sm:px-4 sticky top-0 z-20 glass-header-2026 flex items-center justify-between gap-4 select-none w-full min-w-0">
           {/* Zone 1: Sidebar Toggle + Brand wordmark */}
           <div className="flex items-center gap-2.5 shrink-0">
             <button
@@ -787,8 +796,8 @@ export function ChatScreen({ userId }: ChatScreenProps) {
             </button>
 
             <div className="flex items-center gap-2">
-              <span className="font-bold text-sm tracking-tight text-white whitespace-nowrap">
-                VOID AI
+              <span className="font-display font-bold text-sm tracking-tight text-white whitespace-nowrap">
+                VOID <span className="text-gradient">AI</span>
               </span>
               <span className="hidden sm:inline text-[10px] font-mono text-slate-500">
                 · 2026
@@ -855,8 +864,19 @@ export function ChatScreen({ userId }: ChatScreenProps) {
             </button>
 
             <button
+              onClick={() => setShowShortcuts(true)}
+              className="w-9 h-9 rounded-xl bg-white/[0.04] hover:bg-white/[0.08] border border-white/10 text-slate-300 hover:text-white hidden md:flex items-center justify-center transition-all cursor-pointer shrink-0"
+              title="Keyboard shortcuts (press ?)"
+            >
+              <kbd className="kbd">?</kbd>
+            </button>
+
+            <AppearanceMenu />
+
+            <button
               onClick={() => setShowSettings(true)}
-              className="w-9 h-9 rounded-lg bg-blue-600 text-white font-bold text-xs flex items-center justify-center hover:bg-blue-500 transition-colors cursor-pointer shrink-0 shadow-sm"
+              className="w-9 h-9 rounded-xl text-white font-medium text-xs flex items-center justify-center transition-all cursor-pointer shrink-0"
+              style={{ background: 'var(--accent)', color: '#1a1714' }}
               title="Account Settings"
             >
               {profile?.displayName ? profile.displayName.slice(0, 2).toUpperCase() : 'MT'}
@@ -873,39 +893,43 @@ export function ChatScreen({ userId }: ChatScreenProps) {
           {messages.length === 0 ? (
             /* Clean 2026 NOVA/VOID Welcome Screen */
             <div className="flex-1 flex flex-col items-center justify-center px-4 max-w-2xl mx-auto w-full">
-              <div className="w-24 h-24 rounded-2xl bg-black/80 border border-red-500/30 p-1.5 flex items-center justify-center mb-5 overflow-hidden shadow-[0_0_30px_rgba(220,38,38,0.25)] ring-1 ring-white/10">
-                <img 
-                  src="/void-logo.jpg"
-                  alt="VOID AI" 
-                  className="w-full h-full object-cover rounded-xl"
-                />
+              <div className="relative mb-6 animate-riseIn">
+                <div className="w-24 h-24 rounded-[1.75rem] glass-strong p-2.5 flex items-center justify-center animate-floatY overflow-hidden">
+                  <img
+                    src="/void-logo.jpg"
+                    alt="VOID AI"
+                    className="w-full h-full object-cover rounded-[1.25rem]"
+                  />
+                </div>
               </div>
-              <h1 className="text-2xl sm:text-3xl font-bold text-white mb-1.5 tracking-tight">How can I help you today?</h1>
-              <p className="text-sm text-slate-400 mb-8 font-normal">Next-generation real-time multimodal intelligence</p>
+              <h1 className="font-display text-2xl sm:text-3xl font-bold text-white mb-1.5 tracking-tight animate-riseIn">
+                How can I help you today?
+              </h1>
+              <p className="text-sm text-slate-400 mb-8 font-normal animate-riseIn">Next-generation real-time multimodal intelligence</p>
 
               {/* Quick action prompts with 2026 obsidian styling */}
               <div className="w-full grid grid-cols-2 gap-2.5 max-w-lg">
                 <button
                   onClick={() => handleSend("Explain quantum computing algorithms with interactive examples.")}
-                  className="p-3.5 sm:p-4 min-h-[56px] rounded-xl bg-black/60 hover:bg-black/85 border border-white/10 hover:border-red-500/40 flex items-center justify-center text-center text-slate-300 hover:text-white text-[13px] sm:text-sm font-medium transition-all duration-200 cursor-pointer leading-snug hover:shadow-[0_0_15px_rgba(220,38,38,0.15)] active:scale-[0.98]"
+                  className="chip !rounded-xl !px-4 !py-3.5 justify-center text-center min-h-[56px] text-[13px] sm:text-sm leading-snug"
                 >
                   Quantum algorithms & code
                 </button>
                 <button
                   onClick={() => handleSend("Build a high-performance REST and WebSocket API architecture.")}
-                  className="p-3.5 sm:p-4 min-h-[56px] rounded-xl bg-black/60 hover:bg-black/85 border border-white/10 hover:border-blue-500/40 flex items-center justify-center text-center text-slate-300 hover:text-white text-[13px] sm:text-sm font-medium transition-all duration-200 cursor-pointer leading-snug hover:shadow-[0_0_15px_rgba(59,130,246,0.15)] active:scale-[0.98]"
+                  className="chip !rounded-xl !px-4 !py-3.5 justify-center text-center min-h-[56px] text-[13px] sm:text-sm leading-snug"
                 >
                   Design API architecture
                 </button>
                 <button
                   onClick={() => handleSend("Audit my code for security vulnerabilities and optimize memory.")}
-                  className="p-3.5 sm:p-4 min-h-[56px] rounded-xl bg-black/60 hover:bg-black/85 border border-white/10 hover:border-emerald-500/40 flex items-center justify-center text-center text-slate-300 hover:text-white text-[13px] sm:text-sm font-medium transition-all duration-200 cursor-pointer leading-snug hover:shadow-[0_0_15px_rgba(16,185,129,0.15)] active:scale-[0.98]"
+                  className="chip !rounded-xl !px-4 !py-3.5 justify-center text-center min-h-[56px] text-[13px] sm:text-sm leading-snug"
                 >
                   Security audit & profiling
                 </button>
                 <button
                   onClick={() => handleSend("Summarize the latest 2026 tech breakthroughs and research.")}
-                  className="p-3.5 sm:p-4 min-h-[56px] rounded-xl bg-black/60 hover:bg-black/85 border border-white/10 hover:border-purple-500/40 flex items-center justify-center text-center text-slate-300 hover:text-white text-[13px] sm:text-sm font-medium transition-all duration-200 cursor-pointer leading-snug hover:shadow-[0_0_15px_rgba(168,85,247,0.15)] active:scale-[0.98]"
+                  className="chip !rounded-xl !px-4 !py-3.5 justify-center text-center min-h-[56px] text-[13px] sm:text-sm leading-snug"
                 >
                   2026 Research & Insights
                 </button>
@@ -958,17 +982,31 @@ export function ChatScreen({ userId }: ChatScreenProps) {
           {showScrollBottom && (
             <button
               onClick={() => scrollToBottom(true)}
-              className="sticky bottom-4 self-end mr-4 px-3.5 py-2 bg-[#0c0d12]/90 hover:bg-[#151722] backdrop-blur-xl border border-red-500/40 hover:border-red-500/70 text-white rounded-full shadow-[0_8px_25px_rgba(220,38,38,0.25)] transition-all z-20 flex items-center gap-2 text-xs font-semibold cursor-pointer animate-fadeIn active:scale-95"
+              className="sticky bottom-4 self-end mr-4 px-3.5 py-2 glass-strong hover:border-white/20 text-white rounded-full transition-all z-20 flex items-center gap-2 text-xs font-medium cursor-pointer animate-fadeIn active:scale-95"
               title="Jump to latest response"
             >
-              <ArrowDown size={13} className="text-red-400 animate-bounce" />
+              <ArrowDown size={13} style={{ color: 'var(--accent)' }} className="animate-bounce" />
               <span className="text-[11px] font-mono tracking-wide">Jump to latest</span>
             </button>
           )}
         </div>
 
         {/* Fixed Bottom Input Area — flex flow docked, never overlaps messages or mobile keyboard */}
-        <div className="shrink-0 w-full bg-black/85 backdrop-blur-md pt-1.5 pb-2 px-2 z-10 flex flex-col items-center border-t border-[#38383b]/50">
+        <div className="shrink-0 w-full bg-black/85 backdrop-blur-md pt-1.5 pb-2 px-2 z-10 flex flex-col items-center border-t border-white/5">
+          {/* Quick-prompt chips row */}
+          {!isLoading && messages.length > 0 && (
+            <div className="w-full max-w-3xl flex items-center gap-1.5 px-1 pb-1.5 overflow-x-auto no-scrollbar">
+              {["Explain like I'm five", "Make it concise", "Give me steps", "Find edge cases", "Write tests"].map(q => (
+                <button
+                  key={q}
+                  onClick={() => handleSend(q)}
+                  className="chip shrink-0 !py-1.5 !px-3 !text-[11px]"
+                >
+                  {q}
+                </button>
+              ))}
+            </div>
+          )}
           <InputArea
             onSend={handleSend}
             isLoading={isLoading}
@@ -981,6 +1019,9 @@ export function ChatScreen({ userId }: ChatScreenProps) {
           </div>
         </div>
       </div>
+
+      {/* Keyboard shortcuts guide */}
+      {showShortcuts && <ShortcutsModal onClose={() => setShowShortcuts(false)} />}
 
       {/* Admin Panel Modal */}
       {showAdminPanel && (

@@ -113,8 +113,8 @@ export function AuthScreen() {
 
   return (
     <div className="min-h-screen bg-transparent flex flex-col items-center justify-center p-4 py-8 relative overflow-y-auto">
-      {/* Ambient background glow */}
-      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-red-900/25 rounded-full blur-3xl pointer-events-none" />
+      {/* Ambient warm glow — the one ambient element */}
+      <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[40rem] h-80 rounded-full blur-3xl pointer-events-none opacity-60" style={{ background: 'var(--accent-soft)' }} />
 
       <div className="w-full max-w-md flex flex-col items-center z-10 my-auto">
         {/* Logo Header */}
@@ -129,11 +129,11 @@ export function AuthScreen() {
           </div>
         </div>
 
-        <h1 className="text-2xl sm:text-3xl font-black text-white tracking-widest uppercase mb-1">
+        <h1 className="font-display text-2xl sm:text-3xl font-medium text-white tracking-tight mb-1">
           NOVA AI
         </h1>
-        <p className="text-xs font-bold text-[#8d8d91] tracking-widest uppercase mb-5">
-          SECURE SYSTEM ACCESS
+        <p className="text-xs font-medium text-[#8d8d91] tracking-[0.2em] uppercase mb-5">
+          Secure system access
         </p>
 
         {/* Security Shield Notice */}
@@ -142,7 +142,7 @@ export function AuthScreen() {
           <span>Real Authentication & Anti-Abuse Protection Active</span>
         </div>
 
-        <div className="w-full bg-[#202022] border border-red-900/30 rounded-2xl p-6 shadow-2xl shadow-red-950/20">
+        <div className="w-full glass-strong rounded-3xl p-6">
           {error && (
             <div className="mb-4 p-3.5 bg-red-950/40 border border-red-800/50 rounded-xl flex items-start gap-3 text-red-400 text-xs">
               <AlertCircle size={16} className="shrink-0 mt-0.5 text-red-400" />
@@ -245,15 +245,16 @@ export function AuthScreen() {
               <button
                 type="submit"
                 disabled={isLoading}
-                className="w-full py-3 bg-[#3f86ff] hover:bg-[#3f86ff]/90 text-white font-bold text-xs rounded-xl transition-all shadow-md disabled:opacity-50 cursor-pointer uppercase tracking-wider flex items-center justify-center gap-2 active:scale-[0.98] pointer-events-auto"
+                className="w-full py-3 text-white font-semibold text-xs rounded-xl transition-all shadow-md disabled:opacity-50 cursor-pointer tracking-wide flex items-center justify-center gap-2 active:scale-[0.98] pointer-events-auto"
+                style={{ background: 'var(--accent)', color: '#1a1714' }}
               >
                 {isLoading ? (
                   <>
                     <RefreshCw size={14} className="animate-spin" />
-                    <span>{isRegistering ? 'CREATING ACCOUNT...' : 'AUTHENTICATING...'}</span>
+                    <span>{isRegistering ? 'Creating account…' : 'Signing in…'}</span>
                   </>
                 ) : (
-                  <span>{isRegistering ? 'REGISTER WITH EMAIL' : 'SIGN IN'}</span>
+                  <span>{isRegistering ? 'Register with email' : 'Sign in'}</span>
                 )}
               </button>
             </form>

@@ -73,7 +73,7 @@ export function Sidebar({
   return (
     <aside
       className={clsx(
-        "fixed inset-y-0 left-0 z-40 md:relative md:z-30 flex flex-col h-full bg-[#1a1a1c] text-white transition-all duration-200 ease-out w-64 sm:w-72 shrink-0 border-r border-[#38383b] text-xs select-none",
+        "fixed inset-y-0 left-0 z-40 md:relative md:z-30 flex flex-col h-full glass-strong text-white transition-all duration-200 ease-out w-64 sm:w-72 shrink-0 border-r border-white/5 text-xs select-none",
         !isOpen && "-translate-x-full md:w-0 md:-translate-x-full overflow-hidden opacity-0 pointer-events-none"
       )}
     >
@@ -87,8 +87,8 @@ export function Sidebar({
               className="w-full h-full object-cover"
             />
           </div>
-          <span className="font-bold text-sm text-white">
-            VOID AI
+          <span className="font-display text-base font-medium text-white tracking-tight">
+            VOID <span className="text-gradient">AI</span>
           </span>
         </div>
 
@@ -147,7 +147,8 @@ export function Sidebar({
       <div className="p-2.5 border-b border-[#38383b] space-y-2">
         <button
           onClick={onNewChat}
-          className="w-full flex items-center justify-center gap-2 bg-[#3f86ff] hover:opacity-90 text-white font-medium py-2.5 px-3.5 rounded-lg transition-all cursor-pointer text-[13px] sm:text-sm"
+          className="w-full flex items-center justify-center gap-2 font-medium py-2.5 px-3.5 rounded-xl transition-all cursor-pointer text-[13px] sm:text-sm"
+          style={{ background: 'var(--accent)', color: '#1a1714' }}
         >
           <Plus size={18} />
           <span>New Chat</span>
@@ -184,9 +185,10 @@ export function Sidebar({
             className={clsx(
               "px-2 py-1 rounded-md transition-colors cursor-pointer shrink-0 font-medium",
               activeFolder === tab.id
-                ? "bg-[#252837] text-white"
+                ? "text-white"
                 : "text-slate-400 hover:text-white"
             )}
+            style={activeFolder === tab.id ? { background: 'var(--accent-soft)' } : undefined}
           >
             {tab.label}
           </button>
@@ -227,9 +229,10 @@ export function Sidebar({
               className={clsx(
                 "group relative flex items-center justify-between px-2.5 py-2 rounded-lg cursor-pointer transition-all text-xs font-medium",
                 currentChatId === chat.id
-                  ? "bg-[#252527] text-white"
-                  : "hover:bg-[#202022] text-[#8d8d91] hover:text-white"
+                  ? "accent-bar text-white"
+                  : "hover:bg-white/[0.04] text-slate-400 hover:text-white"
               )}
+              style={currentChatId === chat.id ? { background: 'var(--accent-soft)' } : undefined}
             >
               <div className="flex items-center gap-1.5 truncate pr-3 flex-1">
                 {chat.isPinned && (
@@ -302,7 +305,7 @@ export function Sidebar({
             className="flex-1 flex items-center gap-2.5 p-1.5 rounded-lg hover:bg-[#202022] transition-all text-left cursor-pointer min-w-0"
             title="Open Settings & Profile"
           >
-            <div className="w-[34px] h-[34px] rounded-full bg-[#3f86ff] text-white font-bold text-xs flex items-center justify-center shrink-0">
+            <div className="w-[34px] h-[34px] rounded-full presence-ring bg-[#3f3a34] text-white font-medium text-xs flex items-center justify-center shrink-0">
               {userName ? userName.slice(0, 2).toUpperCase() : 'MT'}
             </div>
             <div className="min-w-0 flex-1">

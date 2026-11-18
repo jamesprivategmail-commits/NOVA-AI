@@ -235,8 +235,8 @@ export const MessageBubble = React.memo(function MessageBubble({
   return (
     <div
       className={clsx(
-        "group w-full py-2.5 px-3 sm:px-4 transition-colors contain-paint",
-        isUser ? "bg-transparent" : "bg-[#1a1a1c]"
+        "group w-full py-2.5 px-3 sm:px-4 transition-colors contain-paint animate-messageIn",
+        isUser ? "bg-transparent" : "bg-transparent"
       )}
     >
       <div className={clsx(
@@ -246,14 +246,14 @@ export const MessageBubble = React.memo(function MessageBubble({
         {/* Avatar */}
         <div className="shrink-0 mt-0.5">
           {isUser ? (
-            <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-[#252527] flex items-center justify-center text-white text-xs font-bold">
+            <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-full flex items-center justify-center text-xs font-bold bg-white/[0.06] border border-white/15 text-slate-200">
               <User size={14} />
             </div>
           ) : (
-            <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-full bg-black/80 border border-[#38383b] p-0.5 flex items-center justify-center overflow-hidden">
-              <img 
+            <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-full presence-ring overflow-hidden flex items-center justify-center">
+              <img
                 src="/void-logo.jpg"
-                alt="VOID AI" 
+                alt="VOID AI"
                 className="w-full h-full object-cover"
               />
             </div>
@@ -270,8 +270,8 @@ export const MessageBubble = React.memo(function MessageBubble({
             "flex items-center gap-1.5 sm:gap-2 mb-0.5",
             isUser ? "flex-row-reverse" : "flex-row"
           )}>
-            <span className={clsx("text-xs font-semibold", isUser ? "text-white" : "text-white")}>
-              {isUser ? 'You' : 'VOID AI'}
+            <span className={clsx("text-xs font-medium", isUser ? "text-slate-300" : "text-white")}>
+              {isUser ? 'You' : <span>VOID <span className="text-gradient">AI</span></span>}
             </span>
             <span className="text-[10px] text-[#8d8d91]">
               {new Date(message.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}

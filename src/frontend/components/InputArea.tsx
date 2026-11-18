@@ -364,8 +364,9 @@ export const InputArea = React.memo(function InputArea({
           onClick={() => setImageMode(!imageMode)}
           className={clsx(
             "w-9 h-9 sm:w-10 sm:h-10 rounded-full flex items-center justify-center shrink-0 transition-all cursor-pointer",
-            imageMode ? "bg-[#3f86ff] text-white" : "bg-[#252527] hover:bg-[#38383b] text-white"
+            imageMode ? "text-[#1a1714]" : "bg-[#252527] hover:bg-[#38383b] text-white"
           )}
+          style={imageMode ? { background: 'var(--accent)' } : undefined}
           title={imageMode ? "Image mode ON" : "Generate image"}
         >
           <ImageIcon size={17} />
@@ -415,7 +416,8 @@ export const InputArea = React.memo(function InputArea({
           <button
             type="button"
             onClick={handleSend}
-            className="w-9 h-9 sm:w-10 sm:h-10 bg-[#3f86ff] hover:opacity-90 text-white rounded-full transition-all flex items-center justify-center shrink-0 cursor-pointer active:scale-95 shadow-md"
+            className="w-9 h-9 sm:w-10 sm:h-10 text-white rounded-full transition-all flex items-center justify-center shrink-0 cursor-pointer active:scale-95 shadow-md"
+            style={{ background: 'var(--accent)', color: '#1a1714' }}
             title="Send message"
           >
             <Send size={15} fill="currentColor" />
