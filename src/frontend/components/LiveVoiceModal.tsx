@@ -1,16 +1,29 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Mic, MicOff, Volume2, VolumeX, PhoneOff, Sparkles, Radio, MessageSquare, Bot } from 'lucide-react';
+import { Mic, MicOff, Volume2, VolumeX, PhoneOff, Sparkles, ArrowLeft, Hand } from 'lucide-react';
 import { sendMessageToGroq } from '../../api/client';
+import { NOVA_PERSONAS, getPersona, type NovaPersona } from '../models/personas';
+import { NovaOrb, type NovaOrbState } from './NovaOrb';
 import { clsx } from 'clsx';
-import { motion, AnimatePresence } from 'motion/react';
+import { motion } from 'motion/react';
 
 interface LiveVoiceModalProps {
   onClose: () => void;
   userId: string;
   userTier?: string;
+  persona?: NovaPersona;
+  onSelectPersona?: (persona: NovaPersona) => void;
 }
 
-export function LiveVoiceModal({ onClose, userId, userTier = 'free' }: LiveVoiceModalProps) {
+export function LiveVoiceModal({
+  onClose,
+  userId,
+  userTier = 'free',
+  persona: initialPersona,
+  onSelectPersona,
+}: LiveVoiceModalProps) {
+  const [activePersona, setActivePersona] = useState<NovaPersona>(
+    initialPersona || getPersona('groq', 'qwen/qwen3.8-27b', 'shii')
+  );
   const [isListening, setIsListening] = useState(false);
   const [isSpeaking, setIsSpeaking] = useState(false);
   const [isThinking, setIsThinking] = useState(false);
@@ -24,7 +37,10 @@ export function LiveVoiceModal({ onClose, userId, userTier = 'free' }: LiveVoice
   const synthRef = useRef<SpeechSynthesis | null>(null);
   const currentUtteranceRef = useRef<SpeechSynthesisUtterance | null>(null);
 
-  // Initialize Speech Recognition & Synthesis
+  useEffect(() => {
+    if (initialPersona) setActivePersona(initialPersona);
+  }, [initialPersona?.id]);
+
   useEffect(() => {
     if (typeof window !== 'undefined') {
       synthRef.current = window.speechSynthesis;
@@ -36,9 +52,7 @@ export function LiveVoiceModal({ onClose, userId, userTier = 'free' }: LiveVoice
         recognitionRef.current.interimResults = true;
         recognitionRef.current.lang = 'en-US';
 
-        recognitionRef.current.onstart = () => {
-          setIsListening(true);
-        };
+        recognitionRef.current.onstart = () => setIsListening(true);
 
         recognitionRef.current.onresult = (event: any) => {
           let currentTranscript = '';
@@ -47,22 +61,14 @@ export function LiveVoiceModal({ onClose, userId, userTier = 'free' }: LiveVoice
           }
           setTranscript(currentTranscript);
 
-          // If result is final, send to AI
           if (event.results[event.results.length - 1].isFinal) {
             handleUserVoiceInput(currentTranscript);
           }
         };
 
-        recognitionRef.current.onerror = (event: any) => {
-          console.warn('Speech recognition error:', event.error);
-          setIsListening(false);
-        };
+        recognitionRef.current.onerror = () => setIsListening(false);
+        recognitionRef.current.onend = () => setIsListening(false);
 
-        recognitionRef.current.onend = () => {
-          setIsListening(false);
-        };
-
-        // Start listening automatically on open
         startListening();
       }
     }
@@ -79,16 +85,14 @@ export function LiveVoiceModal({ onClose, userId, userTier = 'free' }: LiveVoice
       stopSpeaking();
       recognitionRef.current.start();
       setIsListening(true);
-    } catch (e) {
-      // already started or busy
-    }
+    } catch (_) {}
   };
 
   const stopListening = () => {
     if (recognitionRef.current) {
       try {
         recognitionRef.current.stop();
-      } catch (e) {}
+      } catch (_) {}
     }
     setIsListening(false);
   };
@@ -100,12 +104,10 @@ export function LiveVoiceModal({ onClose, userId, userTier = 'free' }: LiveVoice
     setIsSpeaking(false);
   };
 
-  const speakText = (text: string) => {
+  const speakText = (text: string, personaForVoice: NovaPersona) => {
     if (!isAudioEnabled || !synthRef.current) return;
-
     stopSpeaking();
 
-    // Clean text from markdown formatting prior to TTS
     const cleanText = text
       .replace(/```[\s\S]*?```/g, 'Code block generated.')
       .replace(/[*_#`~]/g, '')
@@ -115,10 +117,9 @@ export function LiveVoiceModal({ onClose, userId, userTier = 'free' }: LiveVoice
     if (!cleanText) return;
 
     const utterance = new SpeechSynthesisUtterance(cleanText);
-    utterance.rate = 1.05;
-    utterance.pitch = 1.0;
+    utterance.rate = personaForVoice.vibe === 'swift' ? 1.07 : 1.01;
+    utterance.pitch = personaForVoice.id === 'kael' ? 0.94 : 1.03;
 
-    // Pick a natural English voice if available
     const voices = synthRef.current.getVoices();
     const preferredVoice = voices.find(
       (v) => (v.name.includes('Google') || v.name.includes('Natural') || v.name.includes('Samantha') || v.name.includes('Daniel')) && v.lang.startsWith('en')
@@ -135,17 +136,12 @@ export function LiveVoiceModal({ onClose, userId, userTier = 'free' }: LiveVoice
 
     utterance.onend = () => {
       setIsSpeaking(false);
-      // Automatically resume listening hands-free after AI finishes speaking!
       setTimeout(() => {
-        if (!isMuted) {
-          startListening();
-        }
-      }, 500);
+        if (!isMuted) startListening();
+      }, 420);
     };
 
-    utterance.onerror = () => {
-      setIsSpeaking(false);
-    };
+    utterance.onerror = () => setIsSpeaking(false);
 
     currentUtteranceRef.current = utterance;
     synthRef.current.speak(utterance);
@@ -166,25 +162,50 @@ export function LiveVoiceModal({ onClose, userId, userTier = 'free' }: LiveVoice
     try {
       await sendMessageToGroq(
         newHistory,
-        'You are VOID AI in Live Voice Mode. Keep your answers conversational, natural, concise, and direct (1-3 sentences max) suited for spoken speech.',
+        `You are ${activePersona.name} (${activePersona.role}) in Muse Face-to-Face Live Voice Mode. Maintain conversation continuity seamlessly and reply warmly, naturally, and concisely (1-3 crisp sentences suited for spoken conversation).`,
         (chunk) => {
           accumulatedResponse += chunk;
           setAiResponseText(accumulatedResponse);
         },
         undefined,
         userId,
-        userTier
+        userTier,
+        activePersona.provider,
+        activePersona.modelId,
+        undefined,
+        undefined,
+        undefined,
+        {
+          personaId: activePersona.id,
+          personaName: activePersona.name,
+          characterDirective: activePersona.systemDirective,
+        }
       );
 
       setIsThinking(false);
       setConversationHistory((prev) => [...prev, { role: 'assistant', text: accumulatedResponse }]);
-      speakText(accumulatedResponse);
+      speakText(accumulatedResponse, activePersona);
     } catch (err) {
       console.error('Voice AI error:', err);
       setIsThinking(false);
-      const errorMsg = 'I encountered a connection issue. Please speak again.';
+      const errorMsg = 'I had a brief hiccup hearing that. Please speak again.';
       setAiResponseText(errorMsg);
-      speakText(errorMsg);
+      speakText(errorMsg, activePersona);
+    }
+  };
+
+  const handleInterruptOrListen = () => {
+    if (isSpeaking) {
+      stopSpeaking();
+      setIsMuted(false);
+      startListening();
+      return;
+    }
+    if (isListening) {
+      stopListening();
+    } else {
+      setIsMuted(false);
+      startListening();
     }
   };
 
@@ -204,156 +225,199 @@ export function LiveVoiceModal({ onClose, userId, userTier = 'free' }: LiveVoice
       setIsAudioEnabled(false);
     } else {
       setIsAudioEnabled(true);
-      if (aiResponseText) {
-        speakText(aiResponseText);
-      }
+      if (aiResponseText) speakText(aiResponseText, activePersona);
     }
   };
 
+  const handleSwitchCharacter = (next: NovaPersona) => {
+    setActivePersona(next);
+    onSelectPersona?.(next);
+  };
+
+  const orbState: NovaOrbState = isThinking
+    ? 'thinking'
+    : isSpeaking
+    ? 'speaking'
+    : isListening
+    ? 'listening'
+    : 'idle';
+
   return (
-    <div className="fixed inset-0 z-50 bg-black/95  flex flex-col justify-between items-center p-6 sm:p-10 select-none overflow-hidden">
-      {/* Top Header */}
-      <div className="w-full max-w-2xl flex items-center justify-between text-[#6B6A67]">
-        <div className="flex items-center gap-2">
-          <span className="relative flex h-3 w-3">
-            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
-            <span className="relative inline-flex rounded-full h-3 w-3 bg-[#D97757]"></span>
-          </span>
-          <span className="text-xs font-bold tracking-widest uppercase text-[#1F1E1D]">
-            VOID AI • Live Voice Mode
+    <div className="fixed inset-0 z-50 bg-[var(--bg-0)]/92 backdrop-blur-3xl flex flex-col justify-between items-center p-4 sm:p-8 select-none overflow-hidden text-[var(--text-primary)] animate-fadeIn">
+      {/* Ambient Character Aura Glow */}
+      <motion.div
+        aria-hidden="true"
+        animate={{
+          scale: isSpeaking ? [1, 1.22, 1.05, 1.25, 1] : isListening ? [1, 1.14, 1] : [1, 1.04, 1],
+          opacity: isSpeaking ? [0.45, 0.72, 0.45] : isListening ? [0.32, 0.55, 0.32] : 0.25,
+        }}
+        transition={{
+          duration: isSpeaking ? 1.4 : isListening ? 2.2 : 4,
+          repeat: Infinity,
+          ease: 'easeInOut',
+        }}
+        className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[26rem] h-[26rem] sm:w-[36rem] sm:h-[36rem] rounded-full blur-3xl pointer-events-none"
+        style={{ background: activePersona.palette.glow }}
+      />
+
+      {/* Top Navigation Pill Bar */}
+      <div className="relative z-10 w-full max-w-3xl flex items-center justify-between gap-3">
+        <button
+          type="button"
+          onClick={onClose}
+          className="btn btn-ghost h-10 px-3.5 rounded-full text-xs whitespace-nowrap"
+          title="Return to Chat"
+        >
+          <ArrowLeft size={15} />
+          <span>Back to Chat</span>
+        </button>
+
+        <div className="glass-thick px-4 py-2 rounded-full flex items-center gap-2.5">
+          <span
+            className="w-2 h-2 rounded-full shrink-0"
+            style={{ background: activePersona.palette.mid }}
+          />
+          <span className="text-xs font-bold tracking-wide text-[var(--text-primary)] whitespace-nowrap">
+            {activePersona.name} · Face-to-Face
           </span>
         </div>
 
-        <div className="flex items-center gap-3">
-          <button
-            onClick={toggleAudioOutput}
-            className={clsx(
-              "p-2.5 rounded-full border transition-all",
-              isAudioEnabled ? "bg-[#1F1E1D] border-[#3D3929] text-white hover:bg-[#3D3929]" : "bg-[#1F1E1D] border-[#3D3929] text-[#E8E4D9]"
-            )}
-            title={isAudioEnabled ? "Mute Voice Output" : "Enable Voice Output"}
-          >
-            {isAudioEnabled ? <Volume2 size={18} /> : <VolumeX size={18} />}
-          </button>
-        </div>
+        <button
+          type="button"
+          onClick={toggleAudioOutput}
+          className="w-10 h-10 rounded-full glass hover:bg-black/[0.05] dark:hover:bg-white/[0.1] text-[var(--text-primary)] flex items-center justify-center transition-all cursor-pointer shrink-0"
+          title={isAudioEnabled ? 'Mute voice playback' : 'Enable voice playback'}
+        >
+          {isAudioEnabled ? <Volume2 size={18} /> : <VolumeX size={18} />}
+        </button>
       </div>
 
-      {/* Main Animated Voice Orb / Visualizer */}
-      <div className="flex-1 flex flex-col items-center justify-center relative w-full max-w-md my-auto">
-        <div className="relative flex items-center justify-center my-8">
-          {/* Outer Pulsing Aura */}
-          <motion.div
-            animate={{
-              scale: isSpeaking ? [1, 1.35, 1.1, 1.4, 1] : isListening ? [1, 1.2, 1] : isThinking ? [1, 1.15, 1] : 1,
-              opacity: isSpeaking ? [0.6, 0.9, 0.6] : isListening ? [0.4, 0.7, 0.4] : 0.2,
-            }}
-            transition={{
-              duration: isSpeaking ? 1.2 : isListening ? 2 : 3,
-              repeat: Infinity,
-              ease: "easeInOut"
-            }}
-            className={clsx(
-              "absolute w-64 h-64 sm:w-80 sm:h-80 rounded-full blur-3xl transition-colors duration-500",
-              isSpeaking
-                ? "bg-gradient-to-r from-[#D97757] via-amber-600 to-purple-600"
-                : isListening
-                ? "bg-gradient-to-r from-blue-600 to-indigo-600"
-                : isThinking
-                ? "bg-gradient-to-r from-purple-600 to-pink-600 animate-pulse"
-                : "bg-[#3D3929]"
-            )}
-          />
+      {/* Main Living Face-to-Face Character Stage */}
+      <div className="relative z-10 flex-1 flex flex-col items-center justify-center w-full max-w-xl my-auto py-3">
+        <button
+          type="button"
+          onClick={handleInterruptOrListen}
+          className="relative group flex flex-col items-center justify-center cursor-pointer focus:outline-none"
+          title={isSpeaking ? 'Tap to interrupt and speak' : isListening ? 'Tap to pause listening' : 'Tap to speak'}
+        >
+          <div className="muse-glass-panel rounded-[2.4rem] p-3 sm:p-4 transition-transform group-active:scale-[0.98]">
+            <NovaOrb
+              size={220}
+              persona={activePersona}
+              state={orbState}
+              shape="rounded"
+              showAudioBars
+              interactiveTilt
+              label={activePersona.name}
+              className="sm:!w-[250px] sm:!h-[250px]"
+            />
+          </div>
+        </button>
 
-          {/* Glowing Center Voice Sphere */}
-          <motion.button
-            onClick={isListening ? stopListening : startListening}
-            whileTap={{ scale: 0.95 }}
-            animate={{
-              scale: isSpeaking ? [1, 1.08, 0.96, 1.05, 1] : isListening ? [1, 1.04, 1] : 1,
-            }}
-            transition={{
-              duration: isSpeaking ? 0.8 : 1.5,
-              repeat: Infinity,
-              ease: "easeInOut"
-            }}
-            className={clsx(
-              "relative z-10 w-44 h-44 sm:w-52 sm:h-52 rounded-full flex flex-col items-center justify-center shadow-2xl transition-all duration-500 border-2",
-              isSpeaking
-                ? "bg-gradient-to-br from-[#FFFFFF] via-[#FFFFFF] to-[#FAF9F5] border-[#D97757]/80 /80"
-                : isListening
-                ? "bg-gradient-to-br from-blue-900 via-[#FFFFFF] to-[#FAF9F5] border-blue-500/80 shadow-blue-950/80"
-                : isThinking
-                ? "bg-gradient-to-br from-purple-900 via-[#FFFFFF] to-[#FAF9F5] border-purple-500/80 shadow-purple-950/80"
-                : "bg-[#1F1E1D] border-[#3D3929] shadow-zinc-950"
-            )}
-          >
-            {isThinking ? (
-              <div className="flex flex-col items-center gap-2">
-                <Sparkles size={36} className="text-purple-400 animate-spin" />
-                <span className="text-xs font-bold text-purple-300 tracking-wider">THINKING</span>
-              </div>
-            ) : isSpeaking ? (
-              <div className="flex flex-col items-center gap-2">
-                <Radio size={36} className="text-[#6B6A67] animate-pulse" />
-                <span className="text-xs font-bold text-[#6B6A67] tracking-wider">SPEAKING</span>
-              </div>
-            ) : isListening ? (
-              <div className="flex flex-col items-center gap-2">
-                <Mic size={36} className="text-blue-400 animate-bounce" />
-                <span className="text-xs font-bold text-blue-300 tracking-wider">LISTENING</span>
-              </div>
-            ) : (
-              <div className="flex flex-col items-center gap-2">
-                <MicOff size={36} className="text-[#6B6A67]" />
-                <span className="text-xs font-bold text-[#6B6A67] tracking-wider">TAP TO START</span>
-              </div>
-            )}
-          </motion.button>
+        {/* Live State Indicator */}
+        <div className="mt-4 flex items-center gap-2 px-3.5 py-1.5 rounded-full glass text-xs font-semibold text-[var(--text-primary)]">
+          {isThinking ? (
+            <>
+              <Sparkles size={13} style={{ color: activePersona.palette.mid }} />
+              <span>{activePersona.name} is thinking...</span>
+            </>
+          ) : isSpeaking ? (
+            <>
+              <Volume2 size={13} style={{ color: activePersona.palette.mid }} />
+              <span>Speaking · Tap portrait to interrupt</span>
+            </>
+          ) : isListening ? (
+            <>
+              <Mic size={13} style={{ color: activePersona.palette.mid }} />
+              <span>Listening to you...</span>
+            </>
+          ) : (
+            <>
+              <MicOff size={13} />
+              <span>Tap portrait or mic to speak</span>
+            </>
+          )}
         </div>
 
-        {/* Live Transcript Display */}
-        <div className="w-full text-center px-4 space-y-2 min-h-[90px] flex flex-col justify-center">
+        {/* Live Captions & Transcript */}
+        <div className="w-full text-center px-3 space-y-2.5 min-h-[84px] flex flex-col justify-center mt-3">
           {transcript && (
-            <p className="text-xs sm:text-sm text-[#E8E4D9] italic bg-[#1F1E1D]/60 border border-[#3D3929]/60 rounded-xl p-3 max-w-sm mx-auto truncate">
+            <p className="text-xs sm:text-sm text-[var(--text-secondary)] italic glass px-4 py-2 rounded-2xl max-w-md mx-auto">
               "{transcript}"
             </p>
           )}
 
           {aiResponseText && (
-            <p className="text-sm sm:text-base font-medium text-[#1F1E1D] max-w-md mx-auto line-clamp-3 leading-relaxed">
+            <p className="text-sm sm:text-base font-medium text-[var(--text-primary)] glass-thick px-4 py-3 rounded-2xl max-w-lg mx-auto line-clamp-3 leading-relaxed">
               {aiResponseText}
             </p>
           )}
 
           {!transcript && !aiResponseText && (
-            <p className="text-xs text-[#6B6A67] ">
-              Speak naturally. VOID AI listens and replies instantly.
+            <p className="text-xs text-[var(--text-muted)] max-w-sm mx-auto">
+              {activePersona.role} — speak naturally anytime. You can interrupt mid-sentence or switch Muse companions below.
             </p>
           )}
         </div>
+
+        {/* Quick Character Carousel */}
+        <div className="mt-3 flex items-center gap-2 overflow-x-auto no-scrollbar max-w-full px-2 py-1">
+          {NOVA_PERSONAS.map((p) => {
+            const selected = p.id === activePersona.id;
+            return (
+              <button
+                type="button"
+                key={p.id}
+                onClick={() => handleSwitchCharacter(p)}
+                className={clsx(
+                  'flex items-center gap-2 px-2.5 py-1.5 rounded-full border text-xs font-semibold transition-all cursor-pointer shrink-0',
+                  selected
+                    ? 'glass-thick text-[var(--text-primary)]'
+                    : 'glass-subtle text-[var(--text-secondary)] hover:text-[var(--text-primary)]'
+                )}
+                style={selected ? { borderColor: p.palette.mid } : undefined}
+              >
+                <NovaOrb size={22} persona={p} shape="circle" />
+                <span>{p.name}</span>
+              </button>
+            );
+          })}
+        </div>
       </div>
 
-      {/* Bottom Control Bar */}
-      <div className="w-full max-w-md flex items-center justify-center gap-6 pt-4 border-t border-[#3D3929]">
+      {/* Bottom Floating Call Dock */}
+      <div className="relative z-10 muse-glass-panel rounded-full px-4 py-2.5 flex items-center justify-center gap-4">
         <button
+          type="button"
           onClick={toggleMute}
           className={clsx(
-            "p-4 rounded-full border transition-all shadow-lg flex items-center justify-center",
-            isMuted 
-              ? "bg-[#1F1E1D] border-[#3D3929] text-[#E8E4D9]" 
-              : "bg-[#1F1E1D] border-[#3D3929] text-white hover:bg-[#3D3929]"
+            'w-12 h-12 rounded-full border transition-all flex items-center justify-center cursor-pointer',
+            isMuted ? 'glass text-[var(--text-muted)]' : 'glass-thick text-[var(--text-primary)]'
           )}
-          title={isMuted ? "Unmute Mic" : "Mute Mic"}
+          title={isMuted ? 'Unmute Mic' : 'Mute Mic'}
         >
-          {isMuted ? <MicOff size={24} /> : <Mic size={24} />}
+          {isMuted ? <MicOff size={20} /> : <Mic size={20} />}
         </button>
 
+        {isSpeaking && (
+          <button
+            type="button"
+            onClick={handleInterruptOrListen}
+            className="btn btn-ghost h-12 px-4 rounded-full text-xs whitespace-nowrap"
+            title="Interrupt and speak"
+          >
+            <Hand size={16} style={{ color: activePersona.palette.mid }} />
+            <span>Interrupt</span>
+          </button>
+        )}
+
         <button
+          type="button"
           onClick={onClose}
-          className="p-5 rounded-full bg-[#D97757] hover:opacity-90 text-white shadow-xl /80 transition-all hover:scale-105 active:scale-95"
-          title="End Live Voice Call"
+          className="w-12 h-12 rounded-full bg-rose-600 hover:bg-rose-500 text-white shadow-xl transition-all hover:scale-105 active:scale-95 flex items-center justify-center cursor-pointer"
+          title="End Face-to-Face Call"
         >
-          <PhoneOff size={28} />
+          <PhoneOff size={20} />
         </button>
       </div>
     </div>

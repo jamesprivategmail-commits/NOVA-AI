@@ -198,6 +198,51 @@ export type StructuredToolEvent =
   | BuildOrTestToolEvent
   | GenericToolEvent;
 
+export interface WebResearchSource {
+  url: string;
+  title: string;
+  snippet: string;
+  section?: string;
+  wordCount?: number;
+  isSubpage?: boolean;
+}
+
+export interface CouncilAgentDiscussion {
+  agentId: string;
+  agentName: string;
+  role: string;
+  provider: string;
+  modelUsed: string;
+  analysis: string;
+  proposedSubtask?: string;
+  durationMs: number;
+  status: 'thinking' | 'completed' | 'error';
+}
+
+export interface CouncilWorkerTask {
+  agentId: string;
+  agentName: string;
+  role: string;
+  taskTitle: string;
+  instruction: string;
+  provider: string;
+  modelUsed: string;
+  output: string;
+  durationMs: number;
+  status: 'pending' | 'running' | 'completed' | 'error';
+}
+
+export interface CouncilData {
+  phase: 'research' | 'discussion' | 'work' | 'synthesis' | 'done';
+  squadMemberIds: string[];
+  webSources?: WebResearchSource[];
+  totalPagesRead?: number;
+  discussions?: CouncilAgentDiscussion[];
+  tasks?: CouncilWorkerTask[];
+  leadAgentName?: string;
+  totalDurationMs?: number;
+}
+
 export interface Message {
   id: string;
   chatId: string;
@@ -206,6 +251,7 @@ export interface Message {
   createdAt: number;
   thinking?: string;
   toolEvents?: StructuredToolEvent[];
+  councilData?: CouncilData;
   isToolEvent?: boolean;
   latencyMs?: number;
   ttftMs?: number;

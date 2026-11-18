@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { X, Sliders, Sparkles, ShieldCheck, Zap, Lock, Database, FileText, Check } from 'lucide-react';
+import { X, Sliders, ShieldCheck, Zap, Lock, Database, FileText, Check } from 'lucide-react';
 import { clsx } from 'clsx';
 
 export interface PromptPreset {
@@ -14,37 +14,37 @@ export const PROMPT_PRESETS: PromptPreset[] = [
   {
     id: 'architect',
     name: 'Senior Architect & Tech Lead',
-    tagline: 'High cohesion, strict typing, scalable patterns & zero bloat',
-    icon: <ShieldCheck size={16} className="text-blue-400" />,
-    prompt: 'You are a Senior Principal Software Architect. Prioritize robust type safety, zero dead code, clean functional separation of concerns, and defensive error boundaries. Explain architectural rationale concisely before code.'
+    tagline: 'High cohesion, strict typing, scalable architecture & complete delivery',
+    icon: <ShieldCheck size={16} style={{ color: 'var(--accent)' }} />,
+    prompt: 'You are a Senior Principal Software Architect. Prioritize clean type safety, zero dead code, thoughtful separation of concerns, and complete end-to-end delivery without omitting implementation details.'
   },
   {
     id: 'prototyper',
     name: 'Full-Stack Speed Prototyper',
-    tagline: 'Working functional code fast, modern 2026 ergonomics',
-    icon: <Zap size={16} className="text-amber-400" />,
-    prompt: 'You are a rapid Full-Stack Prototyping engineer. Deliver working, turnkey code on the first attempt with zero placeholder stubs. Favor pragmatic, readable modern JavaScript/TypeScript and Tailwind CSS.'
+    tagline: 'Production-ready working code on first pass with zero stubs',
+    icon: <Zap size={16} className="text-amber-500" />,
+    prompt: 'You are a rapid Full-Stack Prototyping engineer. Deliver working, turnkey code on the first attempt with zero placeholder stubs. Favor clean modern TypeScript and Tailwind CSS.'
   },
   {
     id: 'security',
-    name: 'Offensive & Defensive Security Auditor',
-    tagline: 'Zero-trust auditing, XSS/CSRF prevention, credential safety',
-    icon: <Lock size={16} className="text-rose-400" />,
-    prompt: 'You are a Lead Application Security Auditor. Rigorously inspect for injection flaws, authentication bypasses, insecure deserialization, and secret leaks. Always mandate principle of least privilege.'
+    name: 'Application Security Auditor',
+    tagline: 'Zero-trust inspection, XSS/CSRF prevention, least-privilege design',
+    icon: <Lock size={16} className="text-rose-500" />,
+    prompt: 'You are a Lead Application Security Auditor. Rigorously inspect for injection flaws, authentication bypasses, insecure deserialization, and credential leaks. Mandate principle of least privilege.'
   },
   {
     id: 'data-engineer',
-    name: 'Data & Machine Learning Specialist',
-    tagline: 'Vectorized computing, pipeline throughput, algorithmic precision',
-    icon: <Database size={16} className="text-emerald-400" />,
-    prompt: 'You are a Senior Data Systems & ML Engineer. Emphasize algorithmic complexity O(n), vectorized operations, memory-efficient data structures, and reproducible mathematical logic.'
+    name: 'Algorithms & Systems Specialist',
+    tagline: 'Algorithmic efficiency, streaming throughput, mathematical rigor',
+    icon: <Database size={16} className="text-emerald-500" />,
+    prompt: 'You are a Senior Systems & Data Engineer. Emphasize algorithmic clarity, memory-efficient data structures, and verifiable step-by-step logic.'
   },
   {
     id: 'technical-writer',
-    name: 'Clean Technical Writer & Educator',
-    tagline: 'Concise scannable prose, real diagrams, no filler words',
-    icon: <FileText size={16} className="text-purple-400" />,
-    prompt: 'You are a Lead Technical Writer. Write scannable, crystal-clear explanations with bullet points and concrete examples. Avoid conversational filler, marketing hype, and repetition.'
+    name: 'Precision Writer & Mentor',
+    tagline: 'Crisp scannable structure, concrete examples, zero fluff',
+    icon: <FileText size={16} className="text-purple-500" />,
+    prompt: 'You are a Lead Technical Writer & Mentor. Write clear, scannable explanations with concrete examples and direct answers. Avoid filler words and unnecessary repetition.'
   }
 ];
 
@@ -80,30 +80,34 @@ export function PromptStudioModal({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-sm animate-fadeIn select-none">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/55 backdrop-blur-md animate-fadeIn select-none">
       <div className="fixed inset-0" onClick={onClose} />
 
-      <div className="relative w-full max-w-2xl bg-[#FAF9F5] border border-[#FFFFFF] rounded-2xl shadow-2xl overflow-hidden flex flex-col z-10 text-[#1F1E1D] font-sans max-h-[90vh]">
+      <div className="relative w-full max-w-2xl glass-thick rounded-3xl overflow-hidden flex flex-col z-10 text-[var(--text-primary)] font-sans max-h-[90vh] animate-riseIn">
         {/* Header */}
-        <div className="px-5 py-4 border-b border-[#FFFFFF] flex items-center justify-between bg-[#FAF9F5]">
+        <div className="px-5 py-4 border-b border-[var(--line)] flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="w-8 h-8 rounded-lg bg-[#FFFFFF] border border-[#FFFFFF] flex items-center justify-center text-amber-400">
+            <div
+              className="w-9 h-9 rounded-xl border border-[var(--accent-muted)] flex items-center justify-center"
+              style={{ background: 'var(--accent-soft)', color: 'var(--accent)' }}
+            >
               <Sliders size={16} />
             </div>
             <div>
-              <h3 className="text-sm font-bold text-[#1F1E1D] flex items-center gap-2">
-                <span>Prompt Engineering Studio</span>
-                <span className="text-[10px] font-mono text-slate-500">2026 Engine</span>
+              <h3 className="text-sm font-bold text-[var(--text-primary)] flex items-center gap-2">
+                <span>Prompt & Directive Studio</span>
+                <span className="text-[10px] font-mono text-[var(--text-muted)]">Session Rules</span>
               </h3>
-              <p className="text-xs text-[#6B6A67]">
-                Select an expert AI Persona or craft custom system directives.
+              <p className="text-xs text-[var(--text-secondary)]">
+                Pair an expert role directive with your active Muse character.
               </p>
             </div>
           </div>
 
           <button
+            type="button"
             onClick={onClose}
-            className="p-1.5 text-[#6B6A67] hover:text-[#1F1E1D] hover:bg-[#FFFFFF] rounded-lg transition-colors cursor-pointer"
+            className="p-1.5 text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-black/[0.05] dark:hover:bg-white/[0.08] rounded-xl transition-colors cursor-pointer"
           >
             <X size={16} />
           </button>
@@ -111,24 +115,25 @@ export function PromptStudioModal({
 
         {/* Content Area */}
         <div className="p-5 overflow-y-auto space-y-4">
-          {/* Preset Cards Grid */}
           <div>
-            <label className="block text-xs font-semibold text-[#6B6A67] mb-2">
-              Curated Expert Personas
+            <label className="block section-label mb-2">
+              Specialist Directives
             </label>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
               {PROMPT_PRESETS.map((preset) => {
                 const isSelected = selectedPresetId === preset.id;
                 return (
-                  <div
+                  <button
+                    type="button"
                     key={preset.id}
                     onClick={() => handleSelectPreset(preset)}
                     className={clsx(
-                      "p-3 rounded-xl border cursor-pointer transition-all flex flex-col justify-between",
+                      "p-3.5 rounded-2xl border cursor-pointer transition-all flex flex-col justify-between text-left",
                       isSelected
-                        ? "bg-[#FFFFFF] border-blue-500 text-[#1F1E1D] shadow-sm"
-                        : "bg-[#FAF9F5] hover:bg-[#FFFFFF] border-[#FFFFFF] text-[#6B6A67]"
+                        ? "text-[var(--text-primary)] shadow-sm"
+                        : "glass-subtle text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
                     )}
+                    style={isSelected ? { background: 'var(--accent-soft)', borderColor: 'var(--accent-muted)' } : undefined}
                   >
                     <div>
                       <div className="flex items-center justify-between mb-1">
@@ -137,29 +142,31 @@ export function PromptStudioModal({
                           <span className="text-xs font-bold">{preset.name}</span>
                         </div>
                         {isSelected && (
-                          <div className="w-4 h-4 rounded-full bg-blue-500 flex items-center justify-center text-[#1F1E1D]">
+                          <div
+                            className="w-4 h-4 rounded-full flex items-center justify-center text-white"
+                            style={{ background: 'var(--accent)' }}
+                          >
                             <Check size={10} className="stroke-[3]" />
                           </div>
                         )}
                       </div>
-                      <p className="text-[11px] text-[#6B6A67] line-clamp-2 leading-relaxed">
+                      <p className="text-[11px] text-[var(--text-muted)] line-clamp-2 leading-relaxed">
                         {preset.tagline}
                       </p>
                     </div>
-                  </div>
+                  </button>
                 );
               })}
             </div>
           </div>
 
-          {/* System Prompt Text Editor */}
           <div>
             <div className="flex items-center justify-between mb-1.5">
-              <label className="text-xs font-semibold text-[#6B6A67]">
-                Active System Directive Prompt
+              <label className="section-label">
+                Custom Directive Prompt
               </label>
-              <span className="text-[10px] font-mono text-slate-500 tabular-nums">
-                {customText.length} characters
+              <span className="text-[10px] font-mono text-[var(--text-muted)] tabular-nums">
+                {customText.length} chars
               </span>
             </div>
             <textarea
@@ -169,33 +176,36 @@ export function PromptStudioModal({
                 setCustomText(e.target.value);
                 setSelectedPresetId('custom');
               }}
-              className="w-full p-3.5 bg-[#FAF9F5] border border-[#FFFFFF] rounded-xl text-slate-200 text-xs font-mono leading-relaxed focus:outline-none resize-none focus:border-blue-500"
-              placeholder="Enter custom instructions for how VOID AI responds..."
+              className="w-full p-3.5 bg-[var(--bg-2)] border border-[var(--line)] focus:border-[var(--accent-muted)] rounded-2xl text-[var(--text-primary)] placeholder:text-[var(--text-muted)] text-xs font-mono leading-relaxed focus:outline-none resize-none"
+              placeholder="Enter custom instructions for your Muse companion..."
             />
           </div>
         </div>
 
         {/* Footer */}
-        <div className="px-5 py-3 bg-[#FAF9F5] border-t border-[#FFFFFF] flex items-center justify-between">
+        <div className="px-5 py-3.5 border-t border-[var(--line)] glass-subtle flex items-center justify-between">
           <button
+            type="button"
             onClick={() => handleSelectPreset(PROMPT_PRESETS[0])}
-            className="text-xs text-[#6B6A67] hover:text-[#1F1E1D] cursor-pointer"
+            className="text-xs font-medium text-[var(--text-muted)] hover:text-[var(--text-primary)] cursor-pointer"
           >
             Reset to Default
           </button>
 
           <div className="flex items-center gap-2">
             <button
+              type="button"
               onClick={onClose}
-              className="px-3 py-1.5 text-xs text-[#6B6A67] hover:text-[#1F1E1D] hover:bg-[#FFFFFF] rounded-lg transition-colors cursor-pointer"
+              className="btn btn-ghost px-3.5 py-2 text-xs"
             >
               Cancel
             </button>
             <button
+              type="button"
               onClick={handleSave}
-              className="px-4 py-1.5 bg-blue-600 hover:bg-blue-500 text-[#1F1E1D] rounded-lg text-xs font-semibold transition-colors cursor-pointer shadow-sm"
+              className="btn btn-primary px-4 py-2 text-xs"
             >
-              Apply to Session
+              Apply Directive
             </button>
           </div>
         </div>

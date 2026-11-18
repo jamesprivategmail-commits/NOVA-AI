@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { ShieldAlert, Check, ExternalLink, ShieldCheck } from 'lucide-react';
+import { ExternalLink, ShieldCheck, Sparkles } from 'lucide-react';
 
 interface TermsModalProps {
   onAccept: () => void;
@@ -7,90 +7,73 @@ interface TermsModalProps {
 }
 
 export const TermsModal: React.FC<TermsModalProps> = ({ onAccept, onDecline }) => {
-  const [hasScrolledBottom, setHasScrolledBottom] = useState(false);
   const [isChecked, setIsChecked] = useState(false);
 
-  const handleScroll = (e: React.UIEvent<HTMLDivElement>) => {
-    const target = e.currentTarget;
-    if (target.scrollHeight - target.scrollTop <= target.clientHeight + 50) {
-      setHasScrolledBottom(true);
-    }
-  };
-
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/95  animate-fadeIn">
-      <div className="relative w-full max-w-xl bg-[#FAF9F5] border-2 border-[#D97757]/90 rounded-2xl shadow-[0_0_50px_rgba(220,38,38,0.4)] flex flex-col max-h-[92vh] overflow-hidden">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/55 backdrop-blur-md animate-fadeIn">
+      <div className="relative w-full max-w-xl glass-thick rounded-3xl flex flex-col max-h-[92vh] overflow-hidden text-[var(--text-primary)] animate-riseIn">
         
         {/* Modal Header */}
-        <div className="p-4 sm:p-5 bg-gradient-to-r from-[#FFFFFF] via-[#FAF9F5] to-[#FFFFFF] border-b border-[#3D3929] flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-[#FAF9F5] border border-[#D97757] p-1 flex items-center justify-center shrink-0 shadow-[0_0_15px_rgba(220,38,38,0.5)]">
-            <ShieldAlert size={22} className="text-[#D97757] animate-pulse" />
+        <div className="p-5 border-b border-[var(--line)] flex items-center gap-3">
+          <div
+            className="w-10 h-10 rounded-2xl border border-[var(--accent-muted)] flex items-center justify-center shrink-0"
+            style={{ background: 'var(--accent-soft)', color: 'var(--accent)' }}
+          >
+            <Sparkles size={20} />
           </div>
           <div>
-            <h2 className="text-base sm:text-lg font-black text-[#D97757] font-serif tracking-widest uppercase flex items-center gap-2">
-              <span>VOID AI • DISCLAIMER</span>
-              <span className="text-xs">⚠️</span>
+            <h2 className="font-display text-lg font-semibold text-[var(--text-primary)] tracking-tight">
+              NOVA Muse Workspace Terms
             </h2>
-            <p className="text-[11px] text-[#6B6A67] tracking-wider font-semibold">
-              SMARTER. FASTER. POWERED BY THE VOID.
+            <p className="text-xs text-[var(--text-muted)]">
+              Responsible engineering, research, and autonomous development guidelines
             </p>
           </div>
         </div>
 
-        {/* Scrollable Disclaimer Content */}
-        <div 
-          onScroll={handleScroll}
-          className="p-4 sm:p-6 overflow-y-auto text-xs text-white space-y-4 leading-relaxed custom-scrollbar selection:bg-[#1F1E1D] selection:text-white"
-        >
-          <div className="p-3 bg-[#1F1E1D]/40 border border-[#3D3929] rounded-xl text-[#E8E4D9] font-semibold text-center tracking-tight">
-            VOID AI IS AN ADVANCED AI PLATFORM DESIGNED FOR PROGRAMMING, CYBERSECURITY EDUCATION, RESEARCH, AND AUTOMATION.
+        {/* Scrollable Content */}
+        <div className="p-5 sm:p-6 overflow-y-auto text-xs text-[var(--text-primary)] space-y-4 leading-relaxed">
+          <div className="p-3.5 glass-subtle rounded-2xl text-[var(--text-primary)] font-medium text-center">
+            NOVA AI & Muse characters are engineered for software development, systems research, design, and ethical automation.
           </div>
 
-          <div className="space-y-1.5 pt-1">
-            <div className="text-[#D97757] font-extrabold tracking-widest uppercase border-b border-[#3D3929] pb-1 flex items-center gap-1.5 text-xs">
-              <span>⚠️ IMPORTANT NOTICE</span>
+          <div className="space-y-1.5">
+            <div className="section-label" style={{ color: 'var(--accent)' }}>
+              Educational & Authorized Research
             </div>
-            <p className="text-[#1F1E1D] text-[11px] pl-1 leading-normal">
-              ANY CONTENT RELATED TO PHISHING, SOCIAL ENGINEERING, OR OFFENSIVE SECURITY IS PROVIDED SOLELY FOR EDUCATIONAL, RESEARCH, AND AUTHORIZED TESTING PURPOSES.
+            <p className="text-[var(--text-secondary)] leading-relaxed">
+              Security concepts, diagnostics, and technical analyses are provided strictly for education, defense hardening, and authorized testing environments.
             </p>
           </div>
 
-          <div className="space-y-1.5 pt-1">
-            <div className="text-[#D97757] font-extrabold tracking-widest uppercase border-b border-[#3D3929] pb-1 flex items-center gap-1.5 text-xs">
-              <span>🚫 PROHIBITED USE</span>
+          <div className="space-y-1.5">
+            <div className="section-label" style={{ color: 'var(--accent)' }}>
+              Prohibited Activities
             </div>
-            <ul className="list-disc list-inside space-y-1 text-[#1F1E1D] text-[11px] pl-1">
-              <li>DO NOT USE VOID AI TO TARGET REAL PEOPLE.</li>
-              <li>DO NOT USE IT FOR UNAUTHORIZED ACCESS.</li>
-              <li>DO NOT USE IT FOR FRAUD, DECEPTION, OR HARM.</li>
+            <ul className="list-disc list-inside space-y-1 text-[var(--text-secondary)]">
+              <li>Never target real individuals or unauthorized infrastructure.</li>
+              <li>Never use automation tools for unauthorized access or disruption.</li>
+              <li>Never generate deceptive campaigns for fraud or harm.</li>
             </ul>
           </div>
 
-          <div className="space-y-1.5 pt-1">
-            <div className="text-[#D97757] font-extrabold tracking-widest uppercase border-b border-[#3D3929] pb-1 flex items-center gap-1.5 text-xs">
-              <span>⚖️ USER RESPONSIBILITY</span>
+          <div className="space-y-1.5">
+            <div className="section-label" style={{ color: 'var(--accent)' }}>
+              User Responsibility
             </div>
-            <p className="text-[#1F1E1D] text-[11px] pl-1 leading-normal">
-              BY USING VOID AI, YOU ACKNOWLEDGE THAT YOU ARE SOLELY RESPONSIBLE FOR HOW YOU USE THE PLATFORM AND THAT ALL ACTIVITIES MUST BE LAWFUL, ETHICAL, AND AUTHORIZED.
+            <p className="text-[var(--text-secondary)] leading-relaxed">
+              You are responsible for ensuring all code, research, and integrations executed from this workspace comply with applicable laws and authorized permissions.
             </p>
           </div>
 
-          <div className="space-y-1.5 pt-1">
-            <div className="text-[#D97757] font-extrabold tracking-widest uppercase border-b border-[#3D3929] pb-1 flex items-center gap-1.5 text-xs">
-              <span>📜 LIMITATION OF LIABILITY</span>
-            </div>
-            <p className="text-[#1F1E1D] text-[11px] pl-1 leading-normal">
-              NOVA AI IS NOT RESPONSIBLE FOR ANY MISUSE OF VOID AI OR ANY CONSEQUENCES ARISING FROM ILLEGAL OR UNETHICAL USE.
-            </p>
-          </div>
-
-          <div className="pt-2 border-t border-[#3D3929] flex items-center justify-between text-[11px]">
-            <span className="text-[#D97757] font-bold">🌐 OFFICIAL WEBSITE</span>
-            <a 
-              href="https://home-of-void.netlify.app" 
-              target="_blank" 
+          <div className="pt-2 border-t border-[var(--line)] flex items-center justify-between text-[11px]">
+            <span className="text-[var(--text-muted)] font-medium">Project Portal</span>
+            <a
+              href="https://home-of-void.netlify.app"
+              target="_blank"
               rel="noopener noreferrer"
-              className="text-[#6B6A67] hover:text-[#1F1E1D] underline font-semibold flex items-center gap-1 transition-colors"
+              className="font-semibold flex items-center gap-1 hover:underline"
+              style={{ color: 'var(--accent)' }}
             >
               home-of-void.netlify.app
               <ExternalLink size={12} />
@@ -98,38 +81,41 @@ export const TermsModal: React.FC<TermsModalProps> = ({ onAccept, onDecline }) =
           </div>
         </div>
 
-        {/* Modal Footer & Checkbox */}
-        <div className="p-4 bg-[#FAF9F5] border-t border-[#3D3929] space-y-3">
-          <label className="flex items-center gap-2.5 cursor-pointer group select-none">
-            <input 
+        {/* Modal Footer */}
+        <div className="p-4 sm:p-5 glass-subtle border-t border-[var(--line)] space-y-3">
+          <label className="flex items-center gap-2.5 cursor-pointer select-none">
+            <input
               type="checkbox"
               checked={isChecked}
               onChange={(e) => setIsChecked(e.target.checked)}
-              className="w-4 h-4 accent-[#D97757] rounded bg-[#FAF9F5] border-[#3D3929] focus:ring-0 cursor-pointer"
+              className="w-4 h-4 rounded cursor-pointer"
+              style={{ accentColor: 'var(--accent)' }}
             />
-            <span className="text-xs font-bold text-[#6B6A67] group-hover:text-[#6B6A67] transition-colors">
-              I HAVE READ, UNDERSTOOD, AND AGREE TO ALL TERMS & CONDITIONS
+            <span className="text-xs font-semibold text-[var(--text-secondary)]">
+              I understand and agree to use NOVA AI responsibly and ethically.
             </span>
           </label>
 
           <div className="flex items-center gap-2.5">
             {onDecline && (
               <button
+                type="button"
                 onClick={onDecline}
-                className="w-1/3 py-2.5 px-3 rounded-xl bg-[#1F1E1D]/40 hover:bg-[#1F1E1D] text-[#E8E4D9] hover:text-white border border-[#3D3929] text-xs font-bold transition-all cursor-pointer uppercase"
+                className="btn btn-ghost w-1/3 py-2.5 text-xs"
               >
-                DECLINE
+                Decline
               </button>
             )}
             <button
+              type="button"
               onClick={() => {
                 setIsChecked(true);
                 onAccept();
               }}
-              className="flex-1 py-3 px-4 rounded-xl text-xs font-bold uppercase tracking-wider flex items-center justify-center gap-2 transition-all shadow-lg bg-[#D97757] hover:opacity-90 text-white cursor-pointer shadow-[0_0_20px_rgba(63,134,255,0.4)] active:scale-[0.98]"
+              className="btn btn-primary flex-1 py-2.5 text-xs"
             >
               <ShieldCheck size={16} />
-              <span>I ACCEPT & AGREE</span>
+              <span>Accept & Continue</span>
             </button>
           </div>
         </div>

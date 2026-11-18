@@ -3,8 +3,11 @@ import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import remarkMath from 'remark-math';
 import rehypeKatex from 'rehype-katex';
-import { Bot, User, Copy, Check, Trash2, Edit2, ExternalLink, ThumbsUp, ThumbsDown, Sparkles, Image as ImageIcon, AlertCircle, Volume2, VolumeX, Star, Zap, Activity, GitBranch } from 'lucide-react';
-import { Message, StructuredToolEvent, TerminalToolEvent } from '../../models/types';
+import {
+  User, Copy, Check, Trash2, Edit2, ExternalLink, ThumbsUp, ThumbsDown,
+  AlertCircle, Volume2, VolumeX, Star, GitBranch, ArrowRightCircle
+} from 'lucide-react';
+import { Message, TerminalToolEvent } from '../../models/types';
 import { CodeBlock } from './CodeBlock';
 import { CodingActivityPanel, parseCodingActivity } from './CodingActivityPanel';
 import { ToolHierarchyView } from './tools/ToolHierarchyView';
@@ -14,8 +17,9 @@ import { BuildTestCard } from './tools/BuildTestCard';
 import { terminalManager } from '../utils/terminalManager';
 import { parseMessageContent } from '../utils/toolEventParser';
 import { getStoredActiveRepo, getStoredGitHubCodingMode, setStoredGitHubCodingMode, ActiveRepoState } from '../utils/github';
-import { getPersonaForProvider, getPersona, type NovaPersona } from '../models/personas';
+import { getPersonaForProvider, type NovaPersona } from '../models/personas';
 import { NovaOrb } from './NovaOrb';
+import { CouncilActivityCard } from './CouncilActivityCard';
 import { clsx } from 'clsx';
 
 interface MessageBubbleProps {
@@ -24,10 +28,10 @@ interface MessageBubbleProps {
   onDelete?: (id: string) => void;
   onEdit?: (id: string, text: string) => void;
   onToggleStar?: (id: string) => void;
+  onContinue?: () => void;
   activeRepo?: ActiveRepoState | null;
   codingModeEnabled?: boolean;
   onEnableCodingMode?: () => void;
-  /** Active persona (falls back to provider stored on the message) */
   persona?: NovaPersona;
 }
 
@@ -37,6 +41,7 @@ export const MessageBubble = React.memo(function MessageBubble({
   onDelete,
   onEdit,
   onToggleStar: propOnToggleStar,
+  onContinue,
   activeRepo: propActiveRepo,
   codingModeEnabled: propCodingModeEnabled,
   onEnableCodingMode,
@@ -56,7 +61,6 @@ export const MessageBubble = React.memo(function MessageBubble({
 
   const handleSpeak = () => {
     if (typeof window === 'undefined' || !('speechSynthesis' in window)) {
-      alert('Speech synthesis is not supported in this browser.');
       return;
     }
     if (isSpeaking) {
@@ -106,7 +110,7 @@ export const MessageBubble = React.memo(function MessageBubble({
 
   const markdownComponents = {
     code(props: any) {
-      const { children, className, node, ref, ...rest } = props;
+      const { children, className, ...rest } = props;
       const match = /language-(\w+)/.exec(className || '');
       const codeString = String(children).replace(/\n$/, '');
 
@@ -140,7 +144,6 @@ export const MessageBubble = React.memo(function MessageBubble({
         } catch (_) {}
       }
 
-      // Never render raw terminal commands or internal tool syntax as a normal code block or assistant message
       const hasTerminalHeader = /tool:\s*["']?terminal["']?/i.test(codeString);
       const isShellLang = match && ['terminal', 'bash', 'sh', 'shell', 'console', 'void'].includes(match[1]);
       const trimmedCode = codeString.trim();
@@ -186,7 +189,7 @@ export const MessageBubble = React.memo(function MessageBubble({
       return (
         <code
           {...rest}
-          className="bg-[var(--bg-3)] px-1.5 py-0.5 rounded-md text-xs font-mono border border-[var(--line)] inline-block"
+          className="bg-[var(--bg-3)] text-[var(--text-primary)] px-1.5 py-0.5 rounded-md text-xs font-mono border border-[var(--line)] inline-block"
         >
           {children}
         </code>
@@ -208,7 +211,7 @@ export const MessageBubble = React.memo(function MessageBubble({
       return <th className="px-4 py-2.5 font-semibold border-r border-[var(--line)] last:border-r-0">{props.children}</th>;
     },
     td(props: any) {
-      return <td className="px-4 py-2 border-t border-[var(--line)] border-r border-[var(--line)] last:border-r-0 hover:bg-white/[0.03] transition-colors">{props.children}</td>;
+      return <td className="px-4 py-2 border-t border-[var(--line)] border-r border-[var(--line)] last:border-r-0 hover:bg-black/[0.02] dark:hover:bg-white/[0.03] transition-colors">{props.children}</td>;
     },
     a(props: any) {
       return (
@@ -231,7 +234,7 @@ export const MessageBubble = React.memo(function MessageBubble({
           <img
             src={props.src}
             alt={props.alt || 'Generated asset'}
-            className="rounded-lg border border-[#FFFFFF] max-h-56 object-cover shadow-lg hover:brightness-110 transition-all cursor-pointer"
+            className="rounded-xl border border-[var(--line)] max-h-56 object-cover shadow-lg hover:brightness-105 transition-all cursor-pointer"
             onClick={() => props.src && setPreviewImage(props.src)}
           />
         </span>
@@ -240,27 +243,23 @@ export const MessageBubble = React.memo(function MessageBubble({
   };
 
   return (
-    <div
-      className={clsx(
-        "group w-full py-3 px-3 sm:px-5 transition-colors contain-paint animate-messageIn",
-        isUser ? "bg-transparent" : "bg-transparent"
-      )}
-    >
+    <div className="group w-full py-3 px-3 sm:px-5 transition-colors contain-paint animate-messageIn">
       <div className={clsx(
-        "max-w-3xl mx-auto flex w-full gap-2.5 relative items-start",
+        "max-w-3xl mx-auto flex w-full gap-2.5 sm:gap-3 relative items-start",
         isUser ? "flex-row-reverse" : "flex-row"
       )}>
         {/* Avatar */}
         <div className="shrink-0 mt-0.5">
           {isUser ? (
-            <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-full flex items-center justify-center text-xs font-semibold bg-white/[0.06] border border-white/15 text-[var(--text-secondary)] shadow-[var(--shadow-xs)]">
+            <div className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-semibold glass text-[var(--text-secondary)] shadow-[var(--shadow-xs)]">
               <User size={14} />
             </div>
           ) : (
-            <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-full presence-ring overflow-hidden flex items-center justify-center">
+            <div className="w-9 h-9 rounded-full presence-ring overflow-hidden flex items-center justify-center glass">
               <NovaOrb
                 size={34}
                 state={isStreaming ? 'thinking' : isSpeaking ? 'speaking' : 'idle'}
+                persona={persona}
                 label={persona.name}
               />
             </div>
@@ -274,15 +273,20 @@ export const MessageBubble = React.memo(function MessageBubble({
         )}>
           {/* Header info */}
           <div className={clsx(
-            "flex items-center gap-1.5 sm:gap-2 mb-0.5",
+            "flex items-center gap-2 mb-0.5 px-1",
             isUser ? "flex-row-reverse" : "flex-row"
           )}>
-          <span className={clsx("text-xs font-medium", isUser ? "text-[var(--text-secondary)]" : "text-[var(--text-primary)]")}>
-            {isUser ? 'You' : <span>{persona.name.split(' ')[0]} <span className="text-gradient" style={{ opacity: 0.9 }}>{persona.name.split(' ').slice(1).join(' ')}</span></span>}
-          </span>
-          <span className="text-[10px] text-[var(--text-muted)]">
-            {new Date(message.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-          </span>
+            <span className={clsx("text-xs font-semibold", isUser ? "text-[var(--text-secondary)]" : "text-[var(--text-primary)]")}>
+              {isUser ? 'You' : (
+                <span>
+                  {persona.name}
+                  <span className="ml-1.5 text-[10px] font-normal text-[var(--text-muted)]">· {persona.role}</span>
+                </span>
+              )}
+            </span>
+            <span className="text-[10px] text-[var(--text-muted)] tabular-nums">
+              {new Date(message.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+            </span>
           </div>
 
           {/* Edit Mode vs Content */}
@@ -291,20 +295,22 @@ export const MessageBubble = React.memo(function MessageBubble({
               <textarea
                 value={editText}
                 onChange={(e) => setEditText(e.target.value)}
-                className="w-full bg-[var(--bg-2)] border border-[var(--line)] focus:border-[var(--accent-muted)] rounded-xl p-3 text-[var(--text-primary)] min-h-[110px] outline-none text-sm transition-colors"
+                className="w-full glass-strong border border-[var(--line-strong)] focus:border-[var(--accent-muted)] rounded-2xl p-3.5 text-[var(--text-primary)] min-h-[110px] outline-none text-sm transition-colors"
               />
               <div className="flex items-center gap-2 justify-end">
                 <button
+                  type="button"
                   onClick={() => setIsEditing(false)}
                   className="btn btn-ghost px-3 py-1.5 text-xs"
                 >
                   Cancel
                 </button>
                 <button
+                  type="button"
                   onClick={handleSaveEdit}
                   className="btn btn-primary px-4 py-1.5 text-xs"
                 >
-                  Save
+                  Save & Resend
                 </button>
               </div>
             </div>
@@ -315,20 +321,23 @@ export const MessageBubble = React.memo(function MessageBubble({
                 ? "bubble-user text-[var(--text-primary)] p-3.5 sm:p-4 max-w-[92%] sm:max-w-[85%] text-left"
                 : "bubble-model text-[var(--text-primary)] p-4 sm:p-5 w-full max-w-none text-left"
             )}>
+              {!isUser && message.councilData && (
+                <CouncilActivityCard data={message.councilData} isStreaming={isStreaming} />
+              )}
               <div className={clsx(
-                "prose prose-invert max-w-none text-sm leading-relaxed w-full",
-                "prose-headings:text-[#1F1E1D] prose-headings:font-bold prose-headings:tracking-tight",
-                "prose-h1:text-base sm:prose-h1:text-lg prose-h1:mt-2.5 prose-h1:mb-1.5 prose-h1:border-b prose-h1:border-[#3D3929] prose-h1:pb-1.5",
+                "prose dark:prose-invert max-w-none text-sm leading-relaxed w-full",
+                "prose-headings:text-[var(--text-primary)] prose-headings:font-bold prose-headings:tracking-tight",
+                "prose-p:text-[var(--text-primary)] prose-li:text-[var(--text-primary)] prose-strong:text-[var(--text-primary)]",
+                "prose-h1:text-base sm:prose-h1:text-lg prose-h1:mt-2.5 prose-h1:mb-1.5 prose-h1:border-b prose-h1:border-[var(--line)] prose-h1:pb-1.5",
                 "prose-h2:text-sm sm:prose-h2:text-base prose-h2:mt-2.5 prose-h2:mb-1",
                 "prose-h3:text-sm prose-h3:mt-2 prose-h3:mb-1",
                 "prose-p:my-1.5 prose-p:leading-relaxed",
                 "prose-ul:my-1.5 prose-ul:pl-4 sm:prose-ul:pl-5 prose-ul:list-disc prose-li:my-0.5",
                 "prose-ol:my-1.5 prose-ol:pl-4 sm:prose-ol:pl-5 prose-ol:list-decimal prose-li:my-0.5",
-                "prose-blockquote:border-l-2 prose-blockquote:border-[var(--accent-muted)] prose-blockquote:bg-white/[0.03] prose-blockquote:py-1.5 prose-blockquote:px-3 prose-blockquote:rounded-r-lg prose-blockquote:text-[var(--text-secondary)] prose-blockquote:not-italic prose-blockquote:my-2",
+                "prose-blockquote:border-l-2 prose-blockquote:border-[var(--accent-muted)] prose-blockquote:bg-[var(--bg-2)] prose-blockquote:py-1.5 prose-blockquote:px-3 prose-blockquote:rounded-r-lg prose-blockquote:text-[var(--text-secondary)] prose-blockquote:not-italic prose-blockquote:my-2",
                 "prose-hr:border-[var(--line)] prose-hr:my-3",
                 isStreaming && "streaming-cursor"
               )}>
-                {/* 1. AI Narration / Conversation before tool */}
                 {parsed.beforeText && (
                   <ReactMarkdown
                     remarkPlugins={[remarkGfm, remarkMath]}
@@ -339,7 +348,6 @@ export const MessageBubble = React.memo(function MessageBubble({
                   </ReactMarkdown>
                 )}
 
-                {/* 2. Structured Tool Event Cards / Hierarchy */}
                 {(parsed.thinking || parsed.toolEvents.length > 0) && (
                   <ToolHierarchyView
                     thinking={parsed.thinking}
@@ -348,7 +356,6 @@ export const MessageBubble = React.memo(function MessageBubble({
                   />
                 )}
 
-                {/* 3. AI Narration / Response after tool */}
                 {parsed.afterText && (
                   <ReactMarkdown
                     remarkPlugins={[remarkGfm, remarkMath]}
@@ -359,7 +366,6 @@ export const MessageBubble = React.memo(function MessageBubble({
                   </ReactMarkdown>
                 )}
 
-                {/* Fallback if text only */}
                 {!parsed.beforeText && !parsed.afterText && parsed.toolEvents.length === 0 && !parsed.thinking && (
                   <ReactMarkdown
                     remarkPlugins={[remarkGfm, remarkMath]}
@@ -371,16 +377,17 @@ export const MessageBubble = React.memo(function MessageBubble({
                 )}
 
                 {hasEnableActionTag && (
-                  <div className="mt-3 p-3 rounded-xl bg-amber-950/40 border border-amber-800/40 flex flex-wrap items-center justify-between gap-2.5 text-xs text-amber-200">
+                  <div className="mt-3 p-3 rounded-xl bg-amber-500/10 border border-amber-500/30 flex flex-wrap items-center justify-between gap-2.5 text-xs text-amber-800 dark:text-amber-200">
                     <div className="flex items-center gap-2">
-                      <AlertCircle size={15} className="text-amber-400 shrink-0" />
-                      <span>GitHub Coding Mode is currently OFF. Turn it ON to allow repository edits.</span>
+                      <AlertCircle size={15} className="text-amber-500 shrink-0" />
+                      <span>GitHub Coding Mode is currently OFF. Enable it to allow repository edits.</span>
                     </div>
                     <button
+                      type="button"
                       onClick={handleEnableCodingMode}
-                      className="px-3 py-1.5 bg-amber-500 hover:bg-amber-400 text-black font-bold rounded-lg text-[11px] transition-colors cursor-pointer shrink-0"
+                      className="px-3 py-1.5 bg-amber-500 hover:bg-amber-400 text-white font-bold rounded-lg text-[11px] transition-colors cursor-pointer shrink-0"
                     >
-                      Turn ON GitHub Coding Mode
+                      Enable Coding Mode
                     </button>
                   </div>
                 )}
@@ -388,105 +395,125 @@ export const MessageBubble = React.memo(function MessageBubble({
             </div>
           )}
 
-          {/* Real-time Telemetry Metrics Strip (2026 Zero-Pill metadata) */}
+          {/* Zero-Pill Telemetry Strip */}
           {!isUser && (message.tokensPerSec || message.latencyMs || message.modelUsed) && (
-            <div className="pt-2 pb-0.5 flex items-center gap-2 text-[10px] text-slate-500 font-mono tabular-nums">
+            <div className="pt-1 pb-0.5 px-1 flex items-center gap-2 text-[10px] text-[var(--text-muted)] font-mono tabular-nums">
               {message.modelUsed && <span>{message.modelUsed}</span>}
               {message.modelUsed && (message.tokensPerSec || message.latencyMs) && <span aria-hidden="true">·</span>}
               {message.tokensPerSec && <span>{Math.round(message.tokensPerSec)} tok/s</span>}
               {message.tokensPerSec && message.ttftMs && <span aria-hidden="true">·</span>}
               {message.ttftMs && <span>TTFT {message.ttftMs}ms</span>}
               {(message.tokensPerSec || message.ttftMs) && message.latencyMs && <span aria-hidden="true">·</span>}
-              {message.latencyMs && <span>{message.latencyMs}ms total</span>}
+              {message.latencyMs && <span>{message.latencyMs}ms</span>}
             </div>
           )}
 
           {/* Action Toolbar */}
           {!isEditing && message.id !== 'temp' && (
             <div className={clsx(
-              "pt-1 flex items-center gap-1 text-[#6B6A67] opacity-90 group-hover:opacity-100 transition-opacity",
+              "pt-0.5 px-1 flex items-center flex-wrap gap-1 text-[var(--text-muted)] opacity-90 group-hover:opacity-100 transition-opacity",
               isUser ? "flex-row-reverse" : "flex-row"
             )}>
               <button
+                type="button"
                 onClick={handleCopy}
-                className="p-1.5 text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-white/[0.06] rounded-md transition-colors flex items-center gap-1 text-xs cursor-pointer"
-                title="Copy text"
+                className="p-1.5 text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-black/[0.05] dark:hover:bg-white/[0.08] rounded-lg transition-colors flex items-center gap-1 text-xs cursor-pointer"
+                title="Copy message"
               >
                 {copied ? (
                   <>
-                    <Check size={14} className="text-emerald-400" />
-                    <span className="text-[11px] text-emerald-400 font-semibold">Copied</span>
+                    <Check size={13} className="text-emerald-500" />
+                    <span className="text-[11px] text-emerald-500 font-semibold">Copied</span>
                   </>
                 ) : (
                   <>
-                    <Copy size={14} />
+                    <Copy size={13} />
                     <span className="text-[11px] hidden sm:inline">Copy</span>
                   </>
                 )}
               </button>
 
+              {!isUser && !isStreaming && onContinue && (
+                <button
+                  type="button"
+                  onClick={onContinue}
+                  className="p-1.5 text-[var(--text-muted)] hover:text-[var(--accent)] hover:bg-[var(--accent-soft)] rounded-lg transition-colors flex items-center gap-1 text-xs cursor-pointer font-medium"
+                  title="Continue and complete this task without restarting"
+                >
+                  <ArrowRightCircle size={13} />
+                  <span className="text-[11px]">Continue</span>
+                </button>
+              )}
+
               {!isUser && (
                 <>
                   <button
+                    type="button"
                     onClick={handleSpeak}
                     className={clsx(
-                      "p-1.5 rounded-md transition-colors text-xs flex items-center gap-1 cursor-pointer",
-                      isSpeaking ? "text-blue-400 bg-blue-950/40" : "text-[#E8E4D9] hover:text-white hover:bg-[#1F1E1D]"
+                      "p-1.5 rounded-lg transition-colors text-xs flex items-center gap-1 cursor-pointer",
+                      isSpeaking
+                        ? "text-[var(--accent)] bg-[var(--accent-soft)]"
+                        : "text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-black/[0.05] dark:hover:bg-white/[0.08]"
                     )}
-                    title={isSpeaking ? "Stop speech readout" : "Read message aloud"}
+                    title={isSpeaking ? "Stop reading" : "Read aloud"}
                   >
-                    {isSpeaking ? <VolumeX size={14} /> : <Volume2 size={14} />}
+                    {isSpeaking ? <VolumeX size={13} /> : <Volume2 size={13} />}
                     <span className="text-[11px] hidden sm:inline">{isSpeaking ? 'Stop' : 'Read'}</span>
                   </button>
 
                   <button
+                    type="button"
                     onClick={() => setLiked(liked === true ? null : true)}
                     className={clsx(
-                      "p-1.5 rounded-md transition-colors text-xs flex items-center gap-1 cursor-pointer",
-                      liked === true ? "text-emerald-400 bg-emerald-950/40" : "text-[#E8E4D9] hover:text-white hover:bg-[#1F1E1D]"
+                      "p-1.5 rounded-lg transition-colors text-xs flex items-center gap-1 cursor-pointer",
+                      liked === true
+                        ? "text-emerald-500 bg-emerald-500/10"
+                        : "text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-black/[0.05] dark:hover:bg-white/[0.08]"
                     )}
-                    title="Good response"
+                    title="Helpful response"
                   >
-                    <ThumbsUp size={14} />
+                    <ThumbsUp size={13} />
                   </button>
                   <button
+                    type="button"
                     onClick={() => setLiked(liked === false ? null : false)}
                     className={clsx(
-                      "p-1.5 rounded-md transition-colors text-xs flex items-center gap-1 cursor-pointer",
-                      liked === false ? "text-rose-400 bg-rose-950/40" : "text-[#E8E4D9] hover:text-white hover:bg-[#1F1E1D]"
+                      "p-1.5 rounded-lg transition-colors text-xs flex items-center gap-1 cursor-pointer",
+                      liked === false
+                        ? "text-rose-500 bg-rose-500/10"
+                        : "text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-black/[0.05] dark:hover:bg-white/[0.08]"
                     )}
-                    title="Poor response"
+                    title="Needs improvement"
                   >
-                    <ThumbsDown size={14} />
+                    <ThumbsDown size={13} />
                   </button>
                 </>
               )}
 
-              {/* Star / Favorite Message */}
               <button
-                onClick={() => {
-                  if (propOnToggleStar) {
-                    propOnToggleStar(message.id);
-                  }
-                }}
+                type="button"
+                onClick={() => propOnToggleStar?.(message.id)}
                 className={clsx(
-                  "p-1.5 rounded-md transition-colors text-xs flex items-center gap-1 cursor-pointer",
-                  message.isStarred ? "text-amber-400" : "text-[#E8E4D9] hover:text-white hover:bg-[#1F1E1D]"
+                  "p-1.5 rounded-lg transition-colors text-xs flex items-center gap-1 cursor-pointer",
+                  message.isStarred
+                    ? "text-amber-500"
+                    : "text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-black/[0.05] dark:hover:bg-white/[0.08]"
                 )}
                 title={message.isStarred ? "Unstar message" : "Star message"}
               >
-                <Star size={14} className={message.isStarred ? "fill-amber-400" : ""} />
+                <Star size={13} className={message.isStarred ? "fill-amber-500" : ""} />
               </button>
 
-              {/* Branch / Fork Chat from this point */}
               <button
+                type="button"
                 onClick={() => {
                   window.dispatchEvent(new CustomEvent('void_ai_fork_chat', {
                     detail: { messageId: message.id }
                   }));
                 }}
-                className="p-1.5 text-[#E8E4D9] hover:text-cyan-400 hover:bg-[#1F1E1D] rounded-md transition-colors flex items-center gap-1 text-xs cursor-pointer"
-                title="Branch conversation into a new thread from this message"
+                className="p-1.5 text-[var(--text-muted)] hover:text-[var(--accent)] hover:bg-black/[0.05] dark:hover:bg-white/[0.08] rounded-lg transition-colors flex items-center gap-1 text-xs cursor-pointer"
+                title="Branch thread from this message"
               >
                 <GitBranch size={13} />
                 <span className="text-[10px] hidden md:inline">Branch</span>
@@ -494,22 +521,24 @@ export const MessageBubble = React.memo(function MessageBubble({
 
               {isUser && onEdit && (
                 <button
+                  type="button"
                   onClick={() => setIsEditing(true)}
-                  className="p-1.5 text-[#E8E4D9] hover:text-white hover:bg-[#1F1E1D] rounded-md transition-colors flex items-center gap-1 text-xs cursor-pointer"
+                  className="p-1.5 text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-black/[0.05] dark:hover:bg-white/[0.08] rounded-lg transition-colors flex items-center gap-1 text-xs cursor-pointer"
                   title="Edit message"
                 >
-                  <Edit2 size={14} />
+                  <Edit2 size={13} />
                   <span className="text-[11px] hidden sm:inline">Edit</span>
                 </button>
               )}
 
               {onDelete && (
                 <button
+                  type="button"
                   onClick={() => onDelete(message.id)}
-                  className="p-1.5 text-[#E8E4D9] hover:text-rose-400 hover:bg-[#1F1E1D] rounded-md transition-colors cursor-pointer"
+                  className="p-1.5 text-[var(--text-muted)] hover:text-rose-500 hover:bg-rose-500/10 rounded-lg transition-colors cursor-pointer"
                   title="Delete message"
                 >
-                  <Trash2 size={14} />
+                  <Trash2 size={13} />
                 </button>
               )}
             </div>
@@ -520,13 +549,13 @@ export const MessageBubble = React.memo(function MessageBubble({
       {/* Fullscreen Image Preview Modal */}
       {previewImage && (
         <div
-          className="fixed inset-0 z-50 bg-black/90 flex items-center justify-center p-4 cursor-pointer"
+          className="fixed inset-0 z-50 bg-black/85 backdrop-blur-md flex items-center justify-center p-4 cursor-pointer"
           onClick={() => setPreviewImage(null)}
         >
           <img
             src={previewImage}
             alt="Expanded view"
-            className="max-w-full max-h-[90vh] rounded-2xl border border-[#FFFFFF] shadow-2xl"
+            className="max-w-full max-h-[90vh] rounded-2xl border border-white/20 shadow-2xl"
           />
         </div>
       )}
@@ -537,7 +566,9 @@ export const MessageBubble = React.memo(function MessageBubble({
     prev.message.id === next.message.id &&
     prev.message.text === next.message.text &&
     prev.message.isStarred === next.message.isStarred &&
+    prev.message.councilData === next.message.councilData &&
     prev.isStreaming === next.isStreaming &&
+    prev.persona?.id === next.persona?.id &&
     prev.codingModeEnabled === next.codingModeEnabled &&
     prev.activeRepo?.repo === next.activeRepo?.repo &&
     prev.activeRepo?.branch === next.activeRepo?.branch &&

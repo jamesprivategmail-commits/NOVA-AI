@@ -1,5 +1,5 @@
-import React, { useState, useRef, useLayoutEffect } from 'react';
-import { Send, Square, X, Image as ImageIcon, FileText, Plus, AudioLines, Mic, MicOff, Archive, Play, Loader2 } from 'lucide-react';
+import React, { useState, useRef } from 'react';
+import { Send, Square, X, Image as ImageIcon, FileText, Plus, AudioLines, Mic, MicOff, Archive, Play, Loader2, Globe } from 'lucide-react';
 import { clsx } from 'clsx';
 import { parseZipArchive, ParsedZipResult } from '../utils/zipParser';
 import { LiveHtmlPreviewModal } from './workspace/LiveHtmlPreviewModal';
@@ -7,7 +7,7 @@ import { ZipInspectorModal } from './workspace/ZipInspectorModal';
 
 export interface ChatAttachment {
   kind: 'image' | 'file' | 'zip';
-  data: string;       // dataURL for images, text content for files/zips
+  data: string;
   name: string;
   mimeType: string;
   zipStats?: {
@@ -26,6 +26,11 @@ interface InputAreaProps {
   onStop?: () => void;
   onOpenLiveVoice?: () => void;
   onImageGenerate?: (text: string) => void;
+  activeCharacterName?: string;
+  onActivityChange?: (isUserComposingOrDictating: boolean) => void;
+  webResearchEnabled?: boolean;
+  onToggleWebResearch?: () => void;
+  squadMode?: boolean;
 }
 
 export const InputArea = React.memo(function InputArea({ 
@@ -33,7 +38,12 @@ export const InputArea = React.memo(function InputArea({
   isLoading, 
   onStop, 
   onOpenLiveVoice, 
-  onImageGenerate
+  onImageGenerate,
+  activeCharacterName = 'Shii',
+  onActivityChange,
+  webResearchEnabled = false,
+  onToggleWebResearch,
+  squadMode = false,
 }: InputAreaProps) {
   const [text, setText] = useState('');
   const [attachment, setAttachment] = useState<ChatAttachment | null>(null);
@@ -46,6 +56,10 @@ export const InputArea = React.memo(function InputArea({
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const recognitionRef = useRef<any>(null);
+
+  React.useEffect(() => {
+    onActivityChange?.(Boolean(text.trim() || isDictating));
+  }, [text, isDictating, onActivityChange]);
 
   const handleToggleDictation = () => {
     const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
@@ -89,7 +103,7 @@ export const InputArea = React.memo(function InputArea({
     const textarea = textareaRef.current;
     if (!textarea) return;
     textarea.style.height = 'auto';
-    const newHeight = Math.min(Math.max(textarea.scrollHeight, 34), 110);
+    const newHeight = Math.min(Math.max(textarea.scrollHeight, 38), 128);
     textarea.style.height = `${newHeight}px`;
   }, [text]);
 
@@ -100,7 +114,6 @@ export const InputArea = React.memo(function InputArea({
     try {
       const lowerName = file.name.toLowerCase();
 
-      // 1. Process ZIP Archive
       if (lowerName.endsWith('.zip') || file.type === 'application/zip' || file.type === 'application/x-zip-compressed') {
         const parsed = await parseZipArchive(file);
         setAttachment({
@@ -120,7 +133,6 @@ export const InputArea = React.memo(function InputArea({
         return;
       }
 
-      // 2. Process Image
       if (file.type.startsWith('image/')) {
         const reader = new FileReader();
         reader.onload = () => {
@@ -135,14 +147,13 @@ export const InputArea = React.memo(function InputArea({
         return;
       }
 
-      // 3. Process HTML / Text / Code
       const reader = new FileReader();
       reader.onload = () => {
         const content = reader.result as string;
         const isHtml = lowerName.endsWith('.html') || lowerName.endsWith('.htm') || file.type === 'text/html';
         setAttachment({
           kind: 'file',
-          data: content.slice(0, 32000),
+          data: content.slice(0, 48000),
           name: file.name,
           mimeType: file.type || 'text/plain',
           htmlContent: isHtml ? content : undefined
@@ -151,7 +162,6 @@ export const InputArea = React.memo(function InputArea({
       reader.readAsText(file);
     } catch (err: any) {
       console.error('File parsing error:', err);
-      alert(`Could not process ${file.name}: ${err?.message || 'Unsupported format'}`);
     } finally {
       setIsProcessingFile(false);
     }
@@ -194,13 +204,13 @@ export const InputArea = React.memo(function InputArea({
         onImageGenerate(trimmed);
         setText('');
         setImageMode(false);
-        if (textareaRef.current) textareaRef.current.style.height = '34px';
+        if (textareaRef.current) textareaRef.current.style.height = '36px';
         return;
       }
       onSend(trimmed, attachment || undefined);
       setText('');
       setAttachment(null);
-      if (textareaRef.current) textareaRef.current.style.height = '34px';
+      if (textareaRef.current) textareaRef.current.style.height = '36px';
     }
   };
 
@@ -219,7 +229,6 @@ export const InputArea = React.memo(function InputArea({
       onDragLeave={handleDragLeave}
       onDrop={handleDrop}
     >
-      {/* Live HTML Preview Sandbox Modal */}
       {previewingHtml && (
         <LiveHtmlPreviewModal
           initialHtml={previewingHtml}
@@ -228,12 +237,11 @@ export const InputArea = React.memo(function InputArea({
         />
       )}
 
-      {/* ZIP Archive Inspector Modal */}
       {inspectingZip && (
         <ZipInspectorModal
           zipData={inspectingZip}
           onClose={() => setInspectingZip(null)}
-          onOpenInHtmlPreview={(html, title) => {
+          onOpenInHtmlPreview={(html) => {
             setInspectingZip(null);
             setPreviewingHtml(html);
           }}
@@ -246,50 +254,50 @@ export const InputArea = React.memo(function InputArea({
 
       {/* Drag & Drop Overlay */}
       {isDragging && (
-        <div className="absolute inset-x-2 -top-12 bottom-1 bg-[var(--bg-2)]/90 backdrop-blur-md border-2 border-dashed border-[var(--accent-muted)] rounded-2xl z-30 flex items-center justify-center gap-3 text-[var(--text-primary)] text-xs font-semibold shadow-[var(--shadow-lg)] animate-fadeIn">
+        <div className="absolute inset-x-2 -top-12 bottom-1 glass-thick border-2 border-dashed border-[var(--accent-muted)] rounded-2xl z-30 flex items-center justify-center gap-3 text-[var(--text-primary)] text-xs font-semibold animate-fadeIn">
           <Archive size={20} className="animate-bounce" style={{ color: 'var(--accent)' }} />
-          <span>Drop ZIP archive, HTML, or code file here to analyze</span>
+          <span>Drop ZIP archive, HTML, image, or code file</span>
         </div>
       )}
 
       {/* Attachment Processing Loader */}
       {isProcessingFile && (
-        <div className="mb-1.5 p-2 px-3 bg-[var(--bg-2)] border border-[var(--accent-muted)] rounded-xl flex items-center gap-2.5 text-xs text-[var(--text-secondary)] animate-fadeIn">
+        <div className="mb-1.5 p-2 px-3 glass-strong rounded-xl flex items-center gap-2.5 text-xs text-[var(--text-secondary)] animate-fadeIn">
           <Loader2 size={14} className="animate-spin" style={{ color: 'var(--accent)' }} />
-          <span>Unpacking and parsing file contents for AI analysis...</span>
+          <span>Unpacking file contents for {activeCharacterName}...</span>
         </div>
       )}
 
       {/* Attachment Preview Card */}
       {attachment && !isProcessingFile && (
-        <div className="mb-1.5 p-2 px-3 glass rounded-xl flex items-center justify-between gap-3 text-xs text-[var(--text-primary)] animate-fadeIn">
+        <div className="mb-2 p-2 px-3 glass-strong rounded-2xl flex items-center justify-between gap-3 text-xs text-[var(--text-primary)] animate-fadeIn">
           {attachment.kind === 'image' ? (
-            <div className="flex items-center gap-2 truncate">
-              <img src={attachment.data} alt={attachment.name} className="w-7 h-7 rounded-lg object-cover shrink-0 border border-white/10" />
+            <div className="flex items-center gap-2.5 truncate">
+              <img src={attachment.data} alt={attachment.name} className="w-8 h-8 rounded-xl object-cover shrink-0 border border-[var(--line)]" />
               <div className="min-w-0">
-                <span className="truncate text-xs font-medium text-[#1F1E1D] block">{attachment.name}</span>
-                <span className="text-[10px] text-[#6B6A67]">Image attachment</span>
+                <span className="truncate text-xs font-semibold text-[var(--text-primary)] block">{attachment.name}</span>
+                <span className="text-[10px] text-[var(--text-muted)]">Image ready to analyze</span>
               </div>
             </div>
           ) : attachment.kind === 'zip' ? (
             <div className="flex items-center gap-2.5 truncate">
-              <div className="w-7 h-7 rounded-lg bg-amber-500/10 border border-amber-500/30 text-amber-400 flex items-center justify-center shrink-0">
+              <div className="w-8 h-8 rounded-xl bg-amber-500/15 border border-amber-500/35 text-amber-600 dark:text-amber-300 flex items-center justify-center shrink-0">
                 <Archive size={15} />
               </div>
               <div className="min-w-0">
-                <span className="truncate text-xs font-bold text-[#1F1E1D] block">{attachment.name}</span>
-                <span className="text-[10px] text-amber-400 font-mono">
-                  📦 {attachment.zipStats?.fileCount || 0} files unpacked · {((attachment.zipStats?.totalSize || 0) / 1024).toFixed(1)} KB
+                <span className="truncate text-xs font-semibold text-[var(--text-primary)] block">{attachment.name}</span>
+                <span className="text-[10px] text-amber-700 dark:text-amber-300 font-mono">
+                  {attachment.zipStats?.fileCount || 0} files · {((attachment.zipStats?.totalSize || 0) / 1024).toFixed(1)} KB
                 </span>
               </div>
             </div>
           ) : (
             <div className="flex items-center gap-2.5 truncate">
-              <div className="w-7 h-7 rounded-lg border flex items-center justify-center shrink-0" style={{ background: 'var(--accent-soft)', borderColor: 'var(--accent-muted)', color: 'var(--accent-hover)' }}>
+              <div className="w-8 h-8 rounded-xl border flex items-center justify-center shrink-0" style={{ background: 'var(--accent-soft)', borderColor: 'var(--accent-muted)', color: 'var(--accent)' }}>
                 <FileText size={15} />
               </div>
               <div className="min-w-0">
-                <span className="truncate text-xs font-medium text-[var(--text-primary)] block">{attachment.name}</span>
+                <span className="truncate text-xs font-semibold text-[var(--text-primary)] block">{attachment.name}</span>
                 <span className="text-[10px] text-[var(--text-muted)] font-mono">
                   {attachment.mimeType} · {attachment.data.length} chars
                 </span>
@@ -297,17 +305,16 @@ export const InputArea = React.memo(function InputArea({
             </div>
           )}
 
-          {/* Action buttons (Inspect ZIP, Preview HTML if available, Remove) */}
           <div className="flex items-center gap-1.5 shrink-0">
             {attachment.parsedZip && (
               <button
                 type="button"
                 onClick={() => setInspectingZip(attachment.parsedZip!)}
-                className="px-2.5 py-1 bg-amber-600/20 hover:bg-amber-600/30 border border-amber-500/40 text-amber-300 rounded-lg text-[11px] font-medium flex items-center gap-1 transition-colors cursor-pointer"
-                title="Inspect directory tree & browse files in archive"
+                className="px-2.5 py-1 bg-amber-500/15 hover:bg-amber-500/25 border border-amber-500/40 text-amber-800 dark:text-amber-200 rounded-lg text-[11px] font-semibold flex items-center gap-1 transition-colors cursor-pointer"
+                title="Browse archive files"
               >
                 <Archive size={11} />
-                <span>Inspect ZIP</span>
+                <span>Inspect</span>
               </button>
             )}
 
@@ -315,18 +322,18 @@ export const InputArea = React.memo(function InputArea({
               <button
                 type="button"
                 onClick={() => setPreviewingHtml(attachment.htmlContent!)}
-                className="px-2.5 py-1 bg-emerald-600/20 hover:bg-emerald-600/30 border border-emerald-500/40 text-emerald-300 rounded-lg text-[11px] font-medium flex items-center gap-1 transition-colors cursor-pointer"
-                title="Run live interactive HTML sandbox"
+                className="px-2.5 py-1 bg-emerald-500/15 hover:bg-emerald-500/25 border border-emerald-500/40 text-emerald-800 dark:text-emerald-200 rounded-lg text-[11px] font-semibold flex items-center gap-1 transition-colors cursor-pointer"
+                title="Open live HTML preview"
               >
                 <Play size={10} fill="currentColor" />
-                <span>Live Preview</span>
+                <span>Preview</span>
               </button>
             )}
 
             <button
               type="button"
               onClick={() => setAttachment(null)}
-              className="p-1.5 hover:bg-white/10 rounded-lg text-[#6B6A67] hover:text-[#1F1E1D] transition-colors cursor-pointer"
+              className="p-1.5 hover:bg-black/[0.06] dark:hover:bg-white/[0.1] rounded-lg text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-colors cursor-pointer"
               title="Remove attachment"
             >
               <X size={14} />
@@ -335,10 +342,10 @@ export const InputArea = React.memo(function InputArea({
         </div>
       )}
 
-      {/* Composer Dock */}
+      {/* iOS 26 Liquid Glass Composer Dock */}
       <div className={clsx(
-        "relative flex items-center w-full min-h-[52px] glass-dock-2026 rounded-full transition-all px-2.5 py-1.5 gap-1.5 shadow-xl",
-        isDragging && "ring-2 ring-blue-500"
+        "relative flex items-center w-full min-h-[54px] glass-dock-2026 rounded-full transition-all px-2.5 py-1.5 gap-1.5",
+        isDragging && "glow-ring"
       )}>
         <input
           type="file"
@@ -352,66 +359,92 @@ export const InputArea = React.memo(function InputArea({
         <button
           type="button"
           onClick={() => fileInputRef.current?.click()}
-          className="w-9 h-9 sm:w-10 sm:h-10 rounded-full bg-white/[0.05] hover:bg-white/[0.1] border border-[var(--line)] text-[var(--text-primary)] flex items-center justify-center shrink-0 transition-colors cursor-pointer"
-          title="Attach image or file"
+          className="w-9 h-9 sm:w-10 sm:h-10 rounded-full glass hover:bg-black/[0.05] dark:hover:bg-white/[0.1] text-[var(--text-primary)] flex items-center justify-center shrink-0 transition-all cursor-pointer"
+          title="Attach image, code, or ZIP archive"
         >
-          <Plus size={19} />
+          <Plus size={18} />
         </button>
 
-        {/* Image Mode Button */}
+        {/* Image Generation Toggle */}
         <button
           type="button"
           onClick={() => setImageMode(!imageMode)}
           className={clsx(
             'w-9 h-9 sm:w-10 sm:h-10 rounded-full flex items-center justify-center shrink-0 transition-all cursor-pointer border',
             imageMode
-              ? ''
-              : 'bg-white/[0.05] hover:bg-white/[0.1] border-[var(--line)] text-[var(--text-primary)]'
+              ? 'shadow-md'
+              : 'glass hover:bg-black/[0.05] dark:hover:bg-white/[0.1] text-[var(--text-primary)]'
           )}
-          style={imageMode ? { background: 'var(--accent)', color: '#FAF9F5', borderColor: 'transparent' } : undefined}
-          title={imageMode ? 'Image mode ON' : 'Generate image'}
+          style={imageMode ? { background: 'var(--accent)', color: '#fff', borderColor: 'transparent' } : undefined}
+          title={imageMode ? 'Image prompt mode active' : 'Generate an image'}
         >
           <ImageIcon size={17} />
         </button>
 
-        {/* Text Input Field */}
+        {/* Live Web Research & Multi-Page Crawl Toggle */}
+        {onToggleWebResearch && (
+          <button
+            type="button"
+            onClick={onToggleWebResearch}
+            className={clsx(
+              'w-9 h-9 sm:w-10 sm:h-10 rounded-full flex items-center justify-center shrink-0 transition-all cursor-pointer border',
+              webResearchEnabled
+                ? 'shadow-md'
+                : 'glass hover:bg-black/[0.05] dark:hover:bg-white/[0.1] text-[var(--text-primary)]'
+            )}
+            style={webResearchEnabled ? { background: 'var(--accent)', color: '#fff', borderColor: 'transparent' } : undefined}
+            title={webResearchEnabled ? 'Live Internet Research & Multi-Page Crawl: ON' : 'Enable Live Internet Research & Full-Site Crawl'}
+          >
+            <Globe size={17} />
+          </button>
+        )}
+
+        {/* Message Textarea */}
         <textarea
           ref={textareaRef}
           value={text}
           onChange={(e) => setText(e.target.value)}
           onKeyDown={handleKeyDown}
-          placeholder={imageMode ? "Describe an image to generate…" : "Message..."}
+          placeholder={
+            imageMode
+              ? `Describe an image for ${activeCharacterName} to render...`
+              : squadMode
+              ? `Ask 4-Model Squad (${activeCharacterName} + 3) · splits tasks in parallel...`
+              : webResearchEnabled
+              ? `Ask ${activeCharacterName} with live internet & full-website crawl...`
+              : `Ask ${activeCharacterName} anything, or continue where we left off...`
+          }
           rows={1}
           autoCapitalize="sentences"
           autoCorrect="on"
           spellCheck={true}
           className={clsx(
-            "flex-1 min-h-[38px] max-h-[110px] bg-transparent text-[var(--text-primary)] placeholder:text-[var(--text-muted)] border-0 focus:ring-0 resize-none py-2 px-1 outline-none text-base sm:text-sm leading-snug font-sans",
-            imageMode && "placeholder:text-[var(--accent-hover)]"
+            "flex-1 min-h-[38px] max-h-[128px] bg-transparent text-[var(--text-primary)] placeholder:text-[var(--text-muted)] border-0 focus:ring-0 resize-none py-2 px-1.5 outline-none text-base sm:text-sm leading-snug font-sans",
+            imageMode && "placeholder:text-[var(--accent)]"
           )}
         />
 
-        {/* Push-to-Talk Speech Dictation */}
+        {/* Voice Dictation */}
         <button
           type="button"
           onClick={handleToggleDictation}
           className={clsx(
-            'w-9 h-9 sm:w-10 sm:h-10 rounded-full flex items-center justify-center shrink-0 transition-all cursor-pointer',
+            'w-9 h-9 sm:w-10 sm:h-10 rounded-full flex items-center justify-center shrink-0 transition-all cursor-pointer border',
             isDictating
-              ? 'bg-rose-600 text-[#1F1E1D] animate-pulse'
-              : 'bg-white/[0.05] hover:bg-white/[0.1] border border-[var(--line)] text-[var(--text-primary)]'
+              ? 'bg-rose-600 border-rose-500 text-white animate-pulse shadow-md'
+              : 'glass hover:bg-black/[0.05] dark:hover:bg-white/[0.1] text-[var(--text-primary)]'
           )}
-          title={isDictating ? 'Listening... click to stop' : 'Voice dictation (speech-to-text)'}
+          title={isDictating ? 'Stop voice dictation' : 'Dictate by voice'}
         >
           {isDictating ? <MicOff size={16} /> : <Mic size={16} />}
         </button>
 
-        {/* Send / Stop / Live Voice */}
+        {/* Primary Send / Stop / Live Voice Button */}
         {isLoading ? (
           <button
             type="button"
             onClick={onStop}
-            className="w-9 h-9 sm:w-10 sm:h-10 bg-rose-600 hover:bg-rose-500 text-[#1F1E1D] rounded-full transition-all flex items-center justify-center shrink-0 cursor-pointer shadow-[var(--shadow-sm)]"
+            className="w-9 h-9 sm:w-10 sm:h-10 bg-rose-600 hover:bg-rose-500 text-white rounded-full transition-all flex items-center justify-center shrink-0 cursor-pointer shadow-md"
             title="Stop generation"
           >
             <Square size={13} fill="currentColor" />
@@ -420,9 +453,9 @@ export const InputArea = React.memo(function InputArea({
           <button
             type="button"
             onClick={handleSend}
-            className="w-9 h-9 sm:w-10 sm:h-10 rounded-full transition-all flex items-center justify-center shrink-0 cursor-pointer active:scale-95 shadow-[var(--shadow-sm)] hover:brightness-110"
-            style={{ background: 'var(--accent)', color: '#FAF9F5' }}
-            title="Send message"
+            className="w-9 h-9 sm:w-10 sm:h-10 rounded-full transition-all flex items-center justify-center shrink-0 cursor-pointer active:scale-95 shadow-md hover:brightness-110 text-white"
+            style={{ background: 'linear-gradient(155deg, var(--accent), var(--accent-hover))' }}
+            title={`Send to ${activeCharacterName}`}
           >
             <Send size={15} fill="currentColor" />
           </button>
@@ -430,8 +463,8 @@ export const InputArea = React.memo(function InputArea({
           <button
             type="button"
             onClick={onOpenLiveVoice}
-            className="w-9 h-9 sm:w-10 sm:h-10 bg-white/[0.05] hover:bg-white/[0.1] border border-[var(--line)] text-[var(--text-primary)] rounded-full transition-all flex items-center justify-center shrink-0 cursor-pointer"
-            title="Live voice conversation mode"
+            className="w-9 h-9 sm:w-10 sm:h-10 glass hover:bg-black/[0.05] dark:hover:bg-white/[0.1] text-[var(--text-primary)] rounded-full transition-all flex items-center justify-center shrink-0 cursor-pointer"
+            title="Live voice conversation"
           >
             <AudioLines size={16} />
           </button>

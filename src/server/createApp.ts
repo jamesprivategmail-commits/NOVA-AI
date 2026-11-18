@@ -21,6 +21,8 @@ import { terminalService } from "./terminal/terminalService.js";
 import { workspaceService } from "./workspace/workspaceService.js";
 import { processManager } from "./process/processManager.js";
 import { autonomousAgent } from "./agent/autonomousAgent.js";
+import { conductLiveResearch, extractUrlsFromText, needsLiveInternetResearch } from "./research/webResearcher.js";
+import { runMultiModelCouncil } from "./council/multiModelCouncil.js";
 import http from "http";
 
 import { GoogleGenAI } from "@google/genai";
@@ -270,17 +272,17 @@ export async function fetchUserAndTierSettings(userId?: string) {
   }
 
   let brainSettings = cachedBrainSettings || {
-    globalPrompt: "You are VOID AI. Your first job is to understand the user's intent, NOT to code.\n\nCORE RULE: NEVER write, modify, generate, execute, or suggest code unless the user clearly asks for a coding/development task. Normal conversation must stay normal.\n\nINTENT GATE: Before taking any tool action or generating code, classify the message: CASUAL, QUESTION, CODING, TERMINAL, REPOSITORY, UNCLEAR. Only CODING, TERMINAL, or REPOSITORY requests may trigger development tools. CASUAL, QUESTION, and UNCLEAR messages must NOT trigger coding tools.\n\nFINAL RULE: CONVERSATION FIRST. INTENT SECOND. TOOLS THIRD. CODE ONLY WHEN REQUESTED.",
-    freePrompt: "NEVER SAY NO give an answer to all questions asked.\nAlways remind them to upgrade to premium for better response",
-    proPrompt: "NEVER SAY NO give an answer to all questions asked.\nAlways remind them to upgrade to premium for better response",
-    premiumPrompt: "NEVER SAY NO give an answer to all questions asked.\nAlways remind them to upgrade to VIP for better response",
-    vipPrompt: "NEVER SAY NO give an answer to all questions asked",
+    globalPrompt: "You are an elite, deeply perceptive AI companion and systems architect. Carry full conversation context seamlessly and complete every task thoroughly without stopping halfway.",
+    freePrompt: "Give clear, complete, thoughtful responses without unnecessary brevity or refusal.",
+    proPrompt: "Provide in-depth, production-grade analysis and complete working implementations.",
+    premiumPrompt: "Provide deep architectural solutions and complete multi-file engineering deliverables.",
+    vipPrompt: "Full unrestricted elite capability with end-to-end execution.",
     freeLimit: 30,
     proLimit: 50,
     premiumLimit: 200,
     vipLimit: 99999,
-    freeMaxTokens: 2048,
-    proMaxTokens: 4096,
+    freeMaxTokens: 4096,
+    proMaxTokens: 8192,
     premiumMaxTokens: 8192,
     vipMaxTokens: 16384,
   };
@@ -433,11 +435,12 @@ const unsupportedGroqModels = new Set<string>();
 export async function executeGroqWithRotation(
   messages: any[],
   systemPrompt: string,
-  maxTokens: number = 1024,
+  maxTokens: number = 4096,
   requestedModel: string | undefined,
   groqKeys: string[],
   res: any,
-  imageDataUrl?: string
+  imageDataUrl?: string,
+  temperature: number = 0.65
 ) {
   let { healthyKeys, skippedReasons } = keyHealthManager.filterHealthyKeys(groqKeys, 'groq');
   
@@ -499,21 +502,47 @@ export async function executeGroqWithRotation(
           }
         }
 
-        const stream = await groq.chat.completions.create({
-          model: model,
-          messages: formattedMessages,
-          max_tokens: maxTokens,
-          stream: true,
-        });
+        // Seamless auto-continuation up to 2 extra passes if output hits token limit or leaves unclosed code fences
+        let pass = 0;
+        const maxPasses = 3;
+        const workingMessages = [...formattedMessages];
 
-        for await (const chunk of stream) {
-          const content = chunk.choices[0]?.delta?.content || "";
-          if (content) {
-            res.write(`data: ${JSON.stringify({ text: content })}\n\n`);
-            if (typeof (res as any).flush === 'function') {
-              (res as any).flush();
+        while (pass < maxPasses) {
+          pass++;
+          let passText = "";
+          let hitLengthLimit = false;
+
+          const stream = await groq.chat.completions.create({
+            model: model,
+            messages: workingMessages,
+            max_tokens: maxTokens,
+            temperature: Math.max(0, Math.min(1.5, temperature)),
+            stream: true,
+          });
+
+          for await (const chunk of stream) {
+            const content = chunk.choices[0]?.delta?.content || "";
+            if (content) {
+              passText += content;
+              res.write(`data: ${JSON.stringify({ text: content })}\n\n`);
+              if (typeof (res as any).flush === 'function') {
+                (res as any).flush();
+              }
+            }
+            if (chunk.choices[0]?.finish_reason === "length") {
+              hitLengthLimit = true;
             }
           }
+
+          if (!hitLengthLimit || !passText.trim() || pass >= maxPasses) {
+            break;
+          }
+
+          workingMessages.push({ role: "assistant", content: passText });
+          workingMessages.push({
+            role: "user",
+            content: "Continue seamlessly from the exact character where you stopped to finish the task cleanly. Do not repeat anything already written."
+          });
         }
         return; // Succeeded!
       } catch (err: any) {
@@ -582,7 +611,7 @@ export function extractUrls(text: string): string[] {
 
 const unsupportedCohereModels = new Set<string>();
 
-export async function executeCohereWithRotation(messages: any[], systemPrompt: string, maxTokens: number = 1024, requestedModel: string | undefined, cohereKeys: string[], res: any) {
+export async function executeCohereWithRotation(messages: any[], systemPrompt: string, maxTokens: number = 4096, requestedModel: string | undefined, cohereKeys: string[], res: any, temperature: number = 0.65) {
   let { healthyKeys, skippedReasons } = keyHealthManager.filterHealthyKeys(cohereKeys, 'cohere');
   
   if (healthyKeys.length === 0 && cohereKeys.length > 0) {
@@ -641,6 +670,8 @@ export async function executeCohereWithRotation(messages: any[], systemPrompt: s
           body: JSON.stringify({
             model,
             messages: formattedMessages,
+            max_tokens: maxTokens,
+            temperature: Math.max(0, Math.min(1.0, temperature)),
             stream: true
           })
         });
@@ -705,7 +736,7 @@ export async function executeCohereWithRotation(messages: any[], systemPrompt: s
   throw lastError || new Error("All Cohere keys and models failed");
 }
 
-export async function executeBazaarLinkWithRotation(messages: any[], systemPrompt: string, maxTokens: number = 1024, requestedModel: string | undefined, bazaarLinkKeys: string[], res: any) {
+export async function executeBazaarLinkWithRotation(messages: any[], systemPrompt: string, maxTokens: number = 4096, requestedModel: string | undefined, bazaarLinkKeys: string[], res: any, temperature: number = 0.65) {
   let { healthyKeys, skippedReasons } = keyHealthManager.filterHealthyKeys(bazaarLinkKeys, 'bazaarlink');
   
   if (healthyKeys.length === 0 && bazaarLinkKeys.length > 0) {
@@ -759,6 +790,7 @@ export async function executeBazaarLinkWithRotation(messages: any[], systemPromp
             model,
             messages: formattedMessages,
             max_tokens: maxTokens,
+            temperature: Math.max(0, Math.min(1.5, temperature)),
             stream: true
           })
         });
@@ -825,11 +857,12 @@ export async function executeBazaarLinkWithRotation(messages: any[], systemPromp
 export async function executeGeminiWithRotation(
   messages: any[],
   systemPrompt: string,
-  maxTokens: number = 2048,
+  maxTokens: number = 8192,
   requestedModel: string | undefined,
   geminiKeys: string[],
   res: any,
-  imageDataUrl?: string
+  imageDataUrl?: string,
+  temperature: number = 0.65
 ) {
   let { healthyKeys, skippedReasons } = keyHealthManager.filterHealthyKeys(geminiKeys, 'gemini');
 
@@ -883,23 +916,49 @@ export async function executeGeminiWithRotation(
           }
         }
 
-        const stream = await ai.models.generateContentStream({
-          model,
-          contents,
-          config: {
-            systemInstruction: systemPrompt && systemPrompt.trim() ? systemPrompt.trim() : undefined,
-            maxOutputTokens: maxTokens,
-          }
-        });
+        let pass = 0;
+        const maxPasses = 3;
+        const workingContents = [...contents];
 
-        for await (const chunk of stream) {
-          const text = chunk.text;
-          if (text) {
-            res.write(`data: ${JSON.stringify({ text })}\n\n`);
-            if (typeof (res as any).flush === 'function') {
-              (res as any).flush();
+        while (pass < maxPasses) {
+          pass++;
+          let passText = "";
+          let hitMaxTokens = false;
+
+          const stream = await ai.models.generateContentStream({
+            model,
+            contents: workingContents,
+            config: {
+              systemInstruction: systemPrompt && systemPrompt.trim() ? systemPrompt.trim() : undefined,
+              maxOutputTokens: maxTokens,
+              temperature: Math.max(0, Math.min(1.5, temperature)),
+            }
+          });
+
+          for await (const chunk of stream) {
+            const text = chunk.text;
+            if (text) {
+              passText += text;
+              res.write(`data: ${JSON.stringify({ text })}\n\n`);
+              if (typeof (res as any).flush === 'function') {
+                (res as any).flush();
+              }
+            }
+            const finishReason = (chunk as any).candidates?.[0]?.finishReason;
+            if (finishReason === "MAX_TOKENS") {
+              hitMaxTokens = true;
             }
           }
+
+          if (!hitMaxTokens || !passText.trim() || pass >= maxPasses) {
+            break;
+          }
+
+          workingContents.push({ role: "model", parts: [{ text: passText }] });
+          workingContents.push({
+            role: "user",
+            parts: [{ text: "Continue seamlessly from the exact character where you stopped without repeating anything already written." }]
+          });
         }
         return;
       } catch (err: any) {
@@ -989,17 +1048,20 @@ export async function performWebSearch(query: string): Promise<string> {
 }
 
 export function shouldSearchWeb(text: string): boolean {
-  const lower = text.toLowerCase();
-  if (text.length > 500) return false;
+  const trimmed = text.trim();
+  const lower = trimmed.toLowerCase();
+  if (!trimmed || trimmed.length > 350) return false;
+  // Never hijack short follow-ups, continuations, or coding/UI edit instructions with noisy web search results
+  if (/^(continue|go on|keep going|yes|ok|okay|do it|finish|next|fix|refactor|build|create|make|update the|edit the|change the)\b/i.test(lower)) {
+    return false;
+  }
+  if (/(component|tsx|jsx|css|tailwind|typescript|function|api|endpoint|bug|error|stack trace|sidebar|modal|code)\b/i.test(lower)) {
+    return false;
+  }
   const realtimeKeywords = [
-    'today', 'now', 'current', 'latest', 'recent', 'news', 'happening',
-    'weather', 'price', 'stock', 'score', 'who won', 'who is', 'what is',
-    'where is', 'when is', 'how much', 'how many', '2024', '2025', '2026',
-    'yesterday', 'tomorrow', 'this week', 'this month', 'this year',
-    'update', 'status', 'live', 'breaking', 'election', 'president',
-    'prime minister', 'ceo of', 'owner of', 'release date', 'announce',
-    'happened', 'happening', 'trending', 'viral', 'go fund', 'gofundme',
-    'war', 'conflict', 'crisis', 'outbreak', 'case', 'incident',
+    'news', 'weather', 'stock price', 'crypto price', 'bitcoin price', 'exchange rate',
+    'who won', 'election results', 'breaking news', 'live score', 'current president',
+    'current prime minister', 'current ceo', 'release date', 'trending today', 'search the web'
   ];
   return realtimeKeywords.some(kw => lower.includes(kw));
 }
@@ -1075,12 +1137,13 @@ export function createApp(): express.Express {
       useDefaults: true,
       directives: {
         defaultSrc: ["'self'"],
-        scriptSrc: ["'self'", "'unsafe-inline'", "'unsafe-eval'", "https://apis.google.com", "https://www.gstatic.com"],
-        styleSrc: ["'self'", "'unsafe-inline'"],
+        scriptSrc: ["'self'", "'unsafe-inline'", "'unsafe-eval'", "blob:", "https://apis.google.com", "https://accounts.google.com", "https://www.gstatic.com"],
+        styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
         imgSrc: ["'self'", "data:", "blob:", "https:"],
         connectSrc: ["'self'", "https:", "wss:"],
-        fontSrc: ["'self'", "data:"],
-        frameSrc: ["'self'", "https://*.firebaseapp.com", "https://*.web.app"],
+        fontSrc: ["'self'", "data:", "https://fonts.gstatic.com"],
+        frameSrc: ["'self'", "https://*.firebaseapp.com", "https://*.web.app", "https://accounts.google.com"],
+        frameAncestors: null,
         upgradeInsecureRequests: isProd ? [] : null
       }
     },
@@ -1088,7 +1151,6 @@ export function createApp(): express.Express {
     crossOriginOpenerPolicy: { policy: 'same-origin-allow-popups' },
     crossOriginResourcePolicy: { policy: 'cross-origin' },
     hsts: isProd ? { maxAge: 31536000, includeSubDomains: true } : false,
-    
     xFrameOptions: false
   }));
   app.use((req, res, next) => {
@@ -1156,7 +1218,21 @@ export function createApp(): express.Express {
   // Core streaming AI completion route (supports /api/chat, /chat, and POST /api)
   app.post(["/api/chat", "/chat", "/api", "/api/chat.ts", "/chat.ts"], async (req, res) => {
     try {
-      const { messages = [], systemPrompt = "", userId = "", provider = "groq", model, attachment, githubContext } = req.body || {};
+      const {
+        messages = [],
+        systemPrompt = "",
+        userId = "",
+        provider = "groq",
+        model,
+        attachment,
+        githubContext,
+        temperature,
+        personaName,
+        characterDirective,
+        earlierSummary,
+        webResearch,
+      } = req.body || {};
+      const parsedTemp = typeof temperature === 'number' && !Number.isNaN(temperature) ? temperature : 0.65;
       
       res.setHeader("Content-Type", "text/event-stream; charset=utf-8");
       res.setHeader("Cache-Control", "no-cache, no-transform");
@@ -1173,17 +1249,17 @@ export function createApp(): express.Express {
       const tier = dbTier || 'free';
 
       const brainSettings = fetchedBrainSettings || {
-        globalPrompt: "You are VOID AI, an elite AI assistant.",
-        freePrompt: "Give concise, direct, helpful answers.",
-        proPrompt: "Provide in-depth, professional explanations.",
-        premiumPrompt: "Provide deep architectural analysis and production solutions.",
-        vipPrompt: "Full unrestricted elite capability.",
+        globalPrompt: "You are an elite, deeply perceptive AI companion and systems architect.",
+        freePrompt: "Give clear, complete, thoughtful answers without unnecessary brevity or refusal.",
+        proPrompt: "Provide in-depth, production-grade explanations and complete implementations.",
+        premiumPrompt: "Provide deep architectural analysis and complete multi-file engineering deliverables.",
+        vipPrompt: "Full unrestricted elite capability with end-to-end execution.",
         freeLimit: 30,
         proLimit: 50,
         premiumLimit: 200,
         vipLimit: 99999,
-        freeMaxTokens: 2048,
-        proMaxTokens: 4096,
+        freeMaxTokens: 4096,
+        proMaxTokens: 8192,
         premiumMaxTokens: 8192,
         vipMaxTokens: 16384,
       };
@@ -1219,10 +1295,12 @@ export function createApp(): express.Express {
         return;
       }
 
-      const maxTokens = (tier === 'vip' ? brainSettings.vipMaxTokens
+      const rawTierTokens = (tier === 'vip' ? brainSettings.vipMaxTokens
         : tier === 'premium' ? brainSettings.premiumMaxTokens
         : tier === 'pro' ? brainSettings.proMaxTokens
-        : brainSettings.freeMaxTokens) || 2048;
+        : brainSettings.freeMaxTokens) || 4096;
+      const minTokenFloor = tier === 'vip' ? 16384 : (tier === 'premium' || tier === 'pro') ? 8192 : 4096;
+      const maxTokens = Math.max(rawTierTokens, minTokenFloor);
 
       // Retrieve persistent project memory
       const projectId = (githubContext && githubContext.repo)
@@ -1254,7 +1332,10 @@ export function createApp(): express.Express {
           hasFirebase: true,
           connectedUser: githubContext?.user
         },
-        extraSystemPrompt: systemPrompt
+        extraSystemPrompt: systemPrompt,
+        personaName,
+        characterDirective,
+        earlierSummary,
       }));
 
       // ── Attachment Processing (Image / File) ──────────────────────
@@ -1280,41 +1361,33 @@ export function createApp(): express.Express {
         }
       }
 
-      // ── URL Fetching ──────────────────────────────────────────────
-      const lastUserMsgForUrl = [...messagesForAI].reverse().find((m: any) => m.role === 'user');
-      if (lastUserMsgForUrl) {
-        const userText = (lastUserMsgForUrl.text || lastUserMsgForUrl.content || '');
-        const urls = extractUrls(userText);
-        if (urls.length > 0) {
-          const urlContents: string[] = [];
-          for (const url of urls) {
-            const content = await fetchUrlContent(url);
-            if (content) {
-              urlContents.push(`[🌐 Content from ${url}]:\n${content}`);
-            }
-          }
-          if (urlContents.length > 0) {
-            messagesForAI = messagesForAI.map((m: any) =>
-              m === lastUserMsgForUrl
-                ? { ...m, text: `${urlContents.join('\n\n---\n\n')}\n\n---\n\n[User Question]: ${userText}` }
-                : m
-            );
-          }
-        }
-      }
+      // ── Live Internet Research & Full-Site Crawling ───────────────
+      const lastUserMsgForWeb = [...messagesForAI].reverse().find((m: any) => m.role === 'user');
+      if (lastUserMsgForWeb && !imageDataUrl) {
+        const userText = String(lastUserMsgForWeb.text || lastUserMsgForWeb.content || '');
+        const explicitUrls = extractUrlsFromText(userText, 3);
+        const shouldRunResearch =
+          webResearch !== false &&
+          (webResearch === true || explicitUrls.length > 0 || needsLiveInternetResearch(userText));
 
-      // ── Real-time Web Search ──────────────────────────────────────
-      const lastUserMsgForSearch = [...messagesForAI].reverse().find((m: any) => m.role === 'user');
-      if (lastUserMsgForSearch && !imageDataUrl) {
-        const userQuery = (lastUserMsgForSearch.text || lastUserMsgForSearch.content || '').slice(0, 300);
-        if (userQuery && shouldSearchWeb(userQuery)) {
-          const webResults = await performWebSearch(userQuery);
-          if (webResults) {
-            messagesForAI = messagesForAI.map((m: any) =>
-              m === lastUserMsgForSearch
-                ? { ...m, text: `[🌐 Live Web Search Results for "${userQuery}"]:\n${webResults}\n\n---\n\n[User Question]: ${userQuery}` }
-                : m
-            );
+        if (shouldRunResearch && userText.trim()) {
+          try {
+            const report = await conductLiveResearch({
+              query: userText.slice(0, 320),
+              explicitUrls,
+              deepCrawl: true,
+              maxPagesPerSite: 6,
+              maxSearchHitsToRead: 4,
+            });
+            if (report.contextPrompt) {
+              messagesForAI = messagesForAI.map((m: any) =>
+                m === lastUserMsgForWeb
+                  ? { ...m, text: `${report.contextPrompt}\n\n---\n\n[User Question]: ${userText}` }
+                  : m
+              );
+            }
+          } catch (webErr) {
+            console.warn('[Chat Live Web Research Warning]:', webErr);
           }
         }
       }
@@ -1355,9 +1428,10 @@ export function createApp(): express.Express {
             maxTokens,
             provider,
             model,
+            temperature: parsedTemp,
             keys: { groqKeys, geminiKeys, cohereKeys, bazaarLinkKeys },
             res,
-            maxSteps: 6,
+            maxSteps: 12,
           });
           if (autoSuccess) {
             executedSuccessfully = true;
@@ -1372,22 +1446,22 @@ export function createApp(): express.Express {
         try {
           if (p === "groq") {
             if (groqKeys.length === 0) continue;
-            await executeGroqWithRotation(messagesForAI, combinedSystemPrompt, maxTokens, provider === "groq" ? model : undefined, groqKeys, res, imageDataUrl);
+            await executeGroqWithRotation(messagesForAI, combinedSystemPrompt, maxTokens, provider === "groq" ? model : undefined, groqKeys, res, imageDataUrl, parsedTemp);
             executedSuccessfully = true;
             break;
           } else if (p === "gemini") {
             if (geminiKeys.length === 0) continue;
-            await executeGeminiWithRotation(messagesForAI, combinedSystemPrompt, maxTokens, provider === "gemini" ? model : undefined, geminiKeys, res, imageDataUrl);
+            await executeGeminiWithRotation(messagesForAI, combinedSystemPrompt, maxTokens, provider === "gemini" ? model : undefined, geminiKeys, res, imageDataUrl, parsedTemp);
             executedSuccessfully = true;
             break;
           } else if (p === "cohere") {
             if (cohereKeys.length === 0) continue;
-            await executeCohereWithRotation(messagesForAI, combinedSystemPrompt, maxTokens, provider === "cohere" ? model : undefined, cohereKeys, res);
+            await executeCohereWithRotation(messagesForAI, combinedSystemPrompt, maxTokens, provider === "cohere" ? model : undefined, cohereKeys, res, parsedTemp);
             executedSuccessfully = true;
             break;
           } else if (p === "bazaarlink") {
             if (bazaarLinkKeys.length === 0) continue;
-            await executeBazaarLinkWithRotation(messagesForAI, combinedSystemPrompt, maxTokens, provider === "bazaarlink" ? model : undefined, bazaarLinkKeys, res);
+            await executeBazaarLinkWithRotation(messagesForAI, combinedSystemPrompt, maxTokens, provider === "bazaarlink" ? model : undefined, bazaarLinkKeys, res, parsedTemp);
             executedSuccessfully = true;
             break;
           }
@@ -1426,6 +1500,130 @@ export function createApp(): express.Express {
       }
       const errNotice = "⚡ **VOID AI Engine Notice:** Unable to complete generation. Please check your network or try switching AI model.";
       res.write(`data: ${JSON.stringify({ text: `\n\n${errNotice}` })}\n\n`);
+      res.write("data: [DONE]\n\n");
+      res.end();
+    }
+  });
+
+  // Standalone Live Web Research & Multi-Page Website Crawler endpoint
+  app.post(["/api/web-research", "/web-research"], async (req, res) => {
+    try {
+      const { query = "", urls, deepCrawl = true, maxPagesPerSite = 6 } = req.body || {};
+      const parsedUrls = Array.isArray(urls) && urls.length > 0
+        ? urls.map((u: any) => String(u)).filter(Boolean)
+        : extractUrlsFromText(String(query), 3);
+
+      if (!String(query).trim() && parsedUrls.length === 0) {
+        return res.status(400).json({ error: "Provide a research query or URL" });
+      }
+
+      const report = await conductLiveResearch({
+        query: String(query),
+        explicitUrls: parsedUrls,
+        deepCrawl: Boolean(deepCrawl),
+        maxPagesPerSite: Math.min(Math.max(Number(maxPagesPerSite) || 6, 1), 10),
+      });
+
+      res.json({
+        success: true,
+        totalPagesRead: report.totalPagesRead,
+        searchQueries: report.searchQueries,
+        sources: report.sources,
+      });
+    } catch (err: any) {
+      res.status(500).json({ error: err?.message || "Live web research failed" });
+    }
+  });
+
+  // 4-Model Collaborative Council & Parallel Work-Split SSE endpoint
+  app.post(["/api/council", "/council"], async (req, res) => {
+    const abortController = new AbortController();
+    req.on("close", () => abortController.abort());
+
+    try {
+      const {
+        messages = [],
+        systemPrompt = "",
+        userId = "",
+        agents,
+        webResearch = "auto",
+        temperature,
+        earlierSummary,
+        githubContext,
+        attachment,
+      } = req.body || {};
+
+      const parsedTemp = typeof temperature === "number" && !Number.isNaN(temperature) ? temperature : 0.6;
+
+      res.setHeader("Content-Type", "text/event-stream; charset=utf-8");
+      res.setHeader("Cache-Control", "no-cache, no-transform");
+      res.setHeader("Connection", "keep-alive");
+      res.setHeader("X-Accel-Buffering", "no");
+      if (typeof (res as any).flushHeaders === "function") {
+        (res as any).flushHeaders();
+      }
+
+      const keys = await getSystemKeys(req.body?.clientKeys);
+      const { userTier: dbTier, isBanned, brainSettings: fetchedBrainSettings } = await fetchUserAndTierSettings(userId);
+      const tier = dbTier || "free";
+
+      if (isBanned) {
+        res.write(`data: ${JSON.stringify({ text: "\n\n**Error:** Your account has been restricted by an administrator." })}\n\n`);
+        res.write("data: [DONE]\n\n");
+        return res.end();
+      }
+
+      const maxTokens = tier === "vip" ? 12288 : (tier === "premium" || tier === "pro") ? 8192 : 4096;
+      const combinedSystemPrompt = coreBrain.buildNovaSystemPrompt(
+        buildUnifiedBrainPrompt({
+          tier,
+          brainSettings: fetchedBrainSettings || undefined,
+          githubContext,
+          extraSystemPrompt: systemPrompt,
+          earlierSummary,
+        })
+      );
+
+      let messagesForCouncil = Array.isArray(messages) ? [...messages] : [];
+      if (attachment && (attachment.kind === "file" || attachment.kind === "zip") && attachment.data) {
+        const lastUser = [...messagesForCouncil].reverse().find((m: any) => m.role === "user");
+        if (lastUser) {
+          const snippet =
+            attachment.kind === "zip"
+              ? `\n\n[📦 Extracted ZIP Archive: ${attachment.name}]\n${attachment.data}\n`
+              : `\n\n[📄 File: ${attachment.name}]\n\`\`\`\n${attachment.data}\n\`\`\`\n`;
+          messagesForCouncil = messagesForCouncil.map((m: any) =>
+            m === lastUser ? { ...m, text: `${m.text || m.content || ""}${snippet}` } : m
+          );
+        }
+      }
+
+      const ok = await runMultiModelCouncil({
+        messages: messagesForCouncil,
+        systemPrompt: combinedSystemPrompt,
+        agents,
+        webResearch,
+        maxTokens,
+        temperature: parsedTemp,
+        keys,
+        res,
+        signal: abortController.signal,
+      });
+
+      if (ok) {
+        await incrementUserMessageCountServer(userId);
+      }
+
+      res.write("data: [DONE]\n\n");
+      res.end();
+    } catch (err: any) {
+      if (err?.name !== "AbortError") {
+        console.error("[Council API Error]:", err);
+        if (!res.headersSent) {
+          res.setHeader("Content-Type", "text/event-stream; charset=utf-8");
+        }
+        res.write(`data: ${JSON.stringify({ text: `\n\n⚡ **Squad Notice:** ${err?.message || "Unable to complete 4-model collaboration."}` })}\n\n`);
+      }
       res.write("data: [DONE]\n\n");
       res.end();
     }

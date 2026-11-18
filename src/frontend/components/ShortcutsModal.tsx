@@ -3,20 +3,20 @@ import { Keyboard, X } from 'lucide-react';
 
 const GROUPS: { title: string; items: [string, string][] }[] = [
   {
-    title: 'Global',
+    title: 'Global Navigation',
     items: [
       ['⌘ K', 'Open command palette'],
       ['⌘ E', 'Toggle code workspace'],
       ['⌘ T', 'Toggle terminal'],
-      ['?', 'Show this shortcut guide'],
+      ['?', 'Show keyboard shortcuts'],
     ],
   },
   {
-    title: 'Messaging',
+    title: 'Conversation',
     items: [
       ['Enter', 'Send message'],
-      ['Shift + Enter', 'New line'],
-      ['Esc', 'Stop generation / close overlays'],
+      ['Shift + Enter', 'Insert new line'],
+      ['Esc', 'Stop generation or close overlays'],
     ],
   },
 ];
@@ -24,26 +24,27 @@ const GROUPS: { title: string; items: [string, string][] }[] = [
 export function ShortcutsModal({ onClose }: { onClose: () => void }) {
   return (
     <div
-      className="fixed inset-0 z-[70] flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm animate-fadeIn"
+      className="fixed inset-0 z-[70] flex items-center justify-center p-4 bg-black/55 backdrop-blur-md animate-fadeIn"
       onClick={onClose}
     >
       <div
-        className="glass-strong rounded-2xl w-full max-w-md p-5 animate-riseIn"
+        className="glass-thick rounded-3xl w-full max-w-md p-5 text-[var(--text-primary)] animate-riseIn"
         onClick={e => e.stopPropagation()}
       >
         <div className="flex items-center justify-between mb-4">
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2.5">
             <div
-              className="w-8 h-8 rounded-lg flex items-center justify-center"
-              style={{ background: 'var(--accent-soft)', boxShadow: '0 0 14px -4px var(--accent-glow)' }}
+              className="w-9 h-9 rounded-xl flex items-center justify-center border border-[var(--accent-muted)]"
+              style={{ background: 'var(--accent-soft)' }}
             >
               <Keyboard size={16} style={{ color: 'var(--accent)' }} />
             </div>
-            <h2 className="font-display text-base font-semibold text-[#1F1E1D]">Keyboard shortcuts</h2>
+            <h2 className="font-display text-lg font-semibold text-[var(--text-primary)]">Keyboard Shortcuts</h2>
           </div>
           <button
+            type="button"
             onClick={onClose}
-            className="p-1.5 rounded-lg text-[#6B6A67] hover:text-[#1F1E1D] hover:bg-white/5 transition-colors cursor-pointer"
+            className="p-1.5 rounded-xl text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-black/[0.05] dark:hover:bg-white/[0.08] transition-colors cursor-pointer"
           >
             <X size={16} />
           </button>
@@ -52,16 +53,16 @@ export function ShortcutsModal({ onClose }: { onClose: () => void }) {
         <div className="space-y-4">
           {GROUPS.map(group => (
             <div key={group.title}>
-              <div className="text-[10px] font-semibold uppercase tracking-widest text-slate-500 mb-1.5">
+              <div className="section-label mb-1.5 px-1">
                 {group.title}
               </div>
               <div className="space-y-1">
                 {group.items.map(([keys, desc]) => (
                   <div
                     key={keys}
-                    className="flex items-center justify-between py-1.5 px-2.5 rounded-lg hover:bg-white/[0.03] transition-colors"
+                    className="flex items-center justify-between py-2 px-3 rounded-xl glass-subtle"
                   >
-                    <span className="text-xs text-[#6B6A67]">{desc}</span>
+                    <span className="text-xs font-medium text-[var(--text-secondary)]">{desc}</span>
                     <span className="flex gap-1">
                       {keys.split(' + ').map(k => (
                         <kbd key={k} className="kbd">{k}</kbd>

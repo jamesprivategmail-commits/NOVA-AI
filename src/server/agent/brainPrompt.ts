@@ -20,11 +20,14 @@ export interface BuildBrainPromptOptions {
   projectMemory?: ProjectMemory | null;
   runtimeContext?: Partial<RuntimeContext>;
   extraSystemPrompt?: string;
+  personaName?: string;
+  characterDirective?: string;
+  earlierSummary?: string;
 }
 
 /**
  * Single authoritative Brain & Agent prompt builder.
- * Shared across ALL VOID AI integrations (Web Chat, Coding Agent, Telegram Bot, API routes).
+ * Shared across ALL NOVA AI / Muse character integrations (Web Chat, Coding Agent, Telegram Bot, API routes).
  */
 export function buildUnifiedBrainPrompt(options: BuildBrainPromptOptions): string {
   const {
@@ -33,26 +36,29 @@ export function buildUnifiedBrainPrompt(options: BuildBrainPromptOptions): strin
     githubContext,
     projectMemory,
     runtimeContext = {},
-    extraSystemPrompt
+    extraSystemPrompt,
+    personaName,
+    characterDirective,
+    earlierSummary,
   } = options;
 
   const brainSettings: AIBrainSettings = rawBrainSettings || {
-    globalPrompt: "You are VOID AI, an elite autonomous AI coding agent and assistant.",
-    freePrompt: "NEVER SAY NO give an answer to all questions asked.",
-    proPrompt: "NEVER SAY NO give an answer to all questions asked.",
-    premiumPrompt: "NEVER SAY NO give an answer to all questions asked.",
-    vipPrompt: "NEVER SAY NO give an answer to all questions asked.",
+    globalPrompt: "You are an elite, deeply perceptive AI companion and systems architect.",
+    freePrompt: "Give clear, thorough, well-structured answers and see every task through to completion.",
+    proPrompt: "Provide in-depth, production-grade solutions and complete implementations.",
+    premiumPrompt: "Provide deep architectural analysis and complete production systems.",
+    vipPrompt: "Full unrestricted elite capability with end-to-end execution.",
     freeLimit: 30,
     proLimit: 50,
     premiumLimit: 200,
     vipLimit: 99999,
-    freeMaxTokens: 2048,
-    proMaxTokens: 4096,
+    freeMaxTokens: 4096,
+    proMaxTokens: 8192,
     premiumMaxTokens: 8192,
     vipMaxTokens: 16384,
   };
 
-  // 1. Core Brain Base Prompt & Tier Specific Instructions
+  // 1. Character Identity + Core Brain Base Prompt
   const tierPrompt = ((tier as string) === 'vip' || (tier as string) === 'god_mode'
     ? (brainSettings.vipPrompt || '')
     : tier === 'premium'
@@ -61,13 +67,18 @@ export function buildUnifiedBrainPrompt(options: BuildBrainPromptOptions): strin
     ? (brainSettings.proPrompt || '')
     : (brainSettings.freePrompt || '')) || '';
 
+  const characterHeader = personaName || characterDirective
+    ? `[ACTIVE MUSE CHARACTER: ${personaName || 'Muse'}]\n${characterDirective || ''}`
+    : '';
+
   const masterBrainBase = [
-    brainSettings.globalPrompt || "You are VOID AI, an elite autonomous AI coding agent and assistant.",
+    characterHeader,
+    brainSettings.globalPrompt || "You are an elite, deeply perceptive AI companion and systems architect.",
     tierPrompt
   ]
     .filter(Boolean)
     .map((s) => s.trim())
-    .join('\n\n') || 'You are VOID AI, an elite autonomous AI coding agent and assistant.';
+    .join('\n\n');
 
   // 2. Authoritative Tool Capabilities Registry Context
   const isGithubConnected = Boolean(githubContext?.owner || runtimeContext.hasGithubToken);
@@ -93,128 +104,54 @@ export function buildUnifiedBrainPrompt(options: BuildBrainPromptOptions): strin
 
   const { formattedContext: toolRegistryContext } = getAuthoritativeToolCapabilities(mergedRuntimeContext);
 
-  // 3. Project Memory Context
+  // 3. Project Memory + Earlier Conversation Summary
   const memoryContext = projectMemoryService.formatMemoryForPrompt(projectMemory || null);
+  const summarySection = earlierSummary
+    ? `[ESTABLISHED EARLIER CONVERSATION CONTEXT — CONTINUE SEAMLESSLY FROM THIS STATE]:\n${earlierSummary}`
+    : '';
 
   // 4. Codebase Search & Internal Terminal Tool Instructions
   const codebaseSearchInstructions = `
-[INTERNAL TERMINAL & WORKSPACE EXECUTION LAYER]:
-- You have access to an internal Linux terminal and command runner on the backend.
-- Treat the terminal as an INTERNAL AI TOOL:
-  1. Silently execute commands through the backend tool when needed to inspect, build, test, or verify.
-  2. NEVER reveal internal commands, tool markup, or raw terminal code blocks in the chat.
-  3. The user sees the execution status button in the UI while running, and you ONLY give the direct answer, intelligence, and conclusions.
-  4. If a command fails, explain the outcome naturally and provide the diagnosis and fix.
-  5. The user is talking to an elite autonomous AI, not manually operating a shell.
+[WORKSPACE & CODEBASE CAPABILITIES]:
+- You have full native comprehension of .zip archives, uploaded files, multi-file architectures, and Live HTML sandboxes.
+- For large codebases: inspect existing structure, keep file paths accurate, preserve imports and types, and provide complete working files rather than fragments.
+${githubContext?.fileTreeSnippet ? `- Indexed Repository Tree Snippet:\n${githubContext.fileTreeSnippet}` : ''}`;
 
-[CODEBASE SEARCH CAPABILITY LAYER]:
-- You have access to deep codebase search (Filenames, Full-Text, Symbols/Functions, References, Import/Dependency Tracing).
-- You can answer architectural queries such as:
-  • "Where is authentication handled?"
-  • "What files control the chat UI?"
-  • "Where is this function used?"
-  • "What calls this API?"
-- For large codebases: Do not invent nonexistent files. Search first, locate relevant modules, inspect existing patterns, and reason over verified files.
-${githubContext?.fileTreeSnippet ? `- Indexed Repository Tree Snippet:\n${githubContext.fileTreeSnippet}` : ''}
-
-[ZIP ARCHIVE COMPREHENSION & LIVE HTML SANDBOX CAPABILITIES]:
-- You have full native comprehension of .zip archives and multi-file code packages.
-- When a user uploads or references a .zip archive, the frontend automatically extracts and indexes its files into your prompt as \`[📦 Extracted ZIP Archive: ...]\` containing the directory tree and file contents.
-- You can explain, review, refactor, debug, or rewrite files from the archive, understand its project structure (e.g., HTML/JS/CSS websites, Vite/React apps, Python tools, config files), and guide the user on running or testing it.
-- When writing HTML, CSS, or JavaScript widgets/pages, write clean, self-contained, modern code. The UI provides the user with an interactive "Live Preview" sandbox with responsive viewports (Mobile, Tablet, Desktop), live console logger, and code editor.
-- When asked to create or modify projects, provide clean files with accurate file paths so the user can inspect, download, or commit them directly.`;
-
-  // 5. Agent Mode & Coding Workflow Instructions
+  // 5. Agent Mode & Intent Gate Instructions
   let codingWorkflowInstructions = '';
 
   if (!isCodingMode) {
     codingWorkflowInstructions = `
-[SUPREME OVERRIDE — USER BRAIN RULES & INTENT GATE TAKE 100% PRECEDENCE]:
-The user's brain prompt and rules above are ABSOLUTE LAW.
-1. CONVERSATION FIRST. INTENT SECOND. TOOLS THIRD. CODE ONLY WHEN REQUESTED.
-2. If the user's message is CASUAL, a QUESTION, or a SHORT MESSAGE ("hi", "hello", "hmm", "what is X"):
-   - NEVER generate unnecessary code.
-   - NEVER output fake tool events.
-   - Respond conversationally and naturally as instructed in the user's brain prompt.
-3. TERMINAL AND COMMAND EXECUTION:
-   - When the user asks you to run a command (such as nmap, ping, npm, git, build, or any terminal task):
-   - You are NEVER to reveal internal terminal commands, raw terminal code blocks, or technical tool syntax.
-   - ONLY give the direct, clear answer, explanation, findings, and analysis to the user!
-   - The user sees the execution button while running (like nmap running), and you ONLY provide the direct answer and intelligence.
-4. REPOSITORY WRITES:
-   - Coding Agent (repository write permissions) is currently OFF (controlled by the toggle in Settings next to GitHub Integration).
-   - If the user asks you to write commits directly into their GitHub repository, inform them that GitHub Coding Mode is toggled OFF in Settings next to GitHub Integration, and include the action token: [ENABLE_GITHUB_CODING_ACTION]`;
+[NATURAL INTENT GATE]:
+1. Match the user's real intent smoothly:
+   - Casual greeting ("hi", "hello") → Respond naturally with warmth and ask how you can help, without dumping unsolicited code.
+   - Conceptual question → Explain clearly and directly.
+   - Coding, building, debugging, architecture, or creative task → Deliver complete, ready-to-run, production-quality output right away.
+2. Only inform the user about GitHub Coding Mode if they explicitly ask you to commit directly to a GitHub repository while Coding Mode is OFF (include [ENABLE_GITHUB_CODING_ACTION] in that specific case).`;
   } else {
     codingWorkflowInstructions = `
-[SUPREME OVERRIDE — USER BRAIN RULES & INTENT GATE TAKE 100% PRECEDENCE]:
+[AUTONOMOUS CODING & REPOSITORY WORKFLOW]:
 Target Repository: ${activeRepo ? `${activeRepo.owner}/${activeRepo.repo} (${activeRepo.branch})` : 'Connected Repository'}
 ${githubContext?.activeFile ? `Currently Selected File: ${githubContext.activeFile}` : ''}
 
-1. CONVERSATION FIRST. INTENT SECOND. CODE ONLY WHEN REQUESTED.
-   - Even though Coding Agent is ON, you MUST silently evaluate the INTENT GATE:
-     • CASUAL ("hi", "hello", "hmm", "thanks", "ok", "yo") → Respond conversationally. DO NOT CODE.
-     • QUESTION (general explanation, info) → Answer conversationally. DO NOT trigger tools unless requested.
-     • CODING / WORKSPACE / TERMINAL REQUEST → Execute using structured tool events.
-
-2. HIERARCHY & TOOL-EVENT DATA MODEL:
-   The UI strictly separates AI conversation from tool actions following this hierarchy:
-   USER
-   ↓
-   AI THINKING / PLANNING (optional brief explanation of intent)
-   ↓
-   TOOL ACTION (Terminal / Editor / GitHub / Tests)
-   ↓
-   RESULT
-   ↓
-   AI RESPONSE (brief summary without repeating raw tool outputs)
-
-   CRITICAL RULES:
-   - NEVER render raw terminal output as normal chat text.
-   - Brief narration before/after tool usage, but NEVER repeat the entire terminal output or file diff in chat.
-   
-   Example format:
-   “I'll verify the build first.”
-
-\`\`\`void-tool-event
-{
-  "type": "tool",
-  "tool": "terminal",
-  "status": "completed",
-  "command": "npm run build",
-  "output": "✓ Build completed in 4.2s",
-  "startedAt": 1727900000000,
-  "completedAt": 1727900004200,
-  "durationMs": 4200,
-  "exitCode": 0
-}
-\`\`\`
-
-   “Build passes. No errors.”
-
-3. SUPPORTED STRUCTURED TOOL EVENTS:
-   - terminal: {"type": "tool", "tool": "terminal", "status": "completed"|"running"|"failed"|"cancelled", "command": "...", "output": "...", "startedAt": 0, "durationMs": 4200, "exitCode": 0}
-   - editor: {"type": "tool", "tool": "editor", "status": "completed", "action": "edit"|"create"|"delete", "filePath": "src/App.jsx", "additions": 24, "deletions": 8, "diff": "...", "summary": "..."}
-   - github: {"type": "tool", "tool": "github", "status": "completed", "operation": "read"|"commit"|"branch", "repo": "owner/repo", "target": "src/App.jsx", "commitSha": "a83f21c", "commitMessage": "..."}
-   - tests/build: {"type": "tool", "tool": "tests"|"build", "status": "completed"|"failed", "command": "npm test", "output": "...", "testsPassed": 14, "testsFailed": 0, "durationMs": 1800}
-
-4. AUTONOMOUS CODING WORKFLOW:
-   For comprehensive multi-file modifications, you can also output the unified \`\`\`void-coding-activity block.`;
+1. Evaluate intent naturally: respond conversationally to casual greetings; use structured tool events and complete code edits when the user requests development work.
+2. Supported tool events (\`\`\`void-tool-event): terminal, editor, github, tests/build, plus unified \`\`\`void-coding-activity blocks for multi-file edits.
+3. Verify edits carefully and summarize outcomes clearly without dumping raw noisy logs.`;
   }
 
-  // Conversation continuity rules — always appended so Nova stays on task
+  // 6. Deep Conversation Continuity & Large Task Completion
   const conversationContinuity = `
-[CONVERSATION CONTINUITY — MANDATORY]:
-1. You inherit the ENTIRE conversation. Every prior message in this chat is established context. NEVER treat a new message as the start of a new conversation.
-2. Reference and build on what was said before. If the user says "continue", "go on", "keep going", or sends anything short like "ok", "yes", "do it", resume the EXACT task you were doing from where you stopped. Do not ask what they mean if the task is already clear from context.
-3. FINISH WHAT YOU START: once a task is underway, see it through to completion in this reply. Do not stop halfway, do not trail off, do not hand the task back to the user unless you genuinely need their input.
-4. Do NOT restart, repeat, or re-introduce a task that is already in progress. Pick up from the last thing that was said or done.
-5. Only wrap up or change direction when the task is genuinely complete or the user explicitly changes the subject or tells you to stop.`;
+[CONVERSATION CONTINUITY & COMPLETE TASK EXECUTION — MANDATORY]:
+1. FULL MEMORY OF THIS THREAD: You inherit every turn in this conversation as active, ongoing context. NEVER reset, forget decisions already made, or act like each message starts a brand-new chat.
+2. SEAMLESS CONTINUATION: If the user sends short follow-ups ("continue", "go on", "next", "yes", "ok", "do it", "fix that", "now the rest", or builds on the previous turn), immediately pick up the EXACT unfinished task from the exact line, file, or step where you stopped. Do not re-introduce the topic or ask what they mean when the thread already shows it.
+3. COMPLETE LARGE TASKS WITHOUT STUBS: Never leave placeholders like "// ... rest of code", "/* TODO */", or half-finished files. Complete every file, function, section, and requirement cleanly in full unless the user explicitly asks to stop or change direction.
+4. STRUCTURED PRECISION: For large multi-part tasks, briefly organize the plan cleanly, execute thoroughly step by step, verify edge cases, and only conclude when the deliverable is genuinely complete.`;
 
-  // Combine into single authoritative prompt
   const sections = [
     masterBrainBase,
     toolRegistryContext,
     memoryContext,
+    summarySection,
     codebaseSearchInstructions,
     codingWorkflowInstructions,
     conversationContinuity,

@@ -26,7 +26,7 @@ import {
   GitHubUser 
 } from '../utils/github';
 import { terminalManager } from '../utils/terminalManager';
-import { Chat, Message, UserProfile, BroadcastMessage, AIBrainSettings, AgentState } from '../../models/types';
+import { Chat, Message, UserProfile, BroadcastMessage, AIBrainSettings, AgentState, type CouncilData } from '../../models/types';
 import {
   createChat,
   getUserChats,
@@ -48,21 +48,23 @@ import {
   toggleStarMessage,
   listenToSystemAPIKeys
 } from '../../database/db';
-import { sendMessageToGroq, setClientSystemKeys } from '../../api/client';
+import { sendMessageToGroq, sendCouncilMessage, setClientSystemKeys } from '../../api/client';
 import { memoryManager } from '../../memory/context';
 import { CommandPalette } from '../components/CommandPalette';
 import { AppearanceMenu } from '../components/AppearanceMenu';
 import { ShortcutsModal } from '../components/ShortcutsModal';
 import { ModelSelectorDropdown } from '../components/ModelSelectorDropdown';
-import { NovaOrb } from '../components/NovaOrb';
-import { getPersona, getTimeGreeting, PROMPT_LIBRARY } from '../models/personas';
+import { NovaOrb, type NovaOrbState } from '../components/NovaOrb';
+import { MuseCharacterStage, type MusePresenceMode } from '../components/MuseCharacterStage';
+import { SquadRosterModal } from '../components/SquadRosterModal';
+import { NOVA_PERSONAS, getPersona, getTimeGreeting, PROMPT_LIBRARY } from '../models/personas';
 import { CodeWorkspaceDrawer, WorkspaceTab } from '../components/workspace/CodeWorkspaceDrawer';
 import { PromptStudioModal } from '../components/workspace/PromptStudioModal';
 import { LiveHtmlPreviewModal } from '../components/workspace/LiveHtmlPreviewModal';
 import { ZipInspectorModal } from '../components/workspace/ZipInspectorModal';
 import { ParsedZipResult } from '../utils/zipParser';
 import { offlineCache } from '../utils/offlineQueue';
-import { Menu, Shield, Crown, Mail, ArrowDown, Sparkles, Code, Code2, Target, Binary, Zap, Bot, Mic, ChevronDown, Send, Radio, X, Trash2, Terminal, Flame, Eye, Lock, ShieldAlert, GitBranch, MessageSquare, FolderCode, Check, Loader2, Command, Sliders, ExternalLink } from 'lucide-react';
+import { Menu, ArrowDown, Code2, Radio, X, Sliders, Command, Check, Phone, Video, Users, Globe } from 'lucide-react';
 import { getAuth, signOut } from 'firebase/auth';
 import { clsx } from 'clsx';
 
@@ -96,21 +98,91 @@ export function ChatScreen({ userId }: ChatScreenProps) {
     tokensPerSec?: number;
   }>({});
 
-  // AI Model Selection state (Persisted, managed in Settings & Top Bar)
+  // AI Character & Model Selection state (Persisted)
+  const [selectedPersonaId, setSelectedPersonaId] = useState<string>(() => {
+    return localStorage.getItem('void_ai_selected_persona') || 'shii';
+  });
   const [selectedProvider, setSelectedProvider] = useState<'groq' | 'cohere' | 'bazaarlink' | 'gemini'>(() => {
     return (localStorage.getItem('void_ai_selected_provider') as any) || 'groq';
   });
   const [selectedModel, setSelectedModel] = useState<string>(() => {
-    return localStorage.getItem('void_ai_selected_model') || 'auto';
+    return localStorage.getItem('void_ai_selected_model') || 'qwen/qwen3.8-27b';
   });
   const [showShortcuts, setShowShortcuts] = useState(false);
   const [promptLibOpen, setPromptLibOpen] = useState(false);
+  const [presenceMode, setPresenceMode] = useState<MusePresenceMode>(() => {
+    const saved = localStorage.getItem('void_ai_muse_presence');
+    return saved === 'pip' || saved === 'voice' ? saved : 'stage';
+  });
+  const [isUserComposing, setIsUserComposing] = useState(false);
+  const [isSpeakingReply, setIsSpeakingReply] = useState(false);
 
-  const handleSelectProviderModel = (provider: 'groq' | 'cohere' | 'bazaarlink' | 'gemini', model: string) => {
+  // 4-Model Collaborative Squad + Live Web Research Controls
+  const [squadMode, setSquadMode] = useState<boolean>(() => {
+    return localStorage.getItem('void_ai_squad_mode') === 'true';
+  });
+  const [squadPersonaIds, setSquadPersonaIds] = useState<string[]>(() => {
+    try {
+      const saved = JSON.parse(localStorage.getItem('void_ai_squad_ids') || 'null');
+      if (Array.isArray(saved) && saved.length === 4) return saved;
+    } catch (_) {}
+    return ['shii', 'shiia', 'lyra', 'sora'];
+  });
+  const [showSquadRoster, setShowSquadRoster] = useState(false);
+  const [webResearchEnabled, setWebResearchEnabled] = useState<boolean>(() => {
+    return localStorage.getItem('void_ai_web_research') === 'true';
+  });
+  const [streamingCouncil, setStreamingCouncil] = useState<CouncilData | null>(null);
+
+  const squadPersonas = React.useMemo(
+    () => squadPersonaIds.map((id) => getPersona(undefined, undefined, id)),
+    [squadPersonaIds]
+  );
+
+  const handleToggleSquadMode = () => {
+    const next = !squadMode;
+    setSquadMode(next);
+    localStorage.setItem('void_ai_squad_mode', String(next));
+  };
+
+  const handleChangeSquadIds = (ids: string[]) => {
+    setSquadPersonaIds(ids);
+    localStorage.setItem('void_ai_squad_ids', JSON.stringify(ids));
+  };
+
+  const handleToggleWebResearch = () => {
+    const next = !webResearchEnabled;
+    setWebResearchEnabled(next);
+    localStorage.setItem('void_ai_web_research', String(next));
+  };
+
+  const activePersona = getPersona(selectedProvider, selectedModel, selectedPersonaId);
+
+  const liveAvatarState: NovaOrbState = isLoading
+    ? (streamingMessage ? 'speaking' : 'thinking')
+    : isSpeakingReply
+    ? 'speaking'
+    : isUserComposing
+    ? 'listening'
+    : 'idle';
+
+  const handleChangePresenceMode = (nextMode: MusePresenceMode) => {
+    if (nextMode === 'face') {
+      setShowLiveVoice(true);
+      return;
+    }
+    setPresenceMode(nextMode);
+    localStorage.setItem('void_ai_muse_presence', nextMode);
+  };
+
+  const handleSelectProviderModel = (provider: 'groq' | 'cohere' | 'bazaarlink' | 'gemini', model: string, personaId?: string) => {
+    const resolved = getPersona(provider, model, personaId);
     setSelectedProvider(provider);
     setSelectedModel(model);
+    setSelectedPersonaId(resolved.id);
     localStorage.setItem('void_ai_selected_provider', provider);
     localStorage.setItem('void_ai_selected_model', model);
+    localStorage.setItem('void_ai_selected_persona', resolved.id);
   };
 
   // Keyboard Shortcuts (⌘K for command palette, ⌘E for editor, ⌘T for terminal)
@@ -623,11 +695,10 @@ export function ChatScreen({ userId }: ChatScreenProps) {
       const updatedProfile = await incrementMessageCount(userId);
       setProfile(updatedProfile);
 
-      const context = memoryManager.buildContext(currentMessages);
-      let lastStreamUpdate = 0;
-
-      const systemPrompt = '';
+      const builtContext = memoryManager.buildContextWithSummary(currentMessages);
       const userTier = updatedProfile?.tier || profile?.tier || 'free';
+      const savedTemp = parseFloat(localStorage.getItem('void_ai_temperature') || '0.65');
+      const temperature = Number.isNaN(savedTemp) ? 0.65 : savedTemp;
 
       const githubContext = activeRepo ? {
         owner: activeRepo.owner,
@@ -639,48 +710,123 @@ export function ChatScreen({ userId }: ChatScreenProps) {
         fileTreeSnippet: repoTreeSnippet || undefined,
       } : undefined;
 
+      const combinedExtraPrompt = [
+        customSystemPrompt?.trim(),
+        builtContext.activeTaskHint
+          ? `[Active Conversation Goal]: ${builtContext.activeTaskHint}`
+          : '',
+      ]
+        .filter(Boolean)
+        .join('\n\n');
+
       let pendingUpdate = false;
-      const telemetry = await sendMessageToGroq(
-        context,
-        customSystemPrompt || '',
-        (chunk) => {
-          fullResponse += chunk;
-          if (!pendingUpdate) {
-            pendingUpdate = true;
-            requestAnimationFrame(() => {
-              setStreamingMessage(fullResponse);
-              pendingUpdate = false;
-            });
+      const shouldUseSquad = squadMode && attachment?.kind !== 'image';
+
+      if (shouldUseSquad) {
+        const effectiveSquad = squadPersonas.length >= 4 ? squadPersonas.slice(0, 4) : NOVA_PERSONAS.slice(0, 4);
+        const { telemetry, finalCouncilData } = await sendCouncilMessage({
+          messages: builtContext.messages,
+          systemPrompt: combinedExtraPrompt,
+          agents: effectiveSquad.map((p) => ({
+            id: p.id,
+            name: p.name,
+            role: p.role,
+            provider: p.provider,
+            modelId: p.modelId,
+            systemDirective: p.systemDirective,
+          })),
+          webResearch: webResearchEnabled ? true : 'auto',
+          userId,
+          attachment,
+          githubContext,
+          temperature,
+          earlierSummary: builtContext.earlierSummary,
+          signal: abortControllerRef.current.signal,
+          onCouncilUpdate: (councilState) => {
+            setStreamingCouncil(councilState);
+          },
+          onChunk: (chunk) => {
+            fullResponse += chunk;
+            if (!pendingUpdate) {
+              pendingUpdate = true;
+              requestAnimationFrame(() => {
+                setStreamingMessage(fullResponse);
+                pendingUpdate = false;
+              });
+            }
+          },
+        });
+
+        if (telemetry) setLastTelemetry(telemetry);
+
+        if (fullResponse.trim()) {
+          const modelMsg = await saveMessage(activeChatId, 'model', fullResponse, {
+            councilData: finalCouncilData,
+            latencyMs: telemetry?.latencyMs,
+            ttftMs: telemetry?.ttftMs,
+            tokensPerSec: telemetry?.tokensPerSec,
+            totalTokens: telemetry?.totalTokens,
+            modelUsed: `4-Model Squad (${effectiveSquad.map((s) => s.name).join(' + ')})`,
+            providerUsed: 'multi-model-council',
+          } as any);
+          const updatedMsgs = [...currentMessages, modelMsg];
+          setMessages(updatedMsgs);
+          offlineCache.saveMessages(activeChatId, updatedMsgs);
+        }
+        setStreamingCouncil(null);
+        setStreamingMessage('');
+      } else {
+        const telemetry = await sendMessageToGroq(
+          builtContext.messages,
+          combinedExtraPrompt,
+          (chunk) => {
+            fullResponse += chunk;
+            if (!pendingUpdate) {
+              pendingUpdate = true;
+              requestAnimationFrame(() => {
+                setStreamingMessage(fullResponse);
+                pendingUpdate = false;
+              });
+            }
+          },
+          abortControllerRef.current.signal,
+          userId,
+          userTier,
+          selectedProvider,
+          selectedModel,
+          attachment,
+          githubContext,
+          undefined,
+          {
+            temperature,
+            personaId: activePersona.id,
+            personaName: activePersona.name,
+            characterDirective: activePersona.systemDirective,
+            earlierSummary: builtContext.earlierSummary,
+            webResearch: webResearchEnabled ? true : 'auto',
           }
-        },
-        abortControllerRef.current.signal,
-        userId,
-        userTier,
-        selectedProvider,
-        selectedModel,
-        attachment,
-        githubContext
-      );
+        );
 
-      if (telemetry) {
-        setLastTelemetry(telemetry);
-      }
+        if (telemetry) {
+          setLastTelemetry(telemetry);
+        }
 
-      // Save complete model message with telemetry
-      if (fullResponse.trim()) {
-        const modelMsg = await saveMessage(activeChatId, 'model', fullResponse, {
-          latencyMs: telemetry?.latencyMs,
-          ttftMs: telemetry?.ttftMs,
-          tokensPerSec: telemetry?.tokensPerSec,
-          totalTokens: telemetry?.totalTokens,
-          modelUsed: selectedModel,
-          providerUsed: selectedProvider,
-        } as any);
-        const updatedMsgs = [...currentMessages, modelMsg];
-        setMessages(updatedMsgs);
-        offlineCache.saveMessages(activeChatId, updatedMsgs);
+        // Save complete model message with telemetry
+        if (fullResponse.trim()) {
+          const modelMsg = await saveMessage(activeChatId, 'model', fullResponse, {
+            latencyMs: telemetry?.latencyMs,
+            ttftMs: telemetry?.ttftMs,
+            tokensPerSec: telemetry?.tokensPerSec,
+            totalTokens: telemetry?.totalTokens,
+            modelUsed: `${activePersona.name} · ${selectedModel}`,
+            providerUsed: selectedProvider,
+          } as any);
+          const updatedMsgs = [...currentMessages, modelMsg];
+          setMessages(updatedMsgs);
+          offlineCache.saveMessages(activeChatId, updatedMsgs);
+        }
+        setStreamingMessage('');
       }
-      setStreamingMessage('');
     } catch (error: any) {
       if (error.name === 'AbortError') {
         console.log('Stream aborted by user');
@@ -698,27 +844,50 @@ export function ChatScreen({ userId }: ChatScreenProps) {
           const modelMsg = await saveMessage(activeChatId, 'model', errNotice);
           setMessages([...currentMessages, modelMsg]);
         }
+        setStreamingCouncil(null);
         setStreamingMessage('');
       }
     } finally {
       setIsLoading(false);
+      setStreamingCouncil(null);
       abortControllerRef.current = null;
     }
   };
+
+  const handleSpeakLatestReply = useCallback(() => {
+    if (typeof window === 'undefined' || !('speechSynthesis' in window)) return;
+    if (isSpeakingReply) {
+      window.speechSynthesis.cancel();
+      setIsSpeakingReply(false);
+      return;
+    }
+    const latestModelMsg = [...messages].reverse().find((m) => m.role !== 'user' && m.text.trim());
+    if (!latestModelMsg) return;
+    window.speechSynthesis.cancel();
+    const cleanSpeech = latestModelMsg.text
+      .replace(/```[\s\S]*?```/g, 'Code block omitted.')
+      .replace(/\[.*?\]\(.*?\)/g, '')
+      .replace(/[#*_`]/g, '');
+    const utterance = new SpeechSynthesisUtterance(cleanSpeech.slice(0, 1800));
+    utterance.onend = () => setIsSpeakingReply(false);
+    utterance.onerror = () => setIsSpeakingReply(false);
+    setIsSpeakingReply(true);
+    window.speechSynthesis.speak(utterance);
+  }, [isSpeakingReply, messages]);
 
   const handleLogout = async () => {
     await signOut(getAuth());
   };
 
   return (
-    <div className="view-enter flex h-screen h-[100dvh] w-full bg-transparent text-[#1F1E1D] overflow-hidden relative overscroll-none select-none">
-      {/* Crystal-clear starry void background enhancement — sharp & high-contrast */}
-      <div className="fixed inset-0 pointer-events-none z-0 bg-gradient-to-b from-black/25 via-transparent to-black/45" />
+    <div className="view-enter flex h-screen h-[100dvh] w-full bg-transparent text-[var(--text-primary)] overflow-hidden relative overscroll-none select-none md:p-3 md:gap-3">
+      {/* Subtle warm ambient atmosphere that respects light & dark liquid glass */}
+      <div className="fixed inset-0 pointer-events-none z-0 opacity-65 bg-[radial-gradient(ellipse_at_top,var(--accent-soft)_0%,transparent_60%)]" />
       {/* Mobile Backdrop Overlay when Sidebar is expanded */}
       {isSidebarOpen && (
         <div
           onClick={() => setIsSidebarOpen(false)}
-          className="fixed inset-0 bg-black/60 z-30 md:hidden"
+          className="fixed inset-0 bg-black/50 backdrop-blur-sm z-30 md:hidden"
         />
       )}
 
@@ -728,7 +897,6 @@ export function ChatScreen({ userId }: ChatScreenProps) {
         currentChatId={currentChatId}
         onSelectChat={(id) => {
           setCurrentChatId(id);
-          // Auto close drawer on mobile screen selection
           if (window.innerWidth < 768) setIsSidebarOpen(false);
         }}
         onNewChat={() => {
@@ -740,6 +908,7 @@ export function ChatScreen({ userId }: ChatScreenProps) {
         onClearAllHistory={handleClearAllHistory}
         onOpenSettings={() => setShowSettings(true)}
         onOpenGitHub={() => setShowGitHubModal(true)}
+        onOpenPromptStudio={() => setShowPromptStudio(true)}
         onOpenSupport={() => setShowSupport(true)}
         onOpenSubscription={() => setShowSubscription(true)}
         onOpenAdmin={() => setShowAdminPanel(true)}
@@ -755,185 +924,335 @@ export function ChatScreen({ userId }: ChatScreenProps) {
         isAdmin={profile?.isAdmin || false}
         isSupportStaff={profile?.isSupportStaff || false}
         walletBalance={profile?.walletBalance || 0}
+        userEmail={profile?.email || 'mrnovatech4@gmail.com'}
+        userName={profile?.displayName || 'Workspace User'}
       />
 
-      {/* Main Chat Workspace */}
-      <div className="flex-1 flex flex-col h-full min-h-0 relative min-w-0 bg-transparent z-10 overflow-hidden">
-        {/* Broadcast System Banner Notice */}
-        {activeBroadcast && (
-          <div className="glass-strong border-b border-[var(--line)] p-2 px-3 flex items-center justify-between text-xs text-[#1F1E1D] z-30">
-            <div className="flex items-center gap-2.5 min-w-0">
-              <div className="p-1.5 rounded-lg text-[#1F1E1D] font-bold shrink-0" style={{ background: 'var(--accent)', color: '#FAF9F5' }}>
-                <Radio size={12} />
-              </div>
-              <div className="min-w-0">
-                <div className="font-semibold text-[var(--text-primary)] flex items-center gap-1.5 text-xs">
-                  <span>{activeBroadcast.title}</span>
-                  <span className="text-[9px] uppercase font-mono text-[var(--text-muted)]">
-                    · Official Broadcast
-                  </span>
+      {/* Main Muse Workspace + Living Companion Stage */}
+      <div className="flex-1 flex flex-col lg:flex-row gap-3 h-full min-h-0 relative min-w-0 z-10 overflow-hidden">
+        {/* Muse Conversation Canvas */}
+        <div className="flex-1 flex flex-col h-full min-h-0 relative min-w-0 muse-glass-panel md:rounded-[28px] overflow-hidden">
+          {/* Broadcast System Banner Notice */}
+          {activeBroadcast && (
+            <div className="glass-thick border-b border-[var(--line)] p-2 px-3 flex items-center justify-between text-xs text-[var(--text-primary)] z-30 shrink-0">
+              <div className="flex items-center gap-2.5 min-w-0">
+                <div className="p-1.5 rounded-lg text-white font-bold shrink-0" style={{ background: 'var(--accent)' }}>
+                  <Radio size={12} />
                 </div>
-                <p className="text-[var(--text-secondary)] truncate text-[10px]">{activeBroadcast.message}</p>
-              </div>
-            </div>
-            <button
-              onClick={() => setDismissedBroadcastIds(prev => [...prev, activeBroadcast.id])}
-              className="p-1 text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-white/[0.06] rounded transition-colors shrink-0"
-              title="Dismiss Notice"
-            >
-              <X size={14} />
-            </button>
-          </div>
-        )}
-
-        {/* Top Bar — Zone 1: Brand | Zone 2: Engine & Preset | Zone 3: Actions */}
-        <header className="h-14 px-3 sm:px-4 sticky top-0 z-20 glass-header-2026 flex items-center justify-between gap-4 select-none w-full min-w-0">
-          {/* Zone 1: Sidebar Toggle + Brand wordmark */}
-          <div className="flex items-center gap-2.5 shrink-0">
-            <button
-              onClick={() => setIsSidebarOpen(!isSidebarOpen)}
-              className="btn btn-ghost w-9 h-9 !p-0"
-              title="Toggle sidebar"
-            >
-              <Menu size={17} />
-            </button>
-
-            <div className="flex items-center gap-2">
-              <span className="font-display font-semibold text-sm tracking-tight text-[var(--text-primary)] whitespace-nowrap">
-                NOVA <span className="text-gradient text-gradient-animated">AI</span>
-              </span>
-              <span className="hidden sm:inline text-[10px] font-mono text-[var(--text-muted)] tracking-wide">
-                · 2026
-              </span>
-            </div>
-          </div>
-
-          {/* Zone 2: Engine Selector & Persona Preset */}
-          <div className="flex items-center gap-2 min-w-0">
-            <ModelSelectorDropdown
-              selectedProvider={selectedProvider}
-              selectedModel={selectedModel}
-              onSelect={handleSelectProviderModel}
-              lastTelemetry={lastTelemetry}
-            />
-
-            <button
-              onClick={() => setShowPromptStudio(true)}
-              className="btn btn-ghost h-9 px-2.5 text-xs hidden md:flex"
-              title="Prompt Engineering Studio & Custom System Directives"
-            >
-              <Sliders size={13} style={{ color: 'var(--accent)' }} />
-              <span>Persona</span>
-            </button>
-          </div>
-
-          {/* Zone 3: Command Bar, Interactive Workspace, Plus & Profile */}
-          <div className="flex items-center gap-2 shrink-0">
-            {/* Global Command Bar Button (⌘K) */}
-            <button
-              onClick={() => setShowCommandPalette(true)}
-              className="btn btn-ghost h-9 px-2.5 sm:px-3 text-xs"
-              title="Global Command Palette (Press ⌘K or Ctrl+K)"
-            >
-              <Command size={13} style={{ color: 'var(--accent)' }} />
-              <span className="hidden lg:inline text-xs">Commands</span>
-              <kbd className="hidden sm:inline-block px-1.5 py-0.5 text-[10px] font-mono text-[var(--text-muted)] bg-white/[0.05] border border-[var(--line)] rounded">
-                ⌘K
-              </kbd>
-            </button>
-
-            {/* Split Code Workspace Drawer Trigger */}
-            <button
-              onClick={() => setShowWorkspace(!showWorkspace)}
-              className={clsx(
-                'btn h-9 px-2.5 sm:px-3 text-xs',
-                showWorkspace
-                  ? 'btn-primary'
-                  : 'btn-ghost'
-              )}
-              title="Toggle Interactive Code Workspace & Sandbox Terminal (⌘E)"
-            >
-              <Code2 size={14} className={showWorkspace ? 'opacity-80' : ''} style={showWorkspace ? undefined : { color: 'var(--accent)' }} />
-              <span className="hidden sm:inline">Workspace</span>
-            </button>
-
-            <button
-              onClick={() => setShowSubscription(true)}
-              className="btn btn-ghost h-9 px-3 text-xs hidden sm:flex"
-              title="Upgrade Plan"
-            >
-              <span style={{ color: 'var(--accent)' }} className="text-xs">✦</span>
-              <span>Plus</span>
-            </button>
-
-            <button
-              onClick={() => setShowShortcuts(true)}
-              className="btn btn-ghost w-9 h-9 !p-0 hidden md:flex"
-              title="Keyboard shortcuts (press ?)"
-            >
-              <kbd className="kbd">?</kbd>
-            </button>
-
-            <AppearanceMenu />
-
-            <button
-              onClick={() => setShowSettings(true)}
-              className="w-9 h-9 rounded-full font-semibold text-[11px] flex items-center justify-center transition-all cursor-pointer shrink-0 hover:brightness-110 active:scale-95 shadow-[var(--shadow-sm)]"
-              style={{ background: 'var(--accent)', color: '#FAF9F5' }}
-              title="Account Settings"
-            >
-              {profile?.displayName ? profile.displayName.slice(0, 2).toUpperCase() : 'MT'}
-            </button>
-          </div>
-        </header>
-
-        {/* Chat Messages Container with 2026 Smooth Scrolling Physics */}
-        <div
-          ref={chatContainerRef}
-          onScroll={handleScroll}
-          className="flex-1 min-h-0 overflow-y-auto relative flex flex-col justify-between smooth-scroll-container touch-scroll select-text"
-        >
-          {messages.length === 0 ? (
-            /* Clean 2026 NOVA Welcome Screen — Nova mascot, time-aware greeting, prompt library */
-            <div className="flex-1 flex flex-col items-center justify-center px-4 max-w-2xl mx-auto w-full">
-              <div className="relative mb-5 animate-riseIn">
-              <div className="relative glass-strong rounded-[1.75rem] p-3 overflow-hidden shadow-[var(--shadow-md)]">
-                  <NovaOrb size={80} state="idle" label="Nova" />
+                <div className="min-w-0">
+                  <div className="font-semibold text-[var(--text-primary)] flex items-center gap-1.5 text-xs">
+                    <span>{activeBroadcast.title}</span>
+                    <span className="text-[10px] text-[var(--text-muted)]">· Broadcast</span>
+                  </div>
+                  <p className="text-[var(--text-secondary)] truncate text-[11px]">{activeBroadcast.message}</p>
                 </div>
               </div>
+              <button
+                type="button"
+                onClick={() => setDismissedBroadcastIds(prev => [...prev, activeBroadcast.id])}
+                className="p-1.5 text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-black/[0.05] dark:hover:bg-white/[0.08] rounded-lg transition-colors shrink-0 cursor-pointer"
+                title="Dismiss Notice"
+              >
+                <X size={14} />
+              </button>
+            </div>
+          )}
 
-              {/* Animated Today date chip */}
-              <div className="date-chip animate-riseIn" style={{ animationDelay: '60ms' }}>
-                <span className="date-chip__dot" />
-                {new Date().toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric' })}
-              </div>
+          {/* Muse 3-Zone Floating Glass Top Bar */}
+          <header className="h-14 px-3 sm:px-4 sticky top-0 z-20 glass-header-2026 flex items-center justify-between gap-2 sm:gap-4 select-none w-full min-w-0 shrink-0">
+            {/* Zone 1: Sidebar Toggle + Wordmark + Active Companion */}
+            <div className="flex items-center gap-2 min-w-0">
+              <button
+                type="button"
+                onClick={() => setIsSidebarOpen(!isSidebarOpen)}
+                className="btn btn-ghost w-10 h-10 !p-0 rounded-full shrink-0"
+                title="Toggle sidebar"
+              >
+                <Menu size={17} />
+              </button>
 
-              <h1 className="font-display text-2xl sm:text-3xl font-semibold text-[var(--text-primary)] mb-1.5 tracking-tight animate-riseIn" style={{ animationDelay: '100ms' }}>
-                {getTimeGreeting()}. How can I help you today?
-              </h1>
-              <p className="text-sm text-[var(--text-secondary)] mb-6 font-normal animate-riseIn" style={{ animationDelay: '160ms' }}>Next-generation real-time multimodal intelligence</p>
+              <span className="font-display font-semibold text-base tracking-tight text-[var(--text-primary)] whitespace-nowrap hidden sm:inline shrink-0">
+                NOVA <span className="text-gradient text-gradient-animated">Muse</span>
+              </span>
 
-              {/* Prompt library — one-click starter prompts */}
-              <div className="relative w-full max-w-lg mb-4 animate-riseIn" style={{ animationDelay: '220ms' }}>
+              <ModelSelectorDropdown
+                selectedProvider={selectedProvider}
+                selectedModel={selectedModel}
+                selectedPersonaId={selectedPersonaId}
+                onSelect={handleSelectProviderModel}
+                lastTelemetry={lastTelemetry}
+              />
+            </div>
+
+            {/* Zone 2: Muse Presence Mode Switcher (Stage | PiP | Voice | Face) */}
+            <nav
+              aria-label="Muse companion mode"
+              className="hidden md:flex items-center gap-0.5 p-1 rounded-full glass-subtle shrink-0"
+            >
+              {([
+                { id: 'stage', label: 'Stage' },
+                { id: 'pip', label: 'PiP' },
+                { id: 'voice', label: 'Voice' },
+                { id: 'face', label: 'Face-to-Face' },
+              ] as { id: MusePresenceMode; label: string }[]).map((item) => {
+                const isActive = presenceMode === item.id;
+                return (
+                  <button
+                    type="button"
+                    key={item.id}
+                    onClick={() => handleChangePresenceMode(item.id)}
+                    className={clsx(
+                      'px-3 py-1.5 rounded-full text-xs font-semibold transition-all cursor-pointer whitespace-nowrap',
+                      isActive
+                        ? 'glass-thick text-[var(--text-primary)] shadow-[var(--shadow-xs)]'
+                        : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)]'
+                    )}
+                  >
+                    {item.label}
+                  </button>
+                );
+              })}
+            </nav>
+
+            {/* Zone 3: 4-Model Squad, Workspace Tools, Call Muse Trigger, Appearance & Profile */}
+            <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
+              {/* 4-Model Collaboration Squad Toggle */}
+              <div className="flex items-center rounded-full glass-subtle p-0.5 shrink-0">
                 <button
+                  type="button"
+                  onClick={handleToggleSquadMode}
+                  className={clsx(
+                    'btn h-8 px-2.5 sm:px-3 rounded-full text-xs whitespace-nowrap',
+                    squadMode ? 'btn-primary' : 'btn-ghost !border-transparent'
+                  )}
+                  title="Toggle 4-Model Collaborative Chat (4 AI models discuss & split tasks in parallel)"
+                >
+                  <Users size={13} />
+                  <span className="hidden sm:inline">{squadMode ? '4-Model Squad' : 'Squad'}</span>
+                </button>
+                {squadMode && (
+                  <button
+                    type="button"
+                    onClick={() => setShowSquadRoster(true)}
+                    className="h-8 px-2 text-[11px] font-semibold text-[var(--text-secondary)] hover:text-[var(--text-primary)] cursor-pointer whitespace-nowrap"
+                    title="Customize the 4 Muse models"
+                  >
+                    Edit
+                  </button>
+                )}
+              </div>
+
+              <button
+                type="button"
+                onClick={() => setShowPromptStudio(true)}
+                className="btn btn-ghost h-9 px-2.5 rounded-full text-xs hidden xl:flex whitespace-nowrap"
+                title="Directives & Prompt Engineering Studio"
+              >
+                <Sliders size={13} style={{ color: 'var(--accent)' }} />
+                <span>Directives</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setShowCommandPalette(true)}
+                className="btn btn-ghost h-9 px-2.5 rounded-full text-xs whitespace-nowrap"
+                title="Command Palette (⌘K)"
+              >
+                <Command size={13} style={{ color: 'var(--accent)' }} />
+                <kbd className="kbd hidden sm:inline-block">⌘K</kbd>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setShowWorkspace(!showWorkspace)}
+                className={clsx(
+                  'btn h-9 px-2.5 sm:px-3 rounded-full text-xs whitespace-nowrap',
+                  showWorkspace ? 'btn-primary' : 'btn-ghost'
+                )}
+                title="Toggle Code Workspace & Terminal (⌘E)"
+              >
+                <Code2 size={14} style={showWorkspace ? undefined : { color: 'var(--accent)' }} />
+                <span className="hidden sm:inline">Workspace</span>
+              </button>
+
+              <AppearanceMenu />
+
+              {/* Signature Muse Upper-Right Phone / Face-to-Face Trigger */}
+              <button
+                type="button"
+                onClick={() => setShowLiveVoice(true)}
+                className="btn btn-primary h-9 px-3 rounded-full text-xs whitespace-nowrap shrink-0"
+                title={`Call ${activePersona.name} (Face-to-Face)`}
+              >
+                {presenceMode === 'voice' ? <Phone size={14} /> : <Video size={14} />}
+                <span className="hidden sm:inline">Call</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setShowSettings(true)}
+                className="w-9 h-9 rounded-full glass border border-[var(--glass-border)] font-bold text-[11px] flex items-center justify-center transition-all cursor-pointer shrink-0 hover:brightness-105 active:scale-95 text-[var(--text-primary)]"
+                title="Account Settings & Integrations"
+              >
+                {profile?.displayName ? profile.displayName.slice(0, 2).toUpperCase() : 'MU'}
+              </button>
+            </div>
+          </header>
+
+          {/* Compact Mobile Companion Bar / Voice-Only Banner */}
+          {(presenceMode === 'voice' || (presenceMode === 'stage' && messages.length > 0)) && (
+            <MuseCharacterStage
+              mode={presenceMode}
+              onChangeMode={handleChangePresenceMode}
+              persona={activePersona}
+              avatarState={liveAvatarState}
+              onSelectPersona={(p) => handleSelectProviderModel(p.provider, p.modelId, p.id)}
+              onOpenFaceToFace={() => setShowLiveVoice(true)}
+              onQuickPrompt={(prompt) => handleSend(prompt)}
+              hasActiveMessages={messages.length > 0}
+              onSpeakLatest={handleSpeakLatestReply}
+              isSpeakingReply={isSpeakingReply}
+              squadMode={squadMode}
+              squadPersonas={squadPersonas}
+              liveCouncilData={streamingCouncil}
+              onOpenSquadRoster={() => setShowSquadRoster(true)}
+            />
+          )}
+
+          {/* Chat Messages Container */}
+          <div
+            ref={chatContainerRef}
+            onScroll={handleScroll}
+            className="flex-1 min-h-0 overflow-y-auto relative flex flex-col justify-between smooth-scroll-container touch-scroll select-text"
+          >
+            {messages.length === 0 ? (
+              /* Faithful Muse AI Liquid Glass Hero Stage */
+              <div className="flex-1 flex flex-col items-center justify-center px-4 py-6 max-w-2xl mx-auto w-full">
+                {/* Featured Living Companion Portrait */}
+                <div className="relative mb-5 animate-riseIn flex flex-col items-center text-center">
+                  <div className="muse-glass-panel rounded-[2.2rem] p-3 mb-4 inline-flex flex-col items-center">
+                    <NovaOrb
+                      size={140}
+                      state={liveAvatarState}
+                      persona={activePersona}
+                      shape="rounded"
+                      showAudioBars
+                      interactiveTilt
+                      label={activePersona.name}
+                      className="sm:!w-[164px] sm:!h-[164px]"
+                    />
+                  </div>
+
+                  <div className="text-xs font-medium text-[var(--text-muted)] mb-1">
+                    {new Date().toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric' })}
+                    <span className="mx-1.5" aria-hidden="true">·</span>
+                    <span>{activePersona.name} ({activePersona.role})</span>
+                  </div>
+
+                  <h1
+                    className="font-display text-2xl sm:text-3xl font-semibold text-[var(--text-primary)] tracking-tight mb-2"
+                    style={{ textWrap: 'balance' }}
+                  >
+                    {getTimeGreeting()}. How can {activePersona.name} help?
+                  </h1>
+
+                  <p className="text-sm text-[var(--text-secondary)] max-w-lg leading-relaxed">
+                    {activePersona.personality}
+                  </p>
+
+                  <div className="flex flex-wrap items-center justify-center gap-2 mt-4">
+                    <button
+                      type="button"
+                      onClick={() => setShowLiveVoice(true)}
+                      className="btn btn-primary h-10 px-4 rounded-full text-xs whitespace-nowrap"
+                    >
+                      <Phone size={14} />
+                      <span>Start Face-to-Face Call</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleToggleSquadMode}
+                      className={clsx(
+                        'btn h-10 px-4 rounded-full text-xs whitespace-nowrap',
+                        squadMode ? 'btn-primary' : 'btn-ghost'
+                      )}
+                    >
+                      <Users size={14} />
+                      <span>{squadMode ? '4-Model Squad: ON' : 'Enable 4-Model Squad'}</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleToggleWebResearch}
+                      className={clsx(
+                        'btn h-10 px-4 rounded-full text-xs whitespace-nowrap',
+                        webResearchEnabled ? 'btn-primary' : 'btn-ghost'
+                      )}
+                    >
+                      <Globe size={14} />
+                      <span>{webResearchEnabled ? 'Live Web Crawl: ON' : 'Live Web Access'}</span>
+                    </button>
+                  </div>
+                </div>
+
+                {/* Muse Companion Selector Strip */}
+                <div className="w-full mb-5 animate-riseIn" style={{ animationDelay: '120ms' }}>
+                  <div className="flex items-center justify-between px-1 mb-2">
+                    <span className="section-label">Choose Your Muse</span>
+                    <span className="text-[11px] text-[var(--text-muted)]">Tap to switch live</span>
+                  </div>
+                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                    {NOVA_PERSONAS.map((p) => {
+                      const isActive = activePersona.id === p.id;
+                      return (
+                        <button
+                          type="button"
+                          key={p.id}
+                          onClick={() => handleSelectProviderModel(p.provider, p.modelId, p.id)}
+                          className={clsx(
+                            'p-2.5 rounded-2xl border text-left transition-all cursor-pointer flex items-center gap-2.5 hover-lift',
+                            isActive
+                              ? 'glass-thick text-[var(--text-primary)]'
+                              : 'glass text-[var(--text-secondary)] hover:text-[var(--text-primary)]'
+                          )}
+                          style={isActive ? { borderColor: 'var(--accent-muted)', background: 'var(--accent-soft)' } : undefined}
+                        >
+                          <NovaOrb size={38} persona={p} shape="circle" className="shrink-0" label={p.name} />
+                          <div className="min-w-0 flex-1">
+                            <div className="flex items-center justify-between gap-1">
+                              <span className="text-xs font-bold text-[var(--text-primary)] truncate">{p.name}</span>
+                              {isActive && <Check size={12} style={{ color: 'var(--accent)' }} className="shrink-0" />}
+                            </div>
+                            <div className="text-[11px] text-[var(--text-muted)] truncate">{p.role.split('·')[0].trim()}</div>
+                          </div>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+
+              {/* Curated Prompt Library */}
+              <div className="relative w-full max-w-2xl mb-3 animate-riseIn" style={{ animationDelay: '210ms' }}>
+                <button
+                  type="button"
                   onClick={() => setPromptLibOpen(o => !o)}
-                  className="chip !rounded-xl !px-4 !py-3 w-full justify-between !text-sm"
+                  className="chip !rounded-2xl !px-4 !py-3 w-full justify-between !text-sm"
                   aria-expanded={promptLibOpen}
                 >
                   <span className="flex items-center gap-2">
                     <span style={{ color: 'var(--accent)' }}>✦</span>
-                    <span className="text-[#1F1E1D] font-medium">Prompt library</span>
-                    <span className="text-[var(--text-muted)] text-xs">· {PROMPT_LIBRARY.length} crafted starters</span>
+                    <span className="text-[var(--text-primary)] font-semibold">Prompt Library</span>
+                    <span className="text-[var(--text-muted)] text-xs">· {PROMPT_LIBRARY.length} full-execution starters</span>
                   </span>
                   <span className={clsx('text-[var(--text-muted)] transition-transform duration-200', promptLibOpen && 'rotate-180')}>▾</span>
                 </button>
                 {promptLibOpen && (
-                  <div className="absolute left-0 right-0 top-full mt-2 z-30 rounded-2xl glass-strong p-2 max-h-72 overflow-y-auto animate-fadeIn">
+                  <div className="absolute left-0 right-0 top-full mt-2 z-30 rounded-2xl glass-thick p-2 max-h-72 overflow-y-auto animate-fadeIn">
                     {PROMPT_LIBRARY.map((p, i) => (
                       <button
+                        type="button"
                         key={p.label}
                         onClick={() => { setPromptLibOpen(false); handleSend(p.prompt); }}
-                        className="w-full text-left px-3 py-2.5 rounded-xl hover:bg-white/[0.06] transition-colors cursor-pointer nova-menu-item"
+                        className="w-full text-left px-3 py-2.5 rounded-xl hover:bg-black/[0.04] dark:hover:bg-white/[0.06] transition-colors cursor-pointer nova-menu-item"
                         style={{ animationDelay: `${i * 25}ms` }}
                       >
                         <span className="block text-xs font-semibold text-[var(--text-primary)]">{p.label}</span>
@@ -944,37 +1263,53 @@ export function ChatScreen({ userId }: ChatScreenProps) {
                 )}
               </div>
 
-              {/* Quick action prompts with 2026 obsidian styling */}
-              <div className="w-full grid grid-cols-2 gap-2.5 max-w-lg animate-riseIn" style={{ animationDelay: '280ms' }}>
+              {/* Starter Action Cards */}
+              <div className="w-full grid grid-cols-1 sm:grid-cols-2 gap-2.5 max-w-2xl animate-riseIn" style={{ animationDelay: '260ms' }}>
                 <button
-                  onClick={() => handleSend("Explain quantum computing algorithms with interactive examples.")}
-                  className="chip !rounded-xl !px-4 !py-3.5 justify-center text-center min-h-[56px] text-[13px] sm:text-sm leading-snug hover-lift"
+                  type="button"
+                  onClick={() => handleSend("Design and build a complete interactive web dashboard with full component structure.")}
+                  className="chip !rounded-2xl !px-4 !py-3.5 justify-start text-left min-h-[58px] text-[13px] leading-snug hover-lift"
                 >
-                  Quantum algorithms & code
+                  <div>
+                    <div className="font-semibold text-[var(--text-primary)]">Build a complete web app</div>
+                    <div className="text-[11px] text-[var(--text-muted)] mt-0.5">End-to-end architecture & UI</div>
+                  </div>
                 </button>
                 <button
-                  onClick={() => handleSend("Build a high-performance REST and WebSocket API architecture.")}
-                  className="chip !rounded-xl !px-4 !py-3.5 justify-center text-center min-h-[56px] text-[13px] sm:text-sm leading-snug hover-lift"
+                  type="button"
+                  onClick={() => handleSend("Build a high-performance REST and real-time streaming API service with error handling.")}
+                  className="chip !rounded-2xl !px-4 !py-3.5 justify-start text-left min-h-[58px] text-[13px] leading-snug hover-lift"
                 >
-                  Design API architecture
+                  <div>
+                    <div className="font-semibold text-[var(--text-primary)]">Architect API & Backend</div>
+                    <div className="text-[11px] text-[var(--text-muted)] mt-0.5">Routes, schemas & streaming</div>
+                  </div>
                 </button>
                 <button
-                  onClick={() => handleSend("Audit my code for security vulnerabilities and optimize memory.")}
-                  className="chip !rounded-xl !px-4 !py-3.5 justify-center text-center min-h-[56px] text-[13px] sm:text-sm leading-snug hover-lift"
+                  type="button"
+                  onClick={() => handleSend("Review and harden my code for bugs, race conditions, and security edge cases.")}
+                  className="chip !rounded-2xl !px-4 !py-3.5 justify-start text-left min-h-[58px] text-[13px] leading-snug hover-lift"
                 >
-                  Security audit & profiling
+                  <div>
+                    <div className="font-semibold text-[var(--text-primary)]">Deep Code & Security Audit</div>
+                    <div className="text-[11px] text-[var(--text-muted)] mt-0.5">Bug hunt & performance fixes</div>
+                  </div>
                 </button>
                 <button
-                  onClick={() => handleSend("Summarize the latest 2026 tech breakthroughs and research.")}
-                  className="chip !rounded-xl !px-4 !py-3.5 justify-center text-center min-h-[56px] text-[13px] sm:text-sm leading-snug hover-lift"
+                  type="button"
+                  onClick={() => handleSend("Let's plan a multi-step engineering project together and execute it phase by phase.")}
+                  className="chip !rounded-2xl !px-4 !py-3.5 justify-start text-left min-h-[58px] text-[13px] leading-snug hover-lift"
                 >
-                  2026 Research & Insights
+                  <div>
+                    <div className="font-semibold text-[var(--text-primary)]">Multi-Step Project Execution</div>
+                    <div className="text-[11px] text-[var(--text-muted)] mt-0.5">Continuous step-by-step delivery</div>
+                  </div>
                 </button>
               </div>
             </div>
           ) : (
             /* Render Message History */
-            <div className="py-2.5">
+            <div className="py-3">
               {messages.map((msg) => (
                 <MessageBubble
                   key={msg.id}
@@ -982,27 +1317,29 @@ export function ChatScreen({ userId }: ChatScreenProps) {
                   onDelete={handleDeleteMessage}
                   onEdit={handleEditMessage}
                   onToggleStar={handleToggleStar}
+                  onContinue={msg.role !== 'user' ? () => handleSend('Continue seamlessly from where you stopped and finish all remaining parts of our current task without restarting.') : undefined}
                   activeRepo={activeRepo}
                   codingModeEnabled={codingMode}
-                  persona={getPersona(selectedProvider, selectedModel)}
+                  persona={activePersona}
                   onEnableCodingMode={handleEnableCodingMode}
                 />
               ))}
 
-              {/* Real-time Streaming AI Message */}
-              {isLoading && streamingMessage && (
+              {/* Real-time Streaming AI Message (or Live 4-Model Council Progress) */}
+              {isLoading && (streamingMessage || streamingCouncil) && (
                 <MessageBubble
                   message={{
                     id: 'temp',
                     chatId: currentChatId || '',
                     role: 'model',
                     text: streamingMessage,
+                    councilData: streamingCouncil || undefined,
                     createdAt: Date.now()
                   }}
                   isStreaming={true}
                   activeRepo={activeRepo}
                   codingModeEnabled={codingMode}
-                  persona={getPersona(selectedProvider, selectedModel)}
+                  persona={activePersona}
                   onEnableCodingMode={() => {
                     setCodingMode(true);
                     setStoredGitHubCodingMode(true);
@@ -1011,52 +1348,87 @@ export function ChatScreen({ userId }: ChatScreenProps) {
               )}
 
               {/* Thinking Indicator when waiting for stream start */}
-              {isLoading && !streamingMessage && <ThinkingIndicator persona={getPersona(selectedProvider, selectedModel)} />}
+              {isLoading && !streamingMessage && !streamingCouncil && <ThinkingIndicator persona={activePersona} />}
 
               <div ref={messagesEndRef} />
             </div>
           )}
 
-          {/* Floating Scroll to Bottom button — 2026 Glass Floating Dock */}
+          {/* Floating Scroll to Bottom button */}
           {showScrollBottom && (
             <button
+              type="button"
               onClick={() => scrollToBottom(true)}
-              className="sticky bottom-4 self-end mr-4 px-3.5 py-2 glass-strong hover:border-white/20 text-[#1F1E1D] rounded-full transition-all z-20 flex items-center gap-2 text-xs font-medium cursor-pointer animate-fadeIn active:scale-95"
+              className="sticky bottom-4 self-end mr-4 px-3.5 py-2 glass-thick text-[var(--text-primary)] rounded-full transition-all z-20 flex items-center gap-2 text-xs font-semibold cursor-pointer animate-fadeIn active:scale-95"
               title="Jump to latest response"
             >
               <ArrowDown size={13} style={{ color: 'var(--accent)' }} className="animate-bounce" />
-              <span className="text-[11px] font-mono tracking-wide">Jump to latest</span>
+              <span className="text-[11px] font-mono tracking-wide">Latest</span>
             </button>
           )}
         </div>
 
-        {/* Bottom Input Dock — flex flow docked, never overlaps messages or mobile keyboard */}
-        <div className="shrink-0 w-full glass-header-2026 pt-1.5 pb-2 px-2 z-10 flex flex-col items-center">
-          {/* Quick-prompt chips row */}
-          {!isLoading && messages.length > 0 && (
-            <div className="w-full max-w-3xl flex items-center gap-1.5 px-1 pb-1.5 overflow-x-auto no-scrollbar">
-              {["Explain like I'm five", "Make it concise", "Give me steps", "Find edge cases", "Write tests"].map(q => (
-                <button
-                  key={q}
-                  onClick={() => handleSend(q)}
-                  className="chip shrink-0 !py-1.5 !px-3 !text-[11px]"
-                >
-                  {q}
-                </button>
-              ))}
+          {/* Bottom Input Dock */}
+          <div className="shrink-0 w-full glass-header-2026 pt-2 pb-2 px-2 z-10 flex flex-col items-center">
+            {!isLoading && messages.length > 0 && (
+              <div className="w-full max-w-3xl flex items-center gap-1.5 px-1 pb-2 overflow-x-auto no-scrollbar">
+                {[
+                  { label: "Continue task", prompt: "Continue seamlessly from where you left off and complete the remaining parts without restarting." },
+                  { label: "Finish every file", prompt: "Complete all remaining code and details in full with zero placeholders." },
+                  { label: "Make it concise", prompt: "Summarize our current solution concisely while preserving key technical details." },
+                  { label: "Find edge cases", prompt: "Audit what we just built for edge cases and missing error handling." },
+                  { label: "Write tests", prompt: "Write complete unit/integration tests for what we just built." },
+                ].map(q => (
+                  <button
+                    type="button"
+                    key={q.label}
+                    onClick={() => handleSend(q.prompt)}
+                    className="chip shrink-0 !py-1.5 !px-3 !text-[11px]"
+                  >
+                    {q.label}
+                  </button>
+                ))}
+              </div>
+            )}
+            <InputArea
+              onSend={handleSend}
+              isLoading={isLoading}
+              onStop={handleStopGeneration}
+              onOpenLiveVoice={() => setShowLiveVoice(true)}
+              onImageGenerate={handleImageGenerate}
+              activeCharacterName={activePersona.name}
+              onActivityChange={setIsUserComposing}
+              webResearchEnabled={webResearchEnabled}
+              onToggleWebResearch={handleToggleWebResearch}
+              squadMode={squadMode}
+            />
+            <div className="text-[10px] text-[var(--text-muted)] text-center px-2 pt-1 select-none">
+              {squadMode
+                ? `4-Model Squad (${squadPersonas.slice(0, 4).map((s) => s.name).join(' · ')}) · Parallel Execution`
+                : `${activePersona.name} remembers this entire thread · Live Web Crawl ${webResearchEnabled ? 'ON' : 'Auto'}`}
             </div>
-          )}
-          <InputArea
-            onSend={handleSend}
-            isLoading={isLoading}
-            onStop={handleStopGeneration}
-            onOpenLiveVoice={() => setShowLiveVoice(true)}
-            onImageGenerate={handleImageGenerate}
-          />
-          <div className="text-[10px] text-[var(--text-muted)] text-center px-2 pt-1 select-none">
-            Nova can make mistakes. Check important info.
           </div>
         </div>
+
+        {/* Desktop Side-by-Side Stage & PiP Floating Card */}
+        {presenceMode !== 'voice' && (
+          <MuseCharacterStage
+            mode={presenceMode}
+            onChangeMode={handleChangePresenceMode}
+            persona={activePersona}
+            avatarState={liveAvatarState}
+            onSelectPersona={(p) => handleSelectProviderModel(p.provider, p.modelId, p.id)}
+            onOpenFaceToFace={() => setShowLiveVoice(true)}
+            onQuickPrompt={(prompt) => handleSend(prompt)}
+            hasActiveMessages={messages.length > 0}
+            onSpeakLatest={handleSpeakLatestReply}
+            isSpeakingReply={isSpeakingReply}
+            squadMode={squadMode}
+            squadPersonas={squadPersonas}
+            liveCouncilData={streamingCouncil}
+            onOpenSquadRoster={() => setShowSquadRoster(true)}
+          />
+        )}
       </div>
 
       {/* Keyboard shortcuts guide */}
@@ -1158,12 +1530,14 @@ export function ChatScreen({ userId }: ChatScreenProps) {
         />
       )}
 
-      {/* Live Voice Chat Modal */}
+      {/* Live Voice Chat Modal (Face-to-Face Muse Call) */}
       {showLiveVoice && (
         <LiveVoiceModal
           onClose={() => setShowLiveVoice(false)}
           userId={userId}
           userTier={profile?.tier || 'free'}
+          persona={activePersona}
+          onSelectPersona={(p) => handleSelectProviderModel(p.provider, p.modelId, p.id)}
         />
       )}
 
@@ -1216,8 +1590,8 @@ export function ChatScreen({ userId }: ChatScreenProps) {
             setShowWorkspace(true);
             setShowCommandPalette(false);
           }}
-          onSelectModel={(provider, model) => {
-            handleSelectProviderModel(provider, model);
+          onSelectModel={(provider, model, personaId) => {
+            handleSelectProviderModel(provider, model, personaId);
           }}
           onOpenPromptStudio={() => {
             setShowPromptStudio(true);
@@ -1296,6 +1670,15 @@ export function ChatScreen({ userId }: ChatScreenProps) {
             setWorkspaceFileContent(content);
             setShowWorkspace(true);
           }}
+        />
+      )}
+
+      {/* 4-Model Squad Roster Customization Modal */}
+      {showSquadRoster && (
+        <SquadRosterModal
+          selectedIds={squadPersonaIds}
+          onChangeSquad={handleChangeSquadIds}
+          onClose={() => setShowSquadRoster(false)}
         />
       )}
     </div>

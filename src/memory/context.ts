@@ -3,48 +3,52 @@ import { Message } from "../models/types";
 /**
  * Conversation continuity engine.
  *
- * Goal: Nova never "forgets" what the conversation is about and never starts
+ * Goal: Models never "forget" what the conversation is about and never start
  * a fresh conversation mid-task. We carry the FULL conversation history to the
- * model and only compress the oldest tail when the request would blow past a
- * budget, always preserving a summary of what was accomplished so the model
- * can pick up exactly where it left off.
+ * model and only compress the oldest tail when the request would exceed budget,
+ * surfacing earlierSummary + activeTaskHint cleanly for the system prompt
+ * instead of injecting awkward mid-array system roles.
  */
 
-export class MemoryManager {
-  private systemPrompt: string =
-    "You are NOVA AI, a highly intelligent and helpful AI assistant created by NovaTech. " +
-    "You answer clearly, concisely, and use formatting like markdown where appropriate.";
+export interface BuiltContextResult {
+  messages: { role: string; text: string }[];
+  earlierSummary?: string;
+  activeTaskHint?: string;
+}
 
-  /** Rough char budget for the conversation payload sent with each request. */
-  private maxChars = 48000;
+export class MemoryManager {
+  /** Generous char budget for the conversation payload sent with each request. */
+  private maxChars = 72000;
 
   /**
-   * Builds the conversation payload for the AI.
-   * - Returns the FULL history whenever it fits (no information loss).
-   * - If it doesn't fit, keeps the most recent messages intact and compresses
-   *   the oldest ones into a single "conversation so far" summary message,
-   *   preserving task state, decisions and unfinished work.
+   * Builds the conversation payload plus extracted earlier summary & active task hint.
    */
-  public buildContext(
+  public buildContextWithSummary(
     history: Message[],
     maxChars: number = this.maxChars
-  ): { role: string; text: string }[] {
-    const mapped = history.map((m) => ({
-      role: m.role,
-      text: m.text || (m as any).content || "",
-    }));
+  ): BuiltContextResult {
+    const mapped = history
+      .map((m) => ({
+        role: m.role,
+        text: m.text || (m as any).content || "",
+      }))
+      .filter((m) => m.text.trim().length > 0);
 
+    const activeTaskHint = extractActiveTaskHint(mapped);
     const total = mapped.reduce((sum, m) => sum + m.text.length, 0);
+
     if (total <= maxChars) {
-      return mapped;
+      return {
+        messages: mapped,
+        activeTaskHint,
+      };
     }
 
-    // Walk from the newest message backwards, keeping as many recent messages
-    // as fit. Whatever doesn't fit becomes one summary message at the top.
+    // Walk from the newest message backwards, keeping as many recent turns as fit.
     let budget = maxChars;
     let keepFrom = mapped.length;
     for (let i = mapped.length - 1; i >= 0; i--) {
-      if (budget - mapped[i].text.length < 0) break;
+      if (budget - mapped[i].text.length < 0 && keepFrom < mapped.length) break;
       budget -= mapped[i].text.length;
       keepFrom = i;
     }
@@ -52,17 +56,37 @@ export class MemoryManager {
     const older = mapped.slice(0, keepFrom);
     const recent = mapped.slice(keepFrom);
 
-    if (older.length === 0) return recent;
+    if (older.length === 0) {
+      return {
+        messages: recent,
+        activeTaskHint,
+      };
+    }
 
+    return {
+      messages: recent,
+      earlierSummary: summarize(older),
+      activeTaskHint,
+    };
+  }
+
+  /**
+   * Legacy-compatible helper returning a message array.
+   */
+  public buildContext(
+    history: Message[],
+    maxChars: number = this.maxChars
+  ): { role: string; text: string }[] {
+    const { messages, earlierSummary } = this.buildContextWithSummary(history, maxChars);
+    if (!earlierSummary) return messages;
     return [
       {
-        role: "system",
+        role: "user",
         text:
-          "[Conversation so far — compressed summary of earlier messages. " +
-          "You MUST treat everything here as established context and continue seamlessly.]\n" +
-          summarize(older),
+          "[Earlier Conversation Context — treat everything below as already established and continue seamlessly]\n" +
+          earlierSummary,
       },
-      ...recent,
+      ...messages,
     ];
   }
 }
@@ -73,12 +97,22 @@ function summarize(messages: { role: string; text: string }[]): string {
   for (const m of messages) {
     const text = m.text.replace(/\s+/g, " ").trim();
     if (!text) continue;
-    // Keep the first sentence-ish chunk of each message: enough to retain
-    // topic, decisions and unfinished tasks without drowning the context.
-    const snippet = text.length > 220 ? text.slice(0, 220) + "…" : text;
-    lines.push(`${m.role === "user" ? "User" : "Nova"}: ${snippet}`);
+    const snippet = text.length > 260 ? text.slice(0, 260) + "…" : text;
+    lines.push(`${m.role === "user" ? "User" : "Assistant"}: ${snippet}`);
   }
-  return lines.join("\n");
+  return lines.slice(-24).join("\n");
+}
+
+/** Captures the ongoing goal from the most recent substantive user turns. */
+function extractActiveTaskHint(messages: { role: string; text: string }[]): string | undefined {
+  const userMsgs = messages.filter((m) => m.role === "user");
+  if (userMsgs.length <= 1) return undefined;
+  const recentSubstantive = [...userMsgs]
+    .reverse()
+    .find((m) => m.text.trim().length > 28 && !/^(continue|go on|keep going|yes|ok|okay|do it|next)\b/i.test(m.text.trim()));
+  if (!recentSubstantive) return undefined;
+  const compact = recentSubstantive.text.replace(/\s+/g, " ").trim();
+  return compact.length > 360 ? compact.slice(0, 360) + "…" : compact;
 }
 
 export const memoryManager = new MemoryManager();

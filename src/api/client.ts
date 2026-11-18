@@ -1,5 +1,11 @@
 import type { ChatAttachment } from '../frontend/components/InputArea';
-import type { TerminalToolEvent } from '../models/types';
+import type {
+  TerminalToolEvent,
+  CouncilData,
+  CouncilAgentDiscussion,
+  CouncilWorkerTask,
+  WebResearchSource,
+} from '../models/types';
 
 export interface GitHubContextPayload {
   owner?: string;
@@ -78,6 +84,14 @@ export async function sendMessageToGroq(
     cohereKeys?: string[];
     bazaarLinkKeys?: string[];
     geminiKeys?: string[];
+  },
+  options?: {
+    temperature?: number;
+    personaId?: string;
+    personaName?: string;
+    characterDirective?: string;
+    earlierSummary?: string;
+    webResearch?: boolean | 'auto';
   }
 ): Promise<ChatTelemetryResult> {
   const startTime = performance.now();
@@ -95,7 +109,13 @@ export async function sendMessageToGroq(
       model, 
       attachment, 
       githubContext,
-      clientKeys: clientKeys || undefined
+      clientKeys: clientKeys || undefined,
+      temperature: options?.temperature,
+      personaId: options?.personaId,
+      personaName: options?.personaName,
+      characterDirective: options?.characterDirective,
+      earlierSummary: options?.earlierSummary,
+      webResearch: options?.webResearch,
     });
 
     let response: Response;
@@ -244,6 +264,197 @@ export async function sendMessageToGroq(
     console.error("Error in sendMessageToGroq:", error);
     throw error;
   }
+}
+
+export interface CouncilAgentRequestSpec {
+  id: string;
+  name: string;
+  role: string;
+  provider: 'groq' | 'cohere' | 'bazaarlink' | 'gemini';
+  modelId: string;
+  systemDirective: string;
+}
+
+export async function sendCouncilMessage(params: {
+  messages: { role: string; text: string }[];
+  systemPrompt?: string;
+  agents: CouncilAgentRequestSpec[];
+  webResearch?: boolean | 'auto';
+  userId?: string;
+  attachment?: ChatAttachment;
+  githubContext?: GitHubContextPayload;
+  temperature?: number;
+  earlierSummary?: string;
+  signal?: AbortSignal;
+  onCouncilUpdate: (data: CouncilData) => void;
+  onChunk: (text: string) => void;
+}): Promise<{ telemetry: ChatTelemetryResult; finalCouncilData: CouncilData }> {
+  const {
+    messages,
+    systemPrompt = '',
+    agents,
+    webResearch = 'auto',
+    userId,
+    attachment,
+    githubContext,
+    temperature,
+    earlierSummary,
+    signal,
+    onCouncilUpdate,
+    onChunk,
+  } = params;
+
+  const startTime = performance.now();
+  let firstTokenTime: number | null = null;
+  let accumulatedChars = 0;
+
+  let state: CouncilData = {
+    phase: webResearch === true ? 'research' : 'discussion',
+    squadMemberIds: agents.map((a) => a.id),
+    webSources: [],
+    totalPagesRead: 0,
+    discussions: agents.map((a) => ({
+      agentId: a.id,
+      agentName: a.name,
+      role: a.role,
+      provider: a.provider,
+      modelUsed: a.modelId,
+      analysis: '',
+      status: 'thinking',
+      durationMs: 0,
+    })),
+    tasks: [],
+  };
+
+  onCouncilUpdate({ ...state });
+
+  const clientKeys = getClientSystemKeys();
+  const response = await fetch('/api/council', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      messages,
+      systemPrompt,
+      agents,
+      webResearch,
+      userId,
+      attachment,
+      githubContext,
+      temperature,
+      earlierSummary,
+      clientKeys: clientKeys || undefined,
+    }),
+    signal,
+  });
+
+  if (!response.ok || !response.body) {
+    throw new Error(`Council endpoint returned status ${response.status}`);
+  }
+
+  const reader = response.body.getReader();
+  const decoder = new TextDecoder();
+  let buffer = '';
+
+  const buildTelemetry = (): ChatTelemetryResult => {
+    const totalDurationMs = Math.max(1, Math.round(performance.now() - startTime));
+    const ttftMs = Math.round(firstTokenTime ? firstTokenTime - startTime : totalDurationMs);
+    const totalTokens = Math.max(1, Math.round(accumulatedChars / 3.8));
+    const tokensPerSec = Math.round((totalTokens / (totalDurationMs / 1000)) * 10) / 10;
+    return { ttftMs, latencyMs: totalDurationMs, tokensPerSec, totalTokens };
+  };
+
+  const applyEvent = (evt: any) => {
+    if (!evt || typeof evt !== 'object') return;
+    if (evt.kind === 'research_start') {
+      state = { ...state, phase: 'research' };
+    } else if (evt.kind === 'research_done') {
+      state = {
+        ...state,
+        webSources: (evt.sources || []) as WebResearchSource[],
+        totalPagesRead: evt.totalPagesRead || (evt.sources?.length ?? 0),
+      };
+    } else if (evt.kind === 'discussion_start') {
+      const initialDiscs: CouncilAgentDiscussion[] = (evt.agents || []).map((a: any) => ({
+        agentId: a.agentId,
+        agentName: a.agentName,
+        role: a.role,
+        provider: a.provider,
+        modelUsed: a.modelUsed,
+        analysis: '',
+        durationMs: 0,
+        status: 'thinking',
+      }));
+      state = { ...state, phase: 'discussion', discussions: initialDiscs };
+    } else if (evt.kind === 'agent_discussion' && evt.discussion) {
+      const incoming = evt.discussion as CouncilAgentDiscussion;
+      const existing = state.discussions || [];
+      const idx = existing.findIndex((d) => d.agentId === incoming.agentId);
+      const next = [...existing];
+      if (idx >= 0) next[idx] = incoming;
+      else next.push(incoming);
+      state = { ...state, discussions: next };
+    } else if (evt.kind === 'work_plan' && Array.isArray(evt.tasks)) {
+      state = {
+        ...state,
+        phase: 'work',
+        tasks: evt.tasks as CouncilWorkerTask[],
+      };
+    } else if (evt.kind === 'task_result' && evt.task) {
+      const incoming = evt.task as CouncilWorkerTask;
+      const existing = state.tasks || [];
+      const idx = existing.findIndex((t) => t.agentId === incoming.agentId);
+      const next = [...existing];
+      if (idx >= 0) next[idx] = incoming;
+      else next.push(incoming);
+      state = { ...state, tasks: next };
+    } else if (evt.kind === 'synthesis_start') {
+      state = {
+        ...state,
+        phase: 'synthesis',
+        leadAgentName: evt.leadAgentName,
+      };
+    } else if (evt.kind === 'council_complete') {
+      state = {
+        ...state,
+        phase: 'done',
+        leadAgentName: evt.leadAgentName || state.leadAgentName,
+        totalDurationMs: evt.totalDurationMs,
+      };
+    }
+    onCouncilUpdate({ ...state });
+  };
+
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    buffer += decoder.decode(value, { stream: true });
+    const parts = buffer.split('\n\n');
+    buffer = parts.pop() || '';
+
+    for (const part of parts) {
+      if (!part.startsWith('data: ')) continue;
+      const dataStr = part.slice(6);
+      if (dataStr === '[DONE]') {
+        state = { ...state, phase: 'done' };
+        onCouncilUpdate({ ...state });
+        return { telemetry: buildTelemetry(), finalCouncilData: state };
+      }
+      try {
+        const parsed = JSON.parse(dataStr);
+        if (parsed.type === 'council_event' && parsed.event) {
+          applyEvent(parsed.event);
+        } else if (parsed.text) {
+          if (firstTokenTime === null) firstTokenTime = performance.now();
+          accumulatedChars += parsed.text.length;
+          onChunk(parsed.text);
+        }
+      } catch (_) {}
+    }
+  }
+
+  state = { ...state, phase: 'done' };
+  onCouncilUpdate({ ...state });
+  return { telemetry: buildTelemetry(), finalCouncilData: state };
 }
 
 // Backwards compatibility wrapper

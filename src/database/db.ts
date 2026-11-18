@@ -205,7 +205,8 @@ export async function saveMessage(
   options?: { 
     toolEvents?: StructuredToolEvent[]; 
     thinking?: string; 
-    isToolEvent?: boolean; 
+    isToolEvent?: boolean;
+    councilData?: Message['councilData'];
   }
 ): Promise<Message> {
   const messageId = uuidv4();
@@ -225,6 +226,9 @@ export async function saveMessage(
   }
   if (options?.toolEvents && options.toolEvents.length > 0) {
     message.toolEvents = options.toolEvents;
+  }
+  if (options?.councilData) {
+    message.councilData = options.councilData;
   }
   if (options?.isToolEvent !== undefined) {
     message.isToolEvent = options.isToolEvent;

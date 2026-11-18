@@ -1,204 +1,264 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { clsx } from 'clsx';
+import { NovaPersona, NOVA_PERSONAS } from '../models/personas';
 
 export type NovaOrbState = 'idle' | 'listening' | 'thinking' | 'speaking';
 
 interface NovaOrbProps {
-  /** idle = breathing/float, listening = attentive pulse, thinking = orbit + ripple, speaking = lively shimmer */
+  /** idle = gentle breathing & presence, listening = attentive tilt & acoustic ripples, thinking = focused orbital halo, speaking = live harmonic shimmer & voice cadence */
   state?: NovaOrbState;
   /** Rendered pixel size (square). Defaults to 64. */
   size?: number;
   className?: string;
-  /** Accessible label, e.g. "Nova" */
+  /** Accessible label */
   label?: string;
+  /** Muse character persona driving portrait, aura, and expressive palette */
+  persona?: NovaPersona;
+  /** Frame silhouette: circular avatar for chat/header, rounded glass frame for character stage */
+  shape?: 'circle' | 'rounded';
+  /** Render subtle animated voice equalizer bars overlay at the bottom when speaking or listening */
+  showAudioBars?: boolean;
+  /** Enable subtle pointer parallax response on large character stages */
+  interactiveTilt?: boolean;
 }
 
 /**
- * Nova — the assistant's mascot. A living, breathing orb with a gradient core,
- * soft glow and a quiet face. Motion is driven by the `motion` package so
- * states ease into each other instead of snapping. Every color comes from the
- * CSS accent vars, so it recolors with the appearance switcher. Pure
- * component; persists nothing.
+ * Muse Living Character Companion — renders the studio portrait of Shii, Shiia,
+ * Muse Prime, Lyra, Sora, or Kael inside a thick refractive Liquid Glass frame
+ * with expressive idle, listening, thinking, and speaking states.
  */
-export function NovaOrb({ state = 'idle', size = 64, className, label = 'Nova' }: NovaOrbProps) {
-  const stateClass = `nova-orb nova-orb--${state}`;
+export function NovaOrb({
+  state = 'idle',
+  size = 64,
+  className,
+  label,
+  persona,
+  shape = 'circle',
+  showAudioBars = false,
+  interactiveTilt = false,
+}: NovaOrbProps) {
+  const activePersona = persona || NOVA_PERSONAS[0];
+  const pal = activePersona.palette;
+  const [imgFailed, setImgFailed] = useState(false);
+  const [tilt, setTilt] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
+  const [blinkPulse, setBlinkPulse] = useState(false);
 
-  // Per-state motion language
-  const breathing = state === 'idle';
-  const listening = state === 'listening';
-  const thinking = state === 'thinking';
-  const speaking = state === 'speaking';
+  // Reset image fallback if character switches
+  useEffect(() => {
+    setImgFailed(false);
+  }, [activePersona.id, activePersona.avatarUrl]);
 
-  // Core breath: slow and deep when idle, brighter and tighter when engaged
-  const breatheScale = breathing ? 1.045 : listening ? 1.08 : thinking ? 1.03 : 1.06;
-  const breatheDuration = breathing ? 4.6 : listening ? 2.2 : thinking ? 3.6 : 1.6;
-  // Halo glow: warm, wide, and alive
-  const haloOpacity = breathing ? [0.35, 0.55, 0.35] : listening ? [0.5, 0.75, 0.5] : thinking ? [0.45, 0.6, 0.45] : [0.55, 0.8, 0.55];
+  // Subtle natural life-blink cadence (shifts vignette catchlight slightly on large portraits)
+  useEffect(() => {
+    if (size < 48) return;
+    let t1: number;
+    let t2: number;
+    const loop = () => {
+      t1 = window.setTimeout(() => {
+        setBlinkPulse(true);
+        t2 = window.setTimeout(() => {
+          setBlinkPulse(false);
+          loop();
+        }, 160);
+      }, 3400 + Math.random() * 2800);
+    };
+    loop();
+    return () => {
+      window.clearTimeout(t1);
+      window.clearTimeout(t2);
+    };
+  }, [size]);
 
-  // Face: eyes widen to listen, half-close when thinking (deep in thought)
-  const eyeRy = listening ? 4.6 : thinking ? 2.1 : speaking ? 3.4 : 3.1;
+  const isIdle = state === 'idle';
+  const isListening = state === 'listening';
+  const isThinking = state === 'thinking';
+  const isSpeaking = state === 'speaking';
+
+  const isLarge = size >= 72;
+  const radiusClass = shape === 'circle' ? 'rounded-full' : 'rounded-[1.6rem]';
+
+  const handlePointerMove = (e: React.PointerEvent<HTMLDivElement>) => {
+    if (!interactiveTilt || !isLarge) return;
+    const rect = e.currentTarget.getBoundingClientRect();
+    const nx = ((e.clientX - rect.left) / rect.width - 0.5) * 2;
+    const ny = ((e.clientY - rect.top) / rect.height - 0.5) * 2;
+    setTilt({ x: nx * 4, y: ny * -4 });
+  };
+
+  const handlePointerLeave = () => {
+    if (interactiveTilt) setTilt({ x: 0, y: 0 });
+  };
 
   return (
     <div
       role="img"
-      aria-label={label}
-      className={clsx(stateClass, className)}
+      aria-label={label || `${activePersona.name} (${state})`}
+      onPointerMove={interactiveTilt ? handlePointerMove : undefined}
+      onPointerLeave={interactiveTilt ? handlePointerLeave : undefined}
+      className={clsx(
+        'nova-orb relative inline-flex items-center justify-center shrink-0 select-none',
+        interactiveTilt && 'pointer-events-auto',
+        className
+      )}
       style={{ width: size, height: size }}
     >
-      {/* Expanding ripple rings — listening & thinking */}
-      {(listening || thinking) && (
+      {/* Ambient aura behind character */}
+      <motion.div
+        aria-hidden="true"
+        className={clsx('absolute -inset-2 blur-xl pointer-events-none', radiusClass)}
+        style={{ background: pal.glow }}
+        animate={{
+          opacity: isSpeaking ? [0.55, 0.9, 0.55] : isListening ? [0.45, 0.8, 0.45] : isThinking ? [0.35, 0.65, 0.35] : [0.22, 0.42, 0.22],
+          scale: isSpeaking ? [1, 1.09, 1] : isListening ? [1, 1.06, 1] : [0.98, 1.02, 0.98],
+        }}
+        transition={{
+          duration: isSpeaking ? 1.2 : isListening ? 2.0 : isThinking ? 2.6 : 4.2,
+          repeat: Infinity,
+          ease: 'easeInOut',
+        }}
+      />
+
+      {/* Concentric acoustic ripples when listening or speaking */}
+      {(isListening || isSpeaking) && isLarge && (
         <>
           <motion.span
-            className="nova-orb__ripple"
-            initial={{ scale: 0.85, opacity: 0.5 }}
-            animate={{ scale: 1.35, opacity: 0 }}
-            transition={{ duration: 2.4, ease: 'easeOut', repeat: Infinity }}
+            aria-hidden="true"
+            className={clsx('absolute inset-0 border pointer-events-none', radiusClass)}
+            style={{ borderColor: pal.mid }}
+            initial={{ scale: 0.96, opacity: 0.65 }}
+            animate={{ scale: 1.22, opacity: 0 }}
+            transition={{ duration: isSpeaking ? 1.35 : 2.1, ease: 'easeOut', repeat: Infinity }}
           />
           <motion.span
-            className="nova-orb__ripple nova-orb__ripple--2"
-            initial={{ scale: 0.85, opacity: 0.5 }}
-            animate={{ scale: 1.35, opacity: 0 }}
-            transition={{ duration: 2.4, ease: 'easeOut', repeat: Infinity, delay: 1.2 }}
+            aria-hidden="true"
+            className={clsx('absolute inset-0 border pointer-events-none', radiusClass)}
+            style={{ borderColor: pal.core }}
+            initial={{ scale: 0.96, opacity: 0.5 }}
+            animate={{ scale: 1.22, opacity: 0 }}
+            transition={{ duration: isSpeaking ? 1.35 : 2.1, ease: 'easeOut', repeat: Infinity, delay: isSpeaking ? 0.65 : 1.0 }}
           />
         </>
       )}
 
-      <svg viewBox="0 0 100 100" width={size} height={size} className="nova-orb__svg">
-        <defs>
-          {/* Gradient core — highlight, warm mid-tone, deep rim */}
-          <radialGradient id="novaCore" cx="42%" cy="36%" r="72%">
-            <stop offset="0%" stopColor="rgba(245,240,230,0.42)" />
-            <stop offset="34%" stopColor="rgba(245,240,230,0.14)" />
-            <stop offset="68%" stopColor="var(--accent-soft)" />
-            <stop offset="100%" stopColor="var(--accent-muted)" />
-          </radialGradient>
-          {/* Inner depth sphere */}
-          <radialGradient id="novaDepth" cx="50%" cy="58%" r="50%">
-            <stop offset="0%" stopColor="transparent" />
-            <stop offset="78%" stopColor="transparent" />
-            <stop offset="100%" stopColor="var(--accent-muted)" />
-          </radialGradient>
-          <radialGradient id="novaGlow" cx="50%" cy="50%" r="50%">
-            <stop offset="0%" stopColor="var(--accent-soft)" />
-            <stop offset="62%" stopColor="var(--accent-muted)" />
-            <stop offset="100%" stopColor="transparent" />
-          </radialGradient>
-          <linearGradient id="novaShimmer" x1="0%" y1="0%" x2="100%" y2="100%">
-            <stop offset="0%" stopColor="transparent" />
-            <stop offset="50%" stopColor="rgba(245,240,230,0.38)" />
-            <stop offset="100%" stopColor="transparent" />
-          </linearGradient>
-        </defs>
+      {/* Rotating focus halo ring during thinking state */}
+      <AnimatePresence>
+        {isThinking && (
+          <motion.div
+            key="thinking-arc"
+            aria-hidden="true"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1, rotate: 360 }}
+            exit={{ opacity: 0 }}
+            transition={{
+              opacity: { duration: 0.25 },
+              rotate: { duration: 2.8, ease: 'linear', repeat: Infinity },
+            }}
+            className={clsx('absolute -inset-[3px] pointer-events-none', radiusClass)}
+            style={{
+              background: `conic-gradient(from 0deg, transparent 0deg, ${pal.core} 70deg, ${pal.mid} 140deg, transparent 220deg)`,
+              WebkitMask: 'radial-gradient(farthest-side, transparent calc(100% - 2.5px), #000 calc(100% - 2px))',
+              mask: 'radial-gradient(farthest-side, transparent calc(100% - 2.5px), #000 calc(100% - 2px))',
+            }}
+          />
+        )}
+      </AnimatePresence>
 
-        {/* Ambient halo */}
-        <motion.circle
-          cx="50" cy="50" r="48" fill="url(#novaGlow)"
-          className="nova-orb__halo"
-          animate={{ opacity: haloOpacity }}
-          transition={{ duration: breatheDuration, ease: 'easeInOut', repeat: Infinity }}
+      {/* Main Liquid Glass Portrait Bezel */}
+      <motion.div
+        animate={{
+          scale: isSpeaking ? [1, 1.032, 0.995, 1.028, 1] : isListening ? [1, 1.022, 1] : isIdle && isLarge ? [1, 1.015, 1] : 1,
+          y: isIdle && isLarge ? [0, -2, 0] : isListening && isLarge ? -1.5 : 0,
+          rotate: isListening && isLarge ? [-0.8, 0.8, -0.8] : isThinking && isLarge ? [0, 1.2, 0] : 0,
+        }}
+        transition={{
+          duration: isSpeaking ? 1.05 : isListening ? 2.4 : isThinking ? 3.0 : 4.4,
+          repeat: Infinity,
+          ease: 'easeInOut',
+        }}
+        style={{
+          transform: interactiveTilt ? `perspective(600px) rotateY(${tilt.x}deg) rotateX(${tilt.y}deg)` : undefined,
+          borderColor: isListening || isSpeaking ? pal.mid : 'var(--glass-border)',
+          boxShadow: isSpeaking
+            ? `0 0 0 2px ${pal.mid}, var(--shadow-md)`
+            : 'var(--shadow-sm)',
+        }}
+        className={clsx(
+          'relative w-full h-full overflow-hidden border bg-[var(--bg-2)] transition-[border-color,box-shadow] duration-200',
+          radiusClass
+        )}
+      >
+        {/* Character Portrait or Styled Monogram Fallback */}
+        {!imgFailed && activePersona.avatarUrl ? (
+          <img
+            src={activePersona.avatarUrl}
+            alt={activePersona.name}
+            referrerPolicy="no-referrer"
+            onError={() => setImgFailed(true)}
+            className={clsx(
+              'w-full h-full object-cover object-[50%_20%] transition-transform duration-300',
+              isLarge && blinkPulse && 'brightness-[0.96]',
+              isSpeaking && isLarge && 'scale-[1.03]',
+              isListening && isLarge && 'scale-[1.02]'
+            )}
+            draggable={false}
+          />
+        ) : (
+          <div
+            className="w-full h-full flex items-center justify-center font-display font-semibold text-white"
+            style={{
+              fontSize: Math.max(11, Math.round(size * 0.36)),
+              background: `radial-gradient(circle at 35% 30%, ${pal.core}, ${pal.mid} 55%, ${pal.rim})`,
+            }}
+          >
+            {activePersona.name.slice(0, 2)}
+          </div>
+        )}
+
+        {/* Specular liquid glass rim reflection overlay */}
+        <div
+          aria-hidden="true"
+          className={clsx('absolute inset-0 pointer-events-none', radiusClass)}
+          style={{
+            boxShadow: 'inset 0 1.5px 0 rgba(255, 255, 255, 0.55), inset 0 -2px 8px rgba(20, 14, 10, 0.25)',
+          }}
         />
 
-        {/* Orbiting particles — thinking only */}
+        {/* Harmonic shimmer sweep when speaking */}
         <AnimatePresence>
-          {thinking && (
-            <motion.g
-              key="orbit"
-              initial={{ opacity: 0, scale: 0.7 }}
-              animate={{ opacity: 1, scale: 1, rotate: 360 }}
-              exit={{ opacity: 0, scale: 0.7 }}
-              transition={{
-                opacity: { duration: 0.35 },
-                scale: { duration: 0.35, ease: 'easeOut' },
-                rotate: { duration: 7, ease: 'linear', repeat: Infinity },
-              }}
-              style={{ transformOrigin: '50px 50px' }}
-            >
-              {[
-                { deg: 0, r: 2.6, o: 0.9 },
-                { deg: 120, r: 2.0, o: 0.6 },
-                { deg: 240, r: 2.6, o: 0.9 },
-              ].map(({ deg, r, o }) => (
-                <circle
-                  key={deg}
-                  cx="50" cy="8" r={r}
-                  fill="var(--accent)"
-                  opacity={o}
-                  transform={`rotate(${deg} 50 50)`}
-                />
-              ))}
-            </motion.g>
+          {isSpeaking && isLarge && (
+            <motion.div
+              key="speaking-sweep"
+              aria-hidden="true"
+              initial={{ x: '-110%', opacity: 0 }}
+              animate={{ x: '130%', opacity: [0, 0.35, 0] }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 1.5, ease: 'easeInOut', repeat: Infinity }}
+              className="absolute inset-y-0 w-1/2 pointer-events-none bg-gradient-to-r from-transparent via-white/40 to-transparent skew-x-[-18deg]"
+            />
           )}
         </AnimatePresence>
 
-        {/* Core orb body */}
-        <motion.g
-          className="nova-orb__body"
-          animate={{ scale: [1, breatheScale, 1], y: breathing ? [0, -2.5, 0] : 0 }}
-          transition={{ duration: breatheDuration, ease: 'easeInOut', repeat: Infinity }}
-          style={{ transformOrigin: '50px 50px' }}
-        >
-          <circle cx="50" cy="50" r="30" fill="url(#novaCore)" />
-          {/* Depth shading — grounds the orb in space */}
-          <circle cx="50" cy="50" r="30" fill="url(#novaDepth)" />
-          {/* Rim light */}
-          <circle cx="50" cy="50" r="29.4" fill="none" stroke="var(--accent-muted)" strokeWidth="1.4" opacity="0.9" />
-          {/* Soft inner highlight */}
-          <ellipse cx="41" cy="38" rx="10" ry="6.5" fill="rgba(245,240,230,0.16)" />
-
-          {/* The face — two quiet eyes + a gentle mouth */}
-          <g className="nova-orb__face">
-            <motion.ellipse
-              cx="41" cy="47" rx="2.5" fill="var(--accent)" opacity="0.95"
-              animate={{ ry: eyeRy }}
-              transition={{ duration: 0.4, ease: 'easeOut' }}
-            />
-            <motion.ellipse
-              cx="59" cy="47" rx="2.5" fill="var(--accent)" opacity="0.95"
-              animate={{ ry: eyeRy }}
-              transition={{ duration: 0.4, ease: 'easeOut' }}
-            />
-            {/* mouth — calm arc; talks when speaking, else gentle idle sway */}
-            {speaking ? (
-              <motion.path
-                d="M44 58 Q50 62 56 58"
-                fill="none"
-                stroke="var(--accent)"
-                strokeWidth="2"
-                strokeLinecap="round"
-                opacity="0.85"
-                animate={{ scaleY: [1, 0.4, 0.85, 0.5, 1] }}
-                transition={{ duration: 0.85, ease: 'easeInOut', repeat: Infinity }}
-                style={{ transformOrigin: '50px 58px' }}
+        {/* Bottom Scrim + Live Acoustic Equalizer on large stages */}
+        {showAudioBars && isLarge && (
+          <div className="absolute inset-x-0 bottom-0 h-12 bg-gradient-to-t from-black/60 via-black/25 to-transparent flex items-end justify-center pb-2.5 gap-1 pointer-events-none">
+            {[0.45, 0.85, 1, 0.7, 0.9, 0.55].map((h, idx) => (
+              <span
+                key={idx}
+                className={clsx(
+                  'w-1 rounded-full bg-white/90 transition-all',
+                  (isSpeaking || isListening) ? 'muse-wave-bar' : 'opacity-45'
+                )}
+                style={{
+                  height: (isSpeaking || isListening) ? `${Math.round(h * 18)}px` : '4px',
+                  animationDelay: `${idx * 110}ms`,
+                  animationDuration: isSpeaking ? '0.68s' : '1.35s',
+                }}
               />
-            ) : (
-              <path
-                d="M44 58 Q50 62 56 58"
-                fill="none"
-                stroke="var(--accent)"
-                strokeWidth="2"
-                strokeLinecap="round"
-                opacity="0.8"
-              />
-            )}
-          </g>
-
-          {/* Speaking shimmer sweep */}
-          <AnimatePresence>
-            {speaking && (
-              <motion.g
-                key="shimmer"
-                initial={{ x: -46, opacity: 0 }}
-                animate={{ x: 120, opacity: [0, 1, 1, 0] }}
-                exit={{ opacity: 0 }}
-                transition={{ duration: 1.6, ease: 'easeInOut', repeat: Infinity }}
-              >
-                <rect x="0" y="18" width="18" height="64" rx="9" fill="url(#novaShimmer)" />
-              </motion.g>
-            )}
-          </AnimatePresence>
-        </motion.g>
-      </svg>
+            ))}
+          </div>
+        )}
+      </motion.div>
     </div>
   );
 }
