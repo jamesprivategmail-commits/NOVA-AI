@@ -388,24 +388,6 @@ export function ChatScreen({ userId }: ChatScreenProps) {
     await handleSend(lastUserMsg.text, undefined, { resend: true });
   };
 
-  const handleExportChat = () => {
-    if (messages.length === 0) return;
-    const chat = chats.find(c => c.id === currentChatId);
-    const title = chat?.title || 'nova-chat';
-    const lines = messages.map(m => {
-      const who = m.role === 'user' ? 'You' : 'NOVA';
-      return `### ${who}\n\n${m.text}\n`;
-    });
-    const md = `# ${title}\n\n_Exported from NOVA AI on ${new Date().toLocaleString()}_\n\n${lines.join('\n---\n\n')}`;
-    const blob = new Blob([md], { type: 'text/markdown;charset=utf-8' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `${title.replace(/[^a-z0-9-_ ]/gi, '').trim().replace(/\s+/g, '-') || 'nova-chat'}.md`;
-    a.click();
-    URL.revokeObjectURL(url);
-  };
-
   const handleDeleteChat = async (id: string) => {
     await deleteChat(id);
     const updatedChats = chats.filter((c) => c.id !== id);
@@ -855,7 +837,7 @@ export function ChatScreen({ userId }: ChatScreenProps) {
           <div className="flex items-center gap-2 shrink-0">
             {/* Global Command Bar Button (⌘K) */}
             <button
-              onClick={handleExportChat}
+              onClick={() => handleExportChat()}
               title="Export this chat as Markdown"
               className="h-9 px-2.5 rounded-lg bg-[#131628] hover:bg-[#1c2038] border border-[#2b3054] text-slate-300 hover:text-white text-xs font-medium hidden md:flex items-center gap-1.5 transition-colors cursor-pointer shrink-0"
             >

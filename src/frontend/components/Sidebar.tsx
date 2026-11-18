@@ -80,7 +80,7 @@ export function Sidebar({
       {/* Top Drawer Header */}
       <div className="p-3 border-b border-[var(--nova-border)] flex items-center justify-between">
         <div className="flex items-center gap-2.5">
-          <div className="w-10 h-10 rounded-xl p-[1.5px] flex items-center justify-center overflow-hidden" style={{ background: 'linear-gradient(135deg, var(--nova-accent), var(--nova-accent-2))'">
+          <div className="w-10 h-10 rounded-xl p-[1.5px] flex items-center justify-center overflow-hidden" style={{ background: 'linear-gradient(135deg, #8b5cf6, #22d3ee)' }}>
             <img 
               src="/void-logo.jpg"
               alt="NOVA" 
