@@ -10,7 +10,7 @@ import dotenv from "dotenv";
 import { doc, getDoc, setDoc, deleteDoc, collection, query, where, getDocs, onSnapshot } from "firebase/firestore";
 import { db } from "../config/firebase.js";
 import { telegramBot } from "../telegram/bot.js";
-import { AI_CONFIG } from "../config/ai.js";
+import { AI_CONFIG, classifyRequest } from "../config/ai.js";
 import * as githubService from "./github.js";
 import { buildUnifiedBrainPrompt } from "./agent/brainPrompt.js";
 import { projectMemoryService } from "./memory/projectMemory.js";
@@ -1333,6 +1333,24 @@ export function createApp(): express.Express {
         }
       }
 
+      // ── Smart auto routing ──────────────────────────────────────
+      // When the user left the model on "auto", classify the request
+      // (coding / reasoning / quick_chat) and start the chosen provider on
+      // the model best suited to that task class instead of a fixed default.
+      const requestedModelIsAuto = !model || model === 'auto';
+      let routedModel: string | undefined;
+      if (requestedModelIsAuto) {
+        const task = classifyRequest(messagesForAI);
+        const routing = (AI_CONFIG.modelRouting as any)?.[provider];
+        routedModel = routing?.byTask?.[task]?.[0] || routing?.default;
+        if (routedModel) {
+          console.log(`[Model Router] provider=${provider} task=${task} -> ${routedModel}`);
+        }
+      }
+      const effectiveModel = provider === "groq" || provider === "gemini" || provider === "cohere" || provider === "bazaarlink"
+        ? (requestedModelIsAuto ? routedModel : model)
+        : undefined;
+
       // Check if user request involves explicit autonomous actions, terminal, or coding mode
       const isAutonomousRequest = Boolean(
         req.body.autonomous ||
@@ -1372,22 +1390,22 @@ export function createApp(): express.Express {
         try {
           if (p === "groq") {
             if (groqKeys.length === 0) continue;
-            await executeGroqWithRotation(messagesForAI, combinedSystemPrompt, maxTokens, provider === "groq" ? model : undefined, groqKeys, res, imageDataUrl);
+            await executeGroqWithRotation(messagesForAI, combinedSystemPrompt, maxTokens, provider === "groq" ? effectiveModel : undefined, groqKeys, res, imageDataUrl);
             executedSuccessfully = true;
             break;
           } else if (p === "gemini") {
             if (geminiKeys.length === 0) continue;
-            await executeGeminiWithRotation(messagesForAI, combinedSystemPrompt, maxTokens, provider === "gemini" ? model : undefined, geminiKeys, res, imageDataUrl);
+            await executeGeminiWithRotation(messagesForAI, combinedSystemPrompt, maxTokens, provider === "gemini" ? effectiveModel : undefined, geminiKeys, res, imageDataUrl);
             executedSuccessfully = true;
             break;
           } else if (p === "cohere") {
             if (cohereKeys.length === 0) continue;
-            await executeCohereWithRotation(messagesForAI, combinedSystemPrompt, maxTokens, provider === "cohere" ? model : undefined, cohereKeys, res);
+            await executeCohereWithRotation(messagesForAI, combinedSystemPrompt, maxTokens, provider === "cohere" ? effectiveModel : undefined, cohereKeys, res);
             executedSuccessfully = true;
             break;
           } else if (p === "bazaarlink") {
             if (bazaarLinkKeys.length === 0) continue;
-            await executeBazaarLinkWithRotation(messagesForAI, combinedSystemPrompt, maxTokens, provider === "bazaarlink" ? model : undefined, bazaarLinkKeys, res);
+            await executeBazaarLinkWithRotation(messagesForAI, combinedSystemPrompt, maxTokens, provider === "bazaarlink" ? effectiveModel : undefined, bazaarLinkKeys, res);
             executedSuccessfully = true;
             break;
           }

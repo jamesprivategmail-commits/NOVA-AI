@@ -23,6 +23,12 @@ export interface CouncilContext {
   keys: ProviderKeys;
   maxTokens?: number;
   temperature?: number;
+  /** Conversation history (oldest first); the last user message is what the council answers. */
+  messages?: Array<{ role: string; text: string }>;
+  /** Authoritative system prompt so every candidate answers under the same instructions. */
+  systemPrompt?: string;
+  /** Per-candidate wall-clock budget in ms (default 30s). */
+  timeoutMs?: number;
 }
 
 export interface CouncilCandidate {
@@ -189,10 +195,14 @@ class CoreBrain {
     const { keys, maxTokens = 2048, temperature = 0.3 } = ctx;
 
     const tasks: Array<Promise<CouncilCandidate>> = [];
+    const history = Array.isArray(ctx.messages)
+      ? ctx.messages.filter((m) => m && m.text && m.text.trim())
+      : [];
+    const prompt = ctx.systemPrompt && ctx.systemPrompt.trim() ? ctx.systemPrompt.trim() : '';
 
-    if (keys.groqKeys.length > 0) tasks.push(this.callGroq(userMessage, keys.groqKeys[0], maxTokens, temperature));
-    if (keys.geminiKeys.length > 0) tasks.push(this.callGemini(userMessage, keys.geminiKeys[0], maxTokens, temperature));
-    if (keys.cohereKeys.length > 0) tasks.push(this.callCohere(userMessage, keys.cohereKeys[0], maxTokens, temperature));
+    if (keys.groqKeys.length > 0) tasks.push(this.callGroq(history, prompt, keys.groqKeys[0], maxTokens, temperature, ctx.timeoutMs));
+    if (keys.geminiKeys.length > 0) tasks.push(this.callGemini(history, prompt, keys.geminiKeys[0], maxTokens, temperature, ctx.timeoutMs));
+    if (keys.cohereKeys.length > 0) tasks.push(this.callCohere(history, prompt, keys.cohereKeys[0], maxTokens, temperature, ctx.timeoutMs));
 
     let candidates: CouncilCandidate[] = [];
     if (tasks.length === 0) {
@@ -279,14 +289,17 @@ class CoreBrain {
     return { answer, winner, reason, candidates, mergedPoints };
   }
 
-  private async callGroq(userMessage: string, apiKey: string, maxTokens: number, temperature: number): Promise<CouncilCandidate> {
+  private async callGroq(history: Array<{ role: string; text: string }>, systemPrompt: string, apiKey: string, maxTokens: number, temperature: number, timeoutMs = 30000): Promise<CouncilCandidate> {
     const startedAt = Date.now();
     const model = AI_CONFIG.providers.groq.models[0];
     try {
-      const client = new Groq({ apiKey });
+      const client = new Groq({ apiKey, timeout: timeoutMs, maxRetries: 1 });
+      const messages: any[] = [];
+      if (systemPrompt) messages.push({ role: 'system', content: systemPrompt });
+      for (const m of history) messages.push({ role: m.role === 'user' ? 'user' : 'assistant', content: m.text });
       const completion = await client.chat.completions.create({
         model,
-        messages: [{ role: 'user', content: userMessage }],
+        messages,
         max_tokens: maxTokens,
         temperature,
       });
@@ -298,15 +311,20 @@ class CoreBrain {
     }
   }
 
-  private async callGemini(userMessage: string, apiKey: string, maxTokens: number, temperature: number): Promise<CouncilCandidate> {
+  private async callGemini(history: Array<{ role: string; text: string }>, systemPrompt: string, apiKey: string, maxTokens: number, temperature: number, timeoutMs = 30000): Promise<CouncilCandidate> {
     const startedAt = Date.now();
     const model = AI_CONFIG.providers.gemini.models[0];
     try {
       const ai = new GoogleGenAI({ apiKey });
       const response = await ai.models.generateContent({
         model,
-        contents: [{ role: 'user', parts: [{ text: userMessage }] }],
-        config: { maxOutputTokens: maxTokens, temperature },
+        contents: history.map((m) => ({ role: m.role === 'user' ? 'user' : 'model', parts: [{ text: m.text }] })),
+        config: {
+          systemInstruction: systemPrompt || undefined,
+          maxOutputTokens: maxTokens,
+          temperature,
+          abortSignal: AbortSignal.timeout(timeoutMs),
+        },
       });
       const text = response.text || '';
       const latencyMs = Date.now() - startedAt;
@@ -316,12 +334,23 @@ class CoreBrain {
     }
   }
 
-  private async callCohere(userMessage: string, token: string, maxTokens: number, temperature: number): Promise<CouncilCandidate> {
+  private async callCohere(history: Array<{ role: string; text: string }>, systemPrompt: string, token: string, maxTokens: number, temperature: number, timeoutMs = 30000): Promise<CouncilCandidate> {
     const startedAt = Date.now();
     const model = AI_CONFIG.providers.cohere.models[0];
     try {
       const client = new CohereClient({ token });
-      const response = await client.chat({ message: userMessage, model, maxTokens, temperature });
+      // Cohere v8 chat() is single-turn; carry the thread in the preamble and an
+      // abbreviated chat_history so the candidate still sees prior context.
+      const lastUser = [...history].reverse().find((m) => m.role === 'user');
+      const prior = history.slice(0, -1).slice(-12);
+      const response = await client.chat({
+        message: (lastUser && lastUser.text) || '',
+        model,
+        maxTokens,
+        temperature,
+        preamble: systemPrompt || undefined,
+        chatHistory: prior.map((m) => ({ role: m.role === 'user' ? 'USER' : 'CHATBOT', message: m.text.slice(0, 2000) })),
+      });
       const text = response.text || '';
       const latencyMs = Date.now() - startedAt;
       return { provider: 'cohere', model, text, score: this.scoreCandidate(text, latencyMs), latencyMs };
@@ -335,10 +364,14 @@ class CoreBrain {
    */
   private scoreCandidate(text: string, latencyMs: number): number {
     if (!text.trim()) return 0;
+    const lower = text.toLowerCase();
+    // Refusal / non-answer penalty: candidates that beg off instead of answering lose substance.
+    const refusalPenalty = /^(i'?m sorry|i can'?t|as an ai|i don'?t have the ability)/.test(lower) ||
+      (lower.length < 220 && /(cannot assist|can't help with|unable to provide)/.test(lower)) ? 2.5 : 0;
     const lengthScore = Math.min(text.length / 400, 5); // up to 5 pts for substance
     const structureScore = /(\n- |\n\d\. |\n#{1,3} )/.test(text) ? 1.5 : 0;
     const latencyScore = Math.max(0, 2 - latencyMs / 4000); // up to 2 pts for speed
-    return Math.round((lengthScore + structureScore + latencyScore) * 10) / 10;
+    return Math.round(Math.max(0, lengthScore + structureScore + latencyScore - refusalPenalty) * 10) / 10;
   }
 
   /**
