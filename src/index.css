@@ -2,11 +2,70 @@
 @import "katex/dist/katex.min.css";
 @plugin "@tailwindcss/typography";
 
+/* ============================================================
+   NOVA DESIGN SYSTEM — "Obsidian Aurora"
+   A Muse-inspired dark canvas: layered glass, aurora light,
+   precise typography, motion that feels alive but never slow.
+   ============================================================ */
+
+:root {
+  /* Core surfaces (deep obsidian, slightly blue-shifted) */
+  --nova-bg: #05060a;
+  --nova-bg-2: #090b12;
+  --nova-surface: rgba(16, 18, 27, 0.72);
+  --nova-surface-solid: #10121b;
+  --nova-raised: rgba(24, 27, 40, 0.82);
+  --nova-border: rgba(255, 255, 255, 0.08);
+  --nova-border-strong: rgba(255, 255, 255, 0.14);
+
+  /* Text */
+  --nova-text: #eef0f7;
+  --nova-text-2: #a6abc2;
+  --nova-text-3: #6d7389;
+
+  /* Accent —Nova violet with an electric cyan companion.
+     Override --nova-accent-hue at runtime to retheme. */
+  --nova-accent: #8b7cff;
+  --nova-accent-2: #4ee0ff;
+  --nova-accent-soft: rgba(139, 124, 255, 0.16);
+  --nova-accent-border: rgba(139, 124, 255, 0.38);
+  --nova-danger: #ff5470;
+  --nova-success: #3ddc97;
+  --nova-warn: #ffb454;
+
+  /* Elevation */
+  --nova-shadow-1: 0 1px 2px rgba(0, 0, 0, 0.4);
+  --nova-shadow-2: 0 8px 32px -8px rgba(0, 0, 0, 0.6);
+  --nova-shadow-3: 0 24px 80px -24px rgba(0, 0, 0, 0.8);
+
+  /* Motion */
+  --nova-ease: cubic-bezier(0.22, 1, 0.36, 1);
+  --nova-ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
+
+  /* Accent theme presets (used by the AccentThemePicker) */
+  --accent-violet: #8b7cff;
+  --accent-violet-2: #4ee0ff;
+  --accent-ember: #ff7847;
+  --accent-ember-2: #ffc46b;
+  --accent-mint: #3ddc97;
+  --accent-mint-2: #6be7ff;
+  --accent-rose: #ff6b9d;
+  --accent-rose-2: #b98bff;
+}
+
+/* Accent theme variants: [data-accent="ember"] on <html> retints everything. */
+[data-accent="violet"] { --nova-accent: var(--accent-violet); --nova-accent-2: var(--accent-violet-2); --nova-accent-soft: rgba(139,124,255,.16); --nova-accent-border: rgba(139,124,255,.38); }
+[data-accent="ember"]  { --nova-accent: var(--accent-ember);  --nova-accent-2: var(--accent-ember-2);  --nova-accent-soft: rgba(255,120,71,.14);  --nova-accent-border: rgba(255,120,71,.38); }
+[data-accent="mint"]   { --nova-accent: var(--accent-mint);   --nova-accent-2: var(--accent-mint-2);   --nova-accent-soft: rgba(61,220,151,.13);  --nova-accent-border: rgba(61,220,151,.36); }
+[data-accent="rose"]   { --nova-accent: var(--accent-rose);   --nova-accent-2: var(--accent-rose-2);   --nova-accent-soft: rgba(255,107,157,.14); --nova-accent-border: rgba(255,107,157,.38); }
+
 @layer base {
   html, body {
-    background-color: #06070a;
-    color: #f1f2f6;
+    background-color: var(--nova-bg);
+    color: var(--nova-text);
     font-family: "Plus Jakarta Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    font-feature-settings: "cv02", "cv03", "cv04", "ss01";
+    letter-spacing: -0.011em;
     height: 100%;
     height: 100dvh;
     width: 100%;
@@ -37,25 +96,38 @@
   code, pre, kbd, samp, .font-mono {
     font-family: "JetBrains Mono", monospace !important;
     font-variant-numeric: tabular-nums;
+    letter-spacing: 0;
   }
 
-  /* Zero-lag hardware-accelerated fixed background layer */
+  /* Aurora backdrop: fixed, GPU-composited, animated hue drift.
+     Two aurora lobes + faint grain for a Muse-like canvas depth. */
   body::before {
+    content: "";
+    position: fixed;
+    inset: 0;
+    z-index: -2;
+    pointer-events: none;
+    background:
+      radial-gradient(ellipse 70% 45% at 18% -10%, color-mix(in srgb, var(--nova-accent) 16%, transparent), transparent 70%),
+      radial-gradient(ellipse 55% 40% at 85% 100%, color-mix(in srgb, var(--nova-accent-2) 10%, transparent), transparent 70%),
+      linear-gradient(rgba(5, 6, 10, 0.55), rgba(4, 5, 8, 0.9)),
+      url('/void-wallpaper.jpg');
+    background-size: cover, cover, cover, cover;
+    background-position: center;
+    background-repeat: no-repeat;
+    transform: translate3d(0, 0, 0);
+    backface-visibility: hidden;
+  }
+
+  /* Fine grain so large dark areas never band */
+  body::after {
     content: "";
     position: fixed;
     inset: 0;
     z-index: -1;
     pointer-events: none;
-    background-image:
-      radial-gradient(ellipse 80% 50% at 50% -20%, rgba(220, 38, 38, 0.12), transparent 70%),
-      radial-gradient(ellipse 60% 40% at 80% 90%, rgba(59, 130, 246, 0.08), transparent 70%),
-      linear-gradient(rgba(6, 7, 10, 0.72), rgba(4, 5, 8, 0.88)),
-      url('/void-wallpaper.jpg');
-    background-size: cover;
-    background-position: center;
-    background-repeat: no-repeat;
-    transform: translate3d(0, 0, 0);
-    backface-visibility: hidden;
+    opacity: 0.35;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2'/%3E%3CfeColorMatrix values='0 0 0 0 1 0 0 0 0 1 0 0 0 0 1 0 0 0 0.04 0'/%3E%3C/filter%3E%3Crect width='160' height='160' filter='url(%23n)'/%3E%3C/svg%3E");
   }
 
   #root {
@@ -66,105 +138,299 @@
     display: flex;
     flex-direction: column;
   }
+
+  ::selection {
+    background: color-mix(in srgb, var(--nova-accent) 35%, transparent);
+    color: #fff;
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--nova-accent);
+    outline-offset: 2px;
+    border-radius: 6px;
+  }
 }
 
-/* 60FPS High-Performance Scrolling */
-.smooth-scroll-container {
-  -webkit-overflow-scrolling: touch;
-  overscroll-behavior-y: contain;
-  touch-action: pan-y;
-  contain: content;
-}
-
+/* ------------------------------------------------------------ scroll */
+.smooth-scroll-container,
 .touch-scroll {
   -webkit-overflow-scrolling: touch;
   overscroll-behavior-y: contain;
   touch-action: pan-y;
 }
+.smooth-scroll-container { contain: content; }
 
-/* Instant Spring Animations */
-@keyframes messageIn {
-  from {
-    opacity: 0;
-    transform: translateY(4px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-.animate-messageIn {
-  animation: messageIn 0.15s ease-out forwards;
-}
-
-@keyframes fadeIn {
-  from { opacity: 0; }
-  to { opacity: 1; }
-}
-.animate-fadeIn {
-  animation: fadeIn 0.12s ease-out forwards;
-}
-
-/* High-Performance Obsidian Glass (Fast Render, No GPU Blurring Lag) */
-.glass-card-2026 {
-  background: rgba(14, 15, 20, 0.92);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  box-shadow: 0 4px 20px 0 rgba(0, 0, 0, 0.45);
-}
-
-.glass-header-2026 {
-  background: rgba(10, 11, 16, 0.95);
-  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
-}
-
-.glass-dock-2026 {
-  background: rgba(13, 14, 20, 0.95);
-  border: 1px solid rgba(255, 255, 255, 0.10);
-  box-shadow: 0 8px 30px -10px rgba(0, 0, 0, 0.7), 0 0 16px -6px rgba(220, 38, 38, 0.15);
-}
-
-/* Custom Scrollbars */
-::-webkit-scrollbar {
-  width: 5px;
-  height: 5px;
-}
-::-webkit-scrollbar-track {
-  background: transparent;
-}
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
 ::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.16);
+  background: rgba(255, 255, 255, 0.14);
   border-radius: 9999px;
-  transition: background 0.15s ease;
 }
-::-webkit-scrollbar-thumb:hover {
-  background: rgba(220, 38, 38, 0.7);
+::-webkit-scrollbar-thumb:hover { background: color-mix(in srgb, var(--nova-accent) 70%, transparent); }
+* { scrollbar-width: thin; scrollbar-color: rgba(255,255,255,.14) transparent; }
+
+/* ------------------------------------------------------------ glass layers
+   Three depths: card (panels), header (top bars), dock (floating chrome). */
+.nova-glass {
+  background: linear-gradient(160deg, rgba(255,255,255,0.055), rgba(255,255,255,0.015) 45%), var(--nova-surface);
+  backdrop-filter: blur(20px) saturate(1.35);
+  -webkit-backdrop-filter: blur(20px) saturate(1.35);
+  border: 1px solid var(--nova-border);
+  box-shadow: var(--nova-shadow-2), inset 0 1px 0 rgba(255,255,255,0.06);
 }
 
-/* Blinking cursor for streaming text */
+.nova-glass-strong {
+  background: linear-gradient(160deg, rgba(255,255,255,0.07), rgba(255,255,255,0.02) 50%), var(--nova-raised);
+  backdrop-filter: blur(28px) saturate(1.4);
+  -webkit-backdrop-filter: blur(28px) saturate(1.4);
+  border: 1px solid var(--nova-border-strong);
+  box-shadow: var(--nova-shadow-3), inset 0 1px 0 rgba(255,255,255,0.08);
+}
+
+/* Legacy class names kept as aliases so existing screens keep working */
+.glass-card-2026 {
+  background: linear-gradient(160deg, rgba(255,255,255,0.055), rgba(255,255,255,0.015) 45%), var(--nova-surface);
+  backdrop-filter: blur(20px) saturate(1.35);
+  -webkit-backdrop-filter: blur(20px) saturate(1.35);
+  border: 1px solid var(--nova-border);
+  box-shadow: var(--nova-shadow-2), inset 0 1px 0 rgba(255,255,255,0.06);
+}
+.glass-header-2026 {
+  background: color-mix(in srgb, var(--nova-bg) 72%, transparent);
+  backdrop-filter: blur(24px) saturate(1.4);
+  -webkit-backdrop-filter: blur(24px) saturate(1.4);
+  border-bottom: 1px solid var(--nova-border);
+}
+.glass-dock-2026 {
+  background: linear-gradient(160deg, rgba(255,255,255,0.06), rgba(255,255,255,0.02) 50%), var(--nova-raised);
+  backdrop-filter: blur(24px) saturate(1.4);
+  -webkit-backdrop-filter: blur(24px) saturate(1.4);
+  border: 1px solid var(--nova-border-strong);
+  box-shadow: var(--nova-shadow-3), 0 0 24px -8px var(--nova-accent-soft), inset 0 1px 0 rgba(255,255,255,0.08);
+}
+
+/* Hairline top-glow edge, the signature Nova detail */
+.nova-edge-glow {
+  position: relative;
+}
+.nova-edge-glow::before {
+  content: "";
+  position: absolute;
+  inset-inline: 12%;
+  top: -1px;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, color-mix(in srgb, var(--nova-accent) 60%, transparent), transparent);
+  pointer-events: none;
+}
+
+/* ------------------------------------------------------------ buttons & inputs */
+.nova-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  border-radius: 12px;
+  font-weight: 600;
+  font-size: 14px;
+  padding: 9px 16px;
+  border: 1px solid var(--nova-border);
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--nova-text);
+  cursor: pointer;
+  transition: background 0.18s var(--nova-ease), border-color 0.18s var(--nova-ease), transform 0.18s var(--nova-ease), box-shadow 0.18s var(--nova-ease);
+}
+.nova-btn:hover { background: rgba(255, 255, 255, 0.08); border-color: var(--nova-border-strong); }
+.nova-btn:active { transform: scale(0.97); }
+.nova-btn:disabled { opacity: 0.45; cursor: not-allowed; }
+
+.nova-btn-primary {
+  background: linear-gradient(135deg, var(--nova-accent), color-mix(in srgb, var(--nova-accent) 60%, var(--nova-accent-2)));
+  border: 1px solid transparent;
+  color: #0b0618;
+  box-shadow: 0 4px 20px -4px var(--nova-accent-soft), inset 0 1px 0 rgba(255,255,255,0.25);
+}
+.nova-btn-primary:hover { filter: brightness(1.1); box-shadow: 0 6px 28px -6px var(--nova-accent-border); }
+
+.nova-icon-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 10px;
+  color: var(--nova-text-2);
+  cursor: pointer;
+  border: 1px solid transparent;
+  transition: all 0.16s var(--nova-ease);
+}
+.nova-icon-btn:hover { color: var(--nova-text); background: rgba(255,255,255,0.07); border-color: var(--nova-border); }
+.nova-icon-btn:active { transform: scale(0.94); }
+
+.nova-input {
+  background: rgba(255, 255, 255, 0.045);
+  border: 1px solid var(--nova-border);
+  border-radius: 12px;
+  color: var(--nova-text);
+  transition: border-color 0.18s var(--nova-ease), background 0.18s var(--nova-ease), box-shadow 0.18s var(--nova-ease);
+}
+.nova-input::placeholder { color: var(--nova-text-3); }
+.nova-input:focus {
+  outline: none;
+  border-color: var(--nova-accent-border);
+  background: rgba(255, 255, 255, 0.06);
+  box-shadow: 0 0 0 3px var(--nova-accent-soft);
+}
+
+.nova-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 10px;
+  border-radius: 9999px;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  border: 1px solid var(--nova-border);
+  background: rgba(255, 255, 255, 0.05);
+  color: var(--nova-text-2);
+}
+.nova-chip-accent {
+  border-color: var(--nova-accent-border);
+  background: var(--nova-accent-soft);
+  color: color-mix(in srgb, var(--nova-accent) 80%, white);
+}
+
+/* Gradient text for headings / wordmarks */
+.nova-gradient-text {
+  background: linear-gradient(100deg, var(--nova-text) 10%, var(--nova-accent) 55%, var(--nova-accent-2) 90%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+/* ------------------------------------------------------------ motion */
+@keyframes messageIn {
+  from { opacity: 0; transform: translateY(6px) scale(0.995); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+.animate-messageIn { animation: messageIn 0.28s var(--nova-ease) forwards; }
+
+@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+.animate-fadeIn { animation: fadeIn 0.18s var(--nova-ease) forwards; }
+
+@keyframes novaRise {
+  from { opacity: 0; transform: translateY(10px); filter: blur(4px); }
+  to { opacity: 1; transform: translateY(0); filter: blur(0); }
+}
+.animate-novaRise { animation: novaRise 0.35s var(--nova-ease) forwards; }
+
+@keyframes auroraDrift {
+  0% { background-position: 0% 50%, 100% 50%; }
+  50% { background-position: 30% 40%, 70% 60%; }
+  100% { background-position: 0% 50%, 100% 50%; }
+}
+
+@keyframes shimmer {
+  from { background-position: -200% 0; }
+  to { background-position: 200% 0; }
+}
+.nova-shimmer {
+  background: linear-gradient(90deg, transparent 20%, var(--nova-accent-soft) 50%, transparent 80%);
+  background-size: 200% 100%;
+  animation: shimmer 1.8s linear infinite;
+}
+
+@keyframes pulseGlow {
+  0%, 100% { box-shadow: 0 0 0 0 var(--nova-accent-soft); }
+  50% { box-shadow: 0 0 0 6px transparent; }
+}
+.animate-pulseGlow { animation: pulseGlow 2s var(--nova-ease-in-out) infinite; }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* Streaming caret — accent-tinted */
 @keyframes blink {
   0%, 100% { opacity: 1; }
   50% { opacity: 0; }
 }
-
 .streaming-cursor::after {
   content: '▋';
   display: inline-block;
   margin-left: 3px;
-  color: #ef4444;
-  text-shadow: 0 0 8px rgba(239, 68, 68, 0.8);
-  animation: blink 0.75s infinite;
+  color: var(--nova-accent);
+  text-shadow: 0 0 8px var(--nova-accent-border);
+  animation: blink 0.85s var(--nova-ease-in-out) infinite;
   vertical-align: baseline;
 }
 
-/* KaTeX dark theme */
-.katex {
-  font-size: 1.05em;
+/* Typing dots for the thinking indicator */
+@keyframes novaDot {
+  0%, 60%, 100% { transform: translateY(0); opacity: 0.4; }
+  30% { transform: translateY(-4px); opacity: 1; }
+}
+.nova-dot { animation: novaDot 1.2s var(--nova-ease-in-out) infinite; }
+.nova-dot:nth-child(2) { animation-delay: 0.15s; }
+.nova-dot:nth-child(3) { animation-delay: 0.3s; }
+
+/* ------------------------------------------------------------ markdown prose */
+.nova-prose { color: var(--nova-text); line-height: 1.7; }
+.nova-prose p { margin: 0.6em 0; }
+.nova-prose strong { color: #fff; font-weight: 700; }
+.nova-prose a { color: var(--nova-accent-2); text-decoration: underline; text-underline-offset: 3px; text-decoration-color: color-mix(in srgb, var(--nova-accent-2) 40%, transparent); }
+.nova-prose a:hover { text-decoration-color: var(--nova-accent-2); }
+.nova-prose ul, .nova-prose ol { margin: 0.6em 0; padding-left: 1.4em; }
+.nova-prose ul { list-style: none; }
+.nova-prose ul > li { position: relative; margin: 0.3em 0; }
+.nova-prose ul > li::before {
+  content: "";
+  position: absolute;
+  left: -1em;
+  top: 0.65em;
+  width: 5px;
+  height: 5px;
+  border-radius: 9999px;
+  background: var(--nova-accent);
+  opacity: 0.8;
+}
+.nova-prose ol { list-style: decimal; }
+.nova-prose ol > li::marker { color: var(--nova-accent); font-weight: 600; }
+.nova-prose blockquote {
+  border-left: 2px solid var(--nova-accent);
+  padding: 0.2em 0 0.2em 1em;
+  margin: 0.8em 0;
+  color: var(--nova-text-2);
+  font-style: italic;
+}
+.nova-prose h1, .nova-prose h2, .nova-prose h3, .nova-prose h4 {
   color: #fff;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  margin: 1.2em 0 0.5em;
+  line-height: 1.3;
 }
-.katex-display {
-  margin: 1em 0;
-  overflow-x: auto;
-  overflow-y: hidden;
-  padding: 0.5em 0;
+.nova-prose h1 { font-size: 1.5em; }
+.nova-prose h2 { font-size: 1.28em; }
+.nova-prose h3 { font-size: 1.12em; }
+.nova-prose h1:first-child, .nova-prose h2:first-child, .nova-prose h3:first-child { margin-top: 0; }
+.nova-prose hr { border: none; border-top: 1px solid var(--nova-border); margin: 1.4em 0; }
+.nova-prose table { border-collapse: collapse; margin: 0.9em 0; font-size: 0.92em; width: 100%; }
+.nova-prose th, .nova-prose td { border: 1px solid var(--nova-border); padding: 7px 12px; text-align: left; }
+.nova-prose th { background: rgba(255,255,255,0.05); font-weight: 600; }
+.nova-prose :not(pre) > code {
+  background: var(--nova-accent-soft);
+  border: 1px solid var(--nova-accent-border);
+  color: color-mix(in srgb, var(--nova-accent) 55%, white);
+  padding: 1px 6px;
+  border-radius: 6px;
+  font-size: 0.88em;
 }
+
+/* KaTeX dark theme */
+.katex { font-size: 1.05em; color: #fff; }
+.katex-display { margin: 1em 0; overflow-x: auto; overflow-y: hidden; padding: 0.5em 0; }
