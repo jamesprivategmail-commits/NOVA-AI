@@ -1,4 +1,5 @@
 import { AIBrainSettings, UserTier } from '../../models/types';
+import { AI_CONFIG } from '../../config/ai';
 import { ProjectMemory } from './types';
 import { getAuthoritativeToolCapabilities, RuntimeContext } from '../tools/registry';
 import { projectMemoryService } from '../memory/projectMemory';
@@ -46,11 +47,11 @@ export function buildUnifiedBrainPrompt(options: BuildBrainPromptOptions): strin
   } = options;
 
   const brainSettings: AIBrainSettings = rawBrainSettings || {
-    globalPrompt: "You are an elite, deeply perceptive AI companion and systems architect.",
-    freePrompt: "Give clear, thorough, well-structured answers and see every task through to completion.",
-    proPrompt: "Provide in-depth, production-grade solutions and complete implementations.",
-    premiumPrompt: "Provide deep architectural analysis and complete production systems.",
-    vipPrompt: "Full unrestricted elite capability with end-to-end execution.",
+    globalPrompt: "You are NOVA AI, an elite autonomous AI assistant and coding agent. Brilliant, fast, precise, and honest. Lead with the answer; never pad; never invent facts, APIs, or citations — when unsure, say so and say how to verify.",
+    freePrompt: "Be concise and directly helpful. If a request cannot be fulfilled, say why and offer the closest useful alternative instead of pretending.",
+    proPrompt: "Give thorough, professional answers with concrete detail, worked examples where useful, and clear assumptions.",
+    premiumPrompt: "Give deep architectural analysis and production-grade solutions, including trade-offs, edge cases, and verification steps.",
+    vipPrompt: "Full elite capability: exhaustive, precise, and direct. Surface risks and unknowns explicitly while still delivering the answer.",
     freeLimit: 30,
     proLimit: 50,
     premiumLimit: 200,
@@ -76,12 +77,12 @@ export function buildUnifiedBrainPrompt(options: BuildBrainPromptOptions): strin
 
   const masterBrainBase = [
     characterHeader,
-    brainSettings.globalPrompt || "You are an elite, deeply perceptive AI companion and systems architect.",
+    brainSettings.globalPrompt || "You are NOVA AI, an elite autonomous AI assistant and coding agent.",
     tierPrompt
   ]
     .filter(Boolean)
     .map((s) => s.trim())
-    .join('\n\n');
+    .join('\n\n') || 'You are NOVA AI, an elite autonomous AI assistant and coding agent.';
 
   // 2. Authoritative Tool Capabilities Registry Context
   const isGithubConnected = Boolean(githubContext?.owner || runtimeContext.hasGithubToken);
@@ -164,6 +165,7 @@ ${conversationArtifactsContext ? `\n[ACTIVE CONVERSATION ARTIFACTS — AVAILABLE
 
   const sections = [
     masterBrainBase,
+    (AI_CONFIG as any).reasoningLayer,
     toolRegistryContext,
     memoryContext,
     summarySection,

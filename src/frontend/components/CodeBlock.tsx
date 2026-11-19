@@ -165,7 +165,7 @@ export const CodeBlock = React.memo(function CodeBlock({ language, value }: Code
     (cleanCode.includes('<div') && cleanCode.includes('</div>'));
 
   return (
-    <div className={`my-2.5 rounded-xl border ${isGitHubCommitBlock ? 'border-[#3f86ff]/40 bg-[#161B22] shadow-lg shadow-[#3f86ff]/5' : 'border-[#30363D] bg-[#161B22]'} overflow-hidden shadow-md w-full`}>
+    <div className={`my-2.5 rounded-xl border ${isGitHubCommitBlock ? 'border-[#3f86ff]/40 bg-[#161B22] shadow-lg shadow-[#3f86ff]/5' : 'border-[#2c3156] bg-[#161B22]'} overflow-hidden shadow-md w-full`}>
       {/* GitHub Commit Banner if target path is known */}
       {isGitHubCommitBlock && (
         <div className="bg-gradient-to-r from-[#1c2333] to-[#161B22] px-3 py-2 border-b border-[#3f86ff]/30 flex flex-wrap items-center justify-between gap-2">
@@ -175,7 +175,7 @@ export const CodeBlock = React.memo(function CodeBlock({ language, value }: Code
               {targetPath || 'Repository File'}
             </span>
             {activeRepo && (
-              <span className="text-[10px] text-[#8d8d91] bg-black/40 px-2 py-0.5 rounded-full border border-white/10">
+              <span className="text-[10px] text-[#9aa3c7] bg-black/40 px-2 py-0.5 rounded-full border border-white/10">
                 {activeRepo.owner}/{activeRepo.repo} ({activeRepo.branch})
               </span>
             )}
@@ -217,14 +217,14 @@ export const CodeBlock = React.memo(function CodeBlock({ language, value }: Code
       )}
 
       {/* Header bar */}
-      <div className="flex items-center justify-between px-3 py-1.5 bg-[#0D1117] border-b border-[#30363D] text-[11px] text-[#8d8d91]">
+      <div className="flex items-center justify-between px-3 py-1.5 bg-[#0D1117] border-b border-[#2c3156] text-[11px] text-[#9aa3c7]">
         <div className="flex items-center gap-1.5 min-w-0">
-          <Terminal size={12} className="text-[#8d8d91] shrink-0" />
+          <Terminal size={12} className="text-[#9aa3c7] shrink-0" />
           <span className="uppercase tracking-wider font-semibold text-white truncate text-[10px]">
             {detectedLang || 'code'}
           </span>
           {targetMessage && isGitHubCommitBlock && (
-            <span className="text-[10px] text-[#8d8d91] truncate font-normal hidden sm:inline">
+            <span className="text-[10px] text-[#9aa3c7] truncate font-normal hidden sm:inline">
               — "{targetMessage}"
             </span>
           )}
@@ -254,7 +254,7 @@ export const CodeBlock = React.memo(function CodeBlock({ language, value }: Code
             <button
               onClick={handleDirectCommit}
               disabled={isCommitting}
-              className="flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-[#21262D] hover:bg-[#30363D] text-slate-300 hover:text-white transition-colors text-[10px] font-medium border border-[#30363D] cursor-pointer"
+              className="flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-[#21262D] hover:bg-[#30363D] text-slate-300 hover:text-white transition-colors text-[10px] font-medium border border-[#2c3156] cursor-pointer"
               title="Commit this snippet to GitHub"
             >
               {isCommitting ? (
@@ -278,7 +278,7 @@ export const CodeBlock = React.memo(function CodeBlock({ language, value }: Code
                 }
               }));
             }}
-            className="flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-[#21262D] hover:bg-[#30363D] text-slate-300 hover:text-white transition-colors text-[10px] font-medium border border-[#30363D] cursor-pointer"
+            className="flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-[#21262D] hover:bg-[#30363D] text-slate-300 hover:text-white transition-colors text-[10px] font-medium border border-[#2c3156] cursor-pointer"
             title="Open snippet in interactive Workspace Editor"
           >
             <ExternalLink size={10} className="text-emerald-400" />
@@ -287,15 +287,15 @@ export const CodeBlock = React.memo(function CodeBlock({ language, value }: Code
 
           <button
             onClick={handleDownload}
-            className="flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-[#21262D] hover:bg-[#30363D] text-white transition-colors text-[10px] font-medium border border-[#30363D] cursor-pointer"
+            className="flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-[#21262D] hover:bg-[#30363D] text-white transition-colors text-[10px] font-medium border border-[#2c3156] cursor-pointer"
             title="Download file"
           >
-            {downloaded ? <Check size={11} className="text-emerald-400" /> : <Download size={11} className="text-[#8d8d91]" />}
+            {downloaded ? <Check size={11} className="text-emerald-400" /> : <Download size={11} className="text-[#9aa3c7]" />}
           </button>
 
           <button
             onClick={handleCopy}
-            className="flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-[#21262D] hover:bg-[#30363D] text-white transition-colors text-[10px] font-medium border border-[#30363D] cursor-pointer"
+            className="flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-[#21262D] hover:bg-[#30363D] text-white transition-colors text-[10px] font-medium border border-[#2c3156] cursor-pointer"
             title="Copy code"
           >
             {copied ? <Check size={11} className="text-emerald-400" /> : <Copy size={11} />}
@@ -336,7 +336,7 @@ export const CodeBlock = React.memo(function CodeBlock({ language, value }: Code
       {shouldCollapse && (
         <button
           onClick={() => setExpanded(!expanded)}
-          className="w-full flex items-center justify-center gap-1 py-1 bg-[#0D1117] border-t border-[#30363D] text-[10px] text-[#8d8d91] hover:text-white transition-colors cursor-pointer"
+          className="w-full flex items-center justify-center gap-1 py-1 bg-[#0D1117] border-t border-[#2c3156] text-[10px] text-[#9aa3c7] hover:text-white transition-colors cursor-pointer"
         >
           {expanded ? (
             <>Show less <ChevronUp size={11} /></>

@@ -506,6 +506,21 @@ export function ChatScreen({ userId }: ChatScreenProps) {
     setActiveProjectId(null);
   };
 
+  const handleRegenerate = async () => {
+    if (isLoading || messages.length === 0) return;
+    const lastUserIdx = [...messages].map(m => m.role).lastIndexOf('user');
+    if (lastUserIdx === -1) return;
+    const lastUserMsg = messages[lastUserIdx];
+    // Drop everything after (and any duplicate trailing assistant turns before) the last user message
+    const trailing = messages.slice(lastUserIdx + 1);
+    for (const m of trailing) {
+      if (!m.id.startsWith('user-') && !m.id.startsWith('assistant-')) continue;
+      try { await deleteMessage(currentChatId!, m.id); } catch (_) {}
+    }
+    setMessages(messages.slice(0, lastUserIdx + 1));
+    await handleSend(lastUserMsg.text, undefined, undefined, { resend: true });
+  };
+
   const handleDeleteChat = async (id: string) => {
     await deleteChat(id);
     const updatedChats = chats.filter((c) => c.id !== id);
@@ -746,7 +761,8 @@ export function ChatScreen({ userId }: ChatScreenProps) {
   const handleSend = async (
     text: string,
     attachment?: ChatAttachment,
-    attachmentsList?: ChatAttachment[]
+    attachmentsList?: ChatAttachment[],
+    opts?: { resend?: boolean }
   ) => {
     if (!checkLimitations()) return;
 
@@ -829,13 +845,16 @@ export function ChatScreen({ userId }: ChatScreenProps) {
       createdAt: Date.now(),
     };
 
-    const currentMessages = [...messages, optimisticUserMsg];
+    const isResend = Boolean(opts?.resend);
+    const currentMessages = isResend ? [...messages] : [...messages, optimisticUserMsg];
     setMessages(currentMessages);
 
     // Persist user message to db asynchronously
+    if (!isResend) {
     saveMessage(activeChatId, 'user', displayText, {
       attachments: attachmentsMeta.length > 0 ? attachmentsMeta : undefined,
     }).catch((err) => console.error('Failed async message save:', err));
+    }
 
     setIsLoading(true);
     setStreamingMessage('');
