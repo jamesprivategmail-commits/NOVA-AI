@@ -1,12 +1,12 @@
-import React, { useState, useEffect, Suspense, lazy } from 'react';
+import React, { useState, useEffect } from 'react';
 import { getAuth, onAuthStateChanged, User as FirebaseUser } from 'firebase/auth';
 import { app } from './config/firebase'; // Ensure initialized
 import { AuthScreen } from './frontend/screens/AuthScreen';
+import { ChatScreen } from './frontend/screens/ChatScreen';
 import { EmailVerificationNotice } from './frontend/screens/EmailVerificationNotice';
 import { TermsModal } from './frontend/components/TermsModal';
-
-// Code-split heavy workspace to make initial page load instant on mobile
-const ChatScreen = lazy(() => import('./frontend/screens/ChatScreen').then(m => ({ default: m.ChatScreen })));
+import { applyAppearance } from './frontend/components/AppearanceMenu';
+import { OfflineIndicator } from './frontend/components/pwa/OfflineIndicator';
 
 export default function App() {
   const [user, setUser] = useState<FirebaseUser | null>(null);
@@ -15,6 +15,7 @@ export default function App() {
   const [termsAccepted, setTermsAccepted] = useState(false);
 
   useEffect(() => {
+    applyAppearance();
     // Clear any legacy demo or guest flags to ensure strict authentication
     try {
       localStorage.removeItem('void_ai_guest_mode');
@@ -89,68 +90,75 @@ export default function App() {
     } catch (_) {}
   };
 
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-[#06070a] flex flex-col items-center justify-center gap-4 relative overflow-hidden">
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-violet-900/25 rounded-full blur-3xl pointer-events-none" />
-        <div className="relative w-20 h-20 rounded-2xl bg-black border border-violet-500/80 p-1.5 shadow-[0_0_30px_rgba(139,92,246,0.45)] flex items-center justify-center overflow-hidden">
-          <img 
-            src="/void-logo.jpg" 
-            alt="NOVA AI Profile" 
+  const LoadingStage = ({ label }: { label: string }) => (
+    <div className="min-h-screen bg-transparent flex flex-col items-center justify-center gap-4 relative overflow-hidden">
+      <div
+        className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-96 h-96 rounded-full blur-3xl pointer-events-none opacity-60"
+        style={{ background: 'var(--accent-soft)' }}
+      />
+      <div className="relative glass-thick rounded-3xl p-2 shadow-[var(--shadow-lg)] flex items-center justify-center overflow-hidden">
+        <div className="w-18 h-18 rounded-2xl overflow-hidden border border-[var(--line-strong)]">
+          <img
+            src="/pwa-192x192.png"
+            alt="NOVA AI"
             className="w-full h-full object-cover"
-            onError={(e) => {
-              (e.target as HTMLImageElement).src = '/void-logo.jpg';
-            }}
           />
         </div>
-        <div className="relative flex items-center gap-2 text-violet-400 font-mono text-xs font-bold tracking-widest uppercase">
-          <span className="w-2 h-2 rounded-full bg-violet-500 animate-pulse" />
-          <span>INITIALIZING NOVA AI...</span>
-        </div>
       </div>
+      <div className="relative flex items-center gap-2 font-mono text-xs font-semibold tracking-widest uppercase" style={{ color: 'var(--accent-hover)' }}>
+        <span className="w-2 h-2 rounded-full animate-pulse" style={{ background: 'var(--accent)' }} />
+        <span>{label}</span>
+      </div>
+    </div>
+  );
+
+  if (loading) {
+    return (
+      <>
+        <LoadingStage label="Waking Muse Studio..." />
+        <OfflineIndicator />
+      </>
     );
   }
 
   // Strict check: Only real authenticated Firebase users can proceed
   if (!user) {
-    return <AuthScreen />;
+    return (
+      <>
+        <AuthScreen />
+        <OfflineIndicator />
+      </>
+    );
   }
 
   if (!isVerified) {
     return (
-      <EmailVerificationNotice 
-        user={user} 
-        onVerified={() => setIsVerified(true)} 
-      />
+      <>
+        <EmailVerificationNotice
+          user={user}
+          onVerified={() => setIsVerified(true)}
+        />
+        <OfflineIndicator />
+      </>
     );
   }
 
   if (!termsAccepted) {
     return (
-      <TermsModal 
-        onAccept={handleAcceptTerms} 
-        onDecline={handleDeclineTerms} 
-      />
+      <>
+        <TermsModal
+          onAccept={handleAcceptTerms}
+          onDecline={handleDeclineTerms}
+        />
+        <OfflineIndicator />
+      </>
     );
   }
 
   return (
-    <Suspense fallback={
-      <div className="min-h-screen bg-[#06070a] flex flex-col items-center justify-center gap-4 relative overflow-hidden">
-        <div className="w-20 h-20 rounded-2xl bg-black border border-violet-500/80 p-1.5 shadow-[0_0_30px_rgba(139,92,246,0.45)] flex items-center justify-center overflow-hidden">
-          <img 
-            src="/void-logo.jpg" 
-            alt="NOVA AI" 
-            className="w-full h-full object-cover"
-          />
-        </div>
-        <div className="flex items-center gap-2 text-violet-400 font-mono text-xs font-bold tracking-widest uppercase">
-          <span className="w-2 h-2 rounded-full bg-violet-500 animate-pulse" />
-          <span>LOADING NOVA AI...</span>
-        </div>
-      </div>
-    }>
+    <>
       <ChatScreen userId={user.uid} />
-    </Suspense>
+      <OfflineIndicator />
+    </>
   );
 }

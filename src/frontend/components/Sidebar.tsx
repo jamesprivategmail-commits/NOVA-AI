@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
-import { 
-  Plus, Search, X, Edit2, Trash2, Settings, User, Pin, PinOff, Download, Folder, Tag
+import {
+  Plus, Search, X, Edit2, Trash2, Settings, Pin, Download,
+  MessageSquare, Github, AudioLines, Sparkles, Terminal, ShieldCheck, FlaskConical
 } from 'lucide-react';
 import { Chat } from '../../models/types';
 import { clsx } from 'clsx';
@@ -22,17 +23,101 @@ interface SidebarProps {
   isOpen: boolean;
   userEmail?: string;
   userName?: string;
-  // Optional legacy props
   onOpenSupport?: () => void;
   onOpenSubscription?: () => void;
   onOpenAdmin?: () => void;
   onOpenCampaignGenerator?: () => void;
   onOpenLiveVoice?: () => void;
+  onOpenPromptStudio?: () => void;
+  onOpenEvolutionCentre?: () => void;
   onOpenApiKeys?: () => void;
   onOpenTelegram?: () => void;
   isAdmin?: boolean;
   isSupportStaff?: boolean;
   walletBalance?: number;
+}
+
+/** One conversation row — consistent icon + label alignment, tactile hover tray. */
+function ChatRow({
+  chat,
+  active,
+  index,
+  onSelect,
+  onTogglePin,
+  onExport,
+  onRename,
+  onDelete,
+}: {
+  chat: Chat;
+  active: boolean;
+  index: number;
+  onSelect: () => void;
+  onTogglePin?: () => void;
+  onExport?: () => void;
+  onRename: () => void;
+  onDelete: () => void;
+}) {
+  return (
+    <div
+      onClick={onSelect}
+      className={clsx(
+        'group relative flex items-center gap-2 px-2.5 py-2 rounded-xl cursor-pointer transition-all text-[13px] font-medium stagger-item',
+        active
+          ? 'accent-bar bg-[var(--accent-soft)] text-[var(--text-primary)] shadow-[var(--shadow-xs)]'
+          : 'text-[var(--text-secondary)] hover:bg-black/[0.04] dark:hover:bg-white/[0.06] hover:text-[var(--text-primary)]'
+      )}
+      style={{ animationDelay: `${Math.min(index * 24, 300)}ms` }}
+    >
+      <MessageSquare
+        size={13}
+        className={clsx('shrink-0', active ? 'text-[var(--accent)]' : 'opacity-55 group-hover:opacity-90')}
+      />
+      {chat.isPinned && (
+        <Pin size={11} className="text-amber-500 shrink-0 fill-amber-500 rotate-45" />
+      )}
+      <span className="truncate flex-1 leading-tight min-w-0 pr-2">{chat.title || 'Untitled Chat'}</span>
+
+      {/* Hover action tray */}
+      <div className="absolute right-1.5 flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity glass-thick px-1 py-0.5 rounded-lg">
+        {onTogglePin && (
+          <button
+            type="button"
+            onClick={(e) => { e.stopPropagation(); onTogglePin(); }}
+            className="p-1 text-[var(--text-muted)] hover:text-amber-500 cursor-pointer transition-colors"
+            title={chat.isPinned ? 'Unpin conversation' : 'Pin conversation'}
+          >
+            <Pin size={12} className={chat.isPinned ? 'fill-amber-500 text-amber-500' : ''} />
+          </button>
+        )}
+        {onExport && (
+          <button
+            type="button"
+            onClick={(e) => { e.stopPropagation(); onExport(); }}
+            className="p-1 text-[var(--text-muted)] hover:text-[var(--text-primary)] cursor-pointer transition-colors"
+            title="Export as Markdown"
+          >
+            <Download size={12} />
+          </button>
+        )}
+        <button
+          type="button"
+          onClick={(e) => { e.stopPropagation(); onRename(); }}
+          className="p-1 text-[var(--text-muted)] hover:text-[var(--text-primary)] cursor-pointer transition-colors"
+          title="Rename conversation"
+        >
+          <Edit2 size={12} />
+        </button>
+        <button
+          type="button"
+          onClick={(e) => { e.stopPropagation(); onDelete(); }}
+          className="p-1 text-[var(--text-muted)] hover:text-rose-500 cursor-pointer transition-colors"
+          title="Delete conversation"
+        >
+          <Trash2 size={12} />
+        </button>
+      </div>
+    </div>
+  );
 }
 
 export function Sidebar({
@@ -45,12 +130,17 @@ export function Sidebar({
   onRenameChat,
   onOpenSettings,
   onOpenGitHub,
+  onOpenLiveVoice,
+  onOpenPromptStudio,
+  onOpenEvolutionCentre,
+  onOpenAdmin,
   onTogglePinChat,
   onExportChat,
   onClose,
   isOpen,
+  isAdmin,
   userEmail = 'mrnovatech4@gmail.com',
-  userName = 'Mr nova tech'
+  userName = 'Workspace User'
 }: SidebarProps) {
   const [searchQuery, setSearchQuery] = useState('');
   const [isSearching, setIsSearching] = useState(false);
@@ -73,139 +163,182 @@ export function Sidebar({
   return (
     <aside
       className={clsx(
-        "fixed inset-y-0 left-0 z-40 md:relative md:z-30 flex flex-col h-full nova-glass text-white transition-all duration-200 ease-out w-64 sm:w-72 shrink-0 border-r border-[var(--nova-border)] text-xs select-none",
-        !isOpen && "-translate-x-full md:w-0 md:-translate-x-full overflow-hidden opacity-0 pointer-events-none"
+        'fixed inset-y-0 left-0 z-40 md:relative md:z-30 flex flex-col h-full muse-glass-panel md:rounded-[28px] text-[var(--text-primary)] transition-all duration-200 ease-out w-72 shrink-0 border-r md:border border-[var(--glass-border)] text-xs select-none overflow-hidden',
+        !isOpen && '-translate-x-full md:w-0 md:-translate-x-full md:border-0 overflow-hidden opacity-0 pointer-events-none'
       )}
     >
-      {/* Top Drawer Header */}
-      <div className="p-3 border-b border-[var(--nova-border)] flex items-center justify-between">
+      {/* ── Brand Header ─────────────────────────────────── */}
+      <div className="p-3.5 border-b border-[var(--line)] flex items-center justify-between">
         <div className="flex items-center gap-2.5">
-          <div className="w-10 h-10 rounded-xl p-[1.5px] flex items-center justify-center overflow-hidden" style={{ background: 'linear-gradient(135deg, #8b5cf6, #22d3ee)' }}>
-            <img 
-              src="/void-logo.jpg"
-              alt="NOVA" 
+          <div className="w-9 h-9 rounded-2xl glass border border-[var(--line-strong)] p-0.5 flex items-center justify-center overflow-hidden shadow-[var(--shadow-xs)]">
+            <img
+              src="/pwa-192x192.png"
+              alt="NOVA Muse Logo"
               className="w-full h-full object-cover rounded-[10px]"
             />
           </div>
-          <span className="font-bold text-sm nova-gradient-text tracking-tight">
-            NOVA
-          </span>
+          <div className="leading-tight">
+            <span className="font-display text-base font-semibold text-[var(--text-primary)] tracking-tight block">
+              NOVA <span className="text-gradient">Muse</span>
+            </span>
+            <span className="text-[10px] text-[var(--text-muted)]">Spaces &amp; Threads</span>
+          </div>
         </div>
 
         <div className="flex items-center gap-1.5">
-          {/* Search button — 34px */}
-          <button 
+          <button
+            type="button"
             onClick={() => setIsSearching(!isSearching)}
             className={clsx(
-              "w-[34px] h-[34px] rounded-lg border flex items-center justify-center transition-all cursor-pointer shrink-0",
-              isSearching 
-                ? "bg-white/[0.06] border-[var(--nova-border-strong)] text-white" 
-                : "bg-white/[0.04] hover:bg-white/[0.06] border-[var(--nova-border)] text-[var(--nova-text-2)] hover:text-white"
+              'w-8 h-8 rounded-xl border flex items-center justify-center transition-colors cursor-pointer shrink-0',
+              isSearching
+                ? 'bg-[var(--accent-soft)] border-[var(--accent-muted)] text-[var(--text-primary)]'
+                : 'glass text-[var(--text-muted)] hover:text-[var(--text-primary)]'
             )}
             title="Search Conversations"
           >
-            <Search size={17} />
+            <Search size={15} />
           </button>
 
-          {/* Close drawer on mobile */}
           {onClose && (
             <button
+              type="button"
               onClick={onClose}
-              className="w-[34px] h-[34px] rounded-lg border bg-white/[0.04] hover:bg-white/[0.06] border-[var(--nova-border)] text-[var(--nova-text-2)] hover:text-white flex items-center justify-center transition-all cursor-pointer shrink-0 md:hidden"
+              className="w-8 h-8 rounded-xl glass text-[var(--text-muted)] hover:text-[var(--text-primary)] flex items-center justify-center transition-colors cursor-pointer shrink-0 md:hidden"
               title="Close sidebar"
             >
-              <X size={17} />
+              <X size={15} />
             </button>
           )}
         </div>
       </div>
 
-      {/* Expandable Search Input */}
+      {/* ── Search Bar ────────────────────────────────────── */}
       {isSearching && (
-        <div className="p-2 border-b border-[var(--nova-border)] relative">
+        <div className="p-2.5 border-b border-[var(--line)] relative animate-fadeIn">
           <input
             type="text"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Search recent chats..."
+            placeholder="Filter conversations..."
             autoFocus
-            className="w-full bg-white/[0.04] border border-[var(--nova-border)] text-white text-[11px] rounded-lg pl-8 pr-8 py-2 outline-none focus:border-[var(--nova-border-strong)]"
+            className="w-full bg-[var(--bg-2)] border border-[var(--line)] text-[var(--text-primary)] placeholder:text-[var(--text-muted)] text-[12px] rounded-xl pl-8 pr-8 py-2 outline-none focus:border-[var(--accent-muted)] transition-colors"
           />
-          <Search size={14} className="absolute left-4.5 top-4 text-[var(--nova-text-2)]" />
+          <Search size={13} className="absolute left-[18px] top-[20px] text-[var(--text-muted)]" />
           {searchQuery && (
-            <button 
+            <button
+              type="button"
               onClick={() => setSearchQuery('')}
-              className="absolute right-4.5 top-4 text-[var(--nova-text-2)] hover:text-white cursor-pointer"
+              className="absolute right-[18px] top-[20px] text-[var(--text-muted)] hover:text-[var(--text-primary)] cursor-pointer"
             >
-              <X size={14} />
+              <X size={13} />
             </button>
           )}
         </div>
       )}
 
-      {/* Primary Action: New Chat — increased by 20% */}
-      <div className="p-2.5 border-b border-[var(--nova-border)] space-y-2">
+      {/* ── Primary Actions & Studio Modules ──────────────── */}
+      <div className="p-3 border-b border-[var(--line)] space-y-2.5">
         <button
+          type="button"
           onClick={onNewChat}
-          className="w-full flex items-center justify-center gap-2 nova-btn-primary font-semibold py-2.5 px-3.5 rounded-xl transition-all cursor-pointer text-[13px] sm:text-sm"
+          className="btn btn-primary w-full py-2.5 px-3.5 text-[13px]"
         >
-          <Plus size={18} />
-          <span>New Chat</span>
+          <Plus size={16} />
+          <span>New Conversation</span>
         </button>
 
-        {onOpenGitHub && (
-          <button
-            onClick={onOpenGitHub}
-            className="w-full flex items-center justify-between p-2 rounded-lg bg-white/[0.04] hover:bg-white/[0.06] border border-[var(--nova-border)] text-white transition-colors cursor-pointer text-xs"
-            title="Open GitHub Workspace & Settings"
-          >
-            <div className="flex items-center gap-2">
-              <svg className="w-3.5 h-3.5 fill-current shrink-0" viewBox="0 0 24 24">
-                <path fillRule="evenodd" clipRule="evenodd" d="M12 2C6.477 2 2 6.484 2 12.017c0 4.425 2.865 8.18 6.839 9.504.5.092.682-.217.682-.483 0-.237-.008-.868-.013-1.703-2.782.605-3.369-1.343-3.369-1.343-.454-1.158-1.11-1.466-1.11-1.466-.908-.62.069-.608.069-.608 1.003.07 1.53 1.032 1.53 1.032.892 1.53 2.341 1.088 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.113-4.555-4.951 0-1.093.39-1.988 1.029-2.688-.103-.253-.446-1.272.098-2.65 0 0 .84-.27 2.75 1.026A9.564 9.564 0 0112 6.844c.85.004 1.705.115 2.504.337 1.909-1.296 2.747-1.027 2.747-1.027.546 1.379.202 2.398.1 2.651.64.7 1.028 1.595 1.028 2.688 0 3.848-2.339 4.695-4.566 4.943.359.309.678.92.678 1.855 0 1.338-.012 2.419-.012 2.747 0 .268.18.58.688.482A10.019 10.019 0 0022 12.017C22 6.484 17.522 2 12 2z" />
-              </svg>
-              <span className="font-semibold text-[11px]">GitHub Workspace</span>
+        {(onOpenGitHub || onOpenPromptStudio || onOpenLiveVoice || onOpenEvolutionCentre) && (
+          <div className="space-y-1.5">
+            <div className="section-label px-1">Studio Workspace</div>
+            <div className="grid grid-cols-2 gap-1.5">
+              {onOpenGitHub && (
+                <button
+                  type="button"
+                  onClick={onOpenGitHub}
+                  className="btn btn-ghost py-2 px-2.5 justify-start text-[11px] font-semibold"
+                  title="Open GitHub Repository & Workspace"
+                >
+                  <Github size={14} className="text-[var(--accent)] shrink-0" />
+                  <span className="truncate">GitHub Repo</span>
+                </button>
+              )}
+              {onOpenPromptStudio && (
+                <button
+                  type="button"
+                  onClick={onOpenPromptStudio}
+                  className="btn btn-ghost py-2 px-2.5 justify-start text-[11px] font-semibold"
+                  title="Open System Directive & Prompt Studio"
+                >
+                  <Sparkles size={14} className="text-[var(--accent)] shrink-0" />
+                  <span className="truncate">Directives</span>
+                </button>
+              )}
+              {onOpenEvolutionCentre && (
+                <button
+                  type="button"
+                  onClick={onOpenEvolutionCentre}
+                  className="btn btn-ghost py-2 px-2.5 justify-start text-[11px] font-semibold col-span-2"
+                  title="Open Autonomous Self-Evolution Centre"
+                >
+                  <FlaskConical size={14} className="text-[var(--accent)] shrink-0" />
+                  <span className="truncate">Evolution Centre</span>
+                </button>
+              )}
+              {onOpenLiveVoice && (
+                <button
+                  type="button"
+                  onClick={onOpenLiveVoice}
+                  className="btn btn-ghost py-2 px-2.5 justify-start text-[11px] font-semibold"
+                  title="Start Live Voice Companion"
+                >
+                  <AudioLines size={14} className="text-[var(--accent)] shrink-0" />
+                  <span className="truncate">Live Voice</span>
+                </button>
+              )}
+              {isAdmin && onOpenAdmin ? (
+                <button
+                  type="button"
+                  onClick={onOpenAdmin}
+                  className="btn btn-ghost py-2 px-2.5 justify-start text-[11px] font-semibold"
+                  title="Open Admin Control Console"
+                >
+                  <ShieldCheck size={14} className="text-[var(--accent)] shrink-0" />
+                  <span className="truncate">Admin Panel</span>
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  onClick={onOpenSettings}
+                  className="btn btn-ghost py-2 px-2.5 justify-start text-[11px] font-semibold"
+                  title="Workspace Preferences"
+                >
+                  <Terminal size={14} className="text-[var(--accent)] shrink-0" />
+                  <span className="truncate">Preferences</span>
+                </button>
+              )}
             </div>
-            <span className="text-[10px] text-[var(--nova-accent-2)] font-mono">Workspace</span>
-          </button>
+          </div>
         )}
       </div>
 
-      {/* Folder & Tag Filter Segmented Control */}
-      <div className="px-2.5 py-1.5 flex items-center gap-1 border-b border-[var(--nova-border)] text-[11px] overflow-x-auto">
-        {[
-          { id: 'all', label: 'All' },
-          { id: 'pinned', label: 'Pinned' },
-          { id: 'work', label: 'Work' },
-          { id: 'dev', label: 'Dev' },
-        ].map(tab => (
-          <button
-            key={tab.id}
-            onClick={() => setActiveFolder(tab.id)}
-            className={clsx(
-              "px-2 py-1 rounded-md transition-colors cursor-pointer shrink-0 font-medium",
-              activeFolder === tab.id
-                ? "bg-[var(--nova-accent-soft)] text-white border border-[var(--nova-accent-border)]"
-                : "text-slate-400 hover:text-white"
-            )}
-          >
-            {tab.label}
-          </button>
-        ))}
-      </div>
-
-      {/* Recents Section Header */}
-      <div className="px-3 pt-2.5 pb-1 flex items-center justify-between">
-        <span className="text-[10px] font-medium text-[var(--nova-text-2)] uppercase tracking-wide">
-          {activeFolder === 'pinned' ? 'Pinned Chats' : 'Conversations'}
+      {/* ── Conversation Library ──────────────────────────── */}
+      <div className="px-3 pt-3 pb-1.5 flex items-center justify-between">
+        <span className="section-label">
+          {activeFolder === 'pinned' ? 'Pinned Threads' : 'Conversations'}
+          <span className="ml-1.5 font-mono normal-case tracking-normal opacity-75 tabular-nums">
+            {filteredChats.length}
+          </span>
         </span>
         {chats.length > 0 && onClearAllHistory && (
           <button
+            type="button"
             onClick={() => {
               if (confirm('Clear all conversation history?')) {
                 onClearAllHistory();
               }
             }}
-            className="text-[11px] text-[var(--nova-text-2)] hover:text-white transition-colors cursor-pointer py-0.5 px-1.5 rounded hover:bg-white/[0.06]"
+            className="text-[11px] text-[var(--text-muted)] hover:text-rose-500 transition-colors cursor-pointer py-0.5 px-1.5 rounded-md hover:bg-rose-500/10"
             title="Clear History"
           >
             Clear all
@@ -213,111 +346,86 @@ export function Sidebar({
         )}
       </div>
 
-      {/* Conversations List */}
-      <div className="flex-1 overflow-y-auto px-2 space-y-1">
+      {/* Folder Segmented Tabs */}
+      <div className="px-3 pb-2 flex items-center gap-1 text-[11px] overflow-x-auto no-scrollbar">
+        {[
+          { id: 'all', label: 'All' },
+          { id: 'pinned', label: 'Pinned' },
+          { id: 'work', label: 'Work' },
+          { id: 'dev', label: 'Dev' },
+        ].map(tab => (
+          <button
+            type="button"
+            key={tab.id}
+            onClick={() => setActiveFolder(tab.id)}
+            className={clsx(
+              'px-2.5 py-1 rounded-lg transition-all cursor-pointer shrink-0 font-semibold border',
+              activeFolder === tab.id
+                ? 'text-[var(--text-primary)] bg-[var(--accent-soft)] border-[var(--accent-muted)] shadow-[var(--shadow-xs)]'
+                : 'text-[var(--text-muted)] hover:text-[var(--text-primary)] border-transparent hover:bg-black/[0.04] dark:hover:bg-white/[0.05]'
+            )}
+          >
+            {tab.label}
+          </button>
+        ))}
+      </div>
+
+      <div className="flex-1 overflow-y-auto px-2.5 space-y-0.5 pb-2">
         {filteredChats.length === 0 ? (
-          <div className="p-4 text-center text-[11px] text-[var(--nova-text-2)]">
-            {searchQuery ? 'No matching conversations' : 'No chats in this folder'}
+          <div className="p-4 text-center text-[11px] text-[var(--text-muted)]">
+            {searchQuery ? 'No matching conversations' : 'No threads in this collection yet'}
           </div>
         ) : (
-          filteredChats.map((chat) => (
-            <div
+          filteredChats.map((chat, index) => (
+            <ChatRow
               key={chat.id}
-              onClick={() => onSelectChat(chat.id)}
-              className={clsx(
-                "group relative flex items-center justify-between px-2.5 py-2 rounded-lg cursor-pointer transition-all text-xs font-medium",
-                currentChatId === chat.id
-                  ? "bg-white/[0.06] text-white"
-                  : "hover:bg-white/[0.04] text-[var(--nova-text-2)] hover:text-white"
-              )}
-            >
-              <div className="flex items-center gap-1.5 truncate pr-3 flex-1">
-                {chat.isPinned && (
-                  <Pin size={11} className="text-amber-400 shrink-0 fill-amber-400 rotate-45" />
-                )}
-                <span className="truncate text-xs leading-tight">{chat.title || 'Untitled Chat'}</span>
-              </div>
-
-              <div className="absolute right-1.5 flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity bg-white/[0.06] px-1 py-0.5 rounded shadow-sm">
-                {onTogglePinChat && (
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      onTogglePinChat(chat.id, !chat.isPinned);
-                    }}
-                    className="p-1 text-[var(--nova-text-2)] hover:text-amber-400 cursor-pointer"
-                    title={chat.isPinned ? "Unpin chat" : "Pin chat to top"}
-                  >
-                    <Pin size={12} className={chat.isPinned ? "fill-amber-400" : ""} />
-                  </button>
-                )}
-                {onExportChat && (
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      onExportChat(chat.id);
-                    }}
-                    className="p-1 text-[var(--nova-text-2)] hover:text-blue-400 cursor-pointer"
-                    title="Export chat as Markdown"
-                  >
-                    <Download size={12} />
-                  </button>
-                )}
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    const newTitle = prompt('Rename chat:', chat.title);
-                    if (newTitle && newTitle.trim()) {
-                      onRenameChat(chat.id, newTitle.trim());
-                    }
-                  }}
-                  className="p-1 text-[var(--nova-text-2)] hover:text-white cursor-pointer"
-                  title="Rename"
-                >
-                  <Edit2 size={12} />
-                </button>
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    if (confirm('Delete chat?')) {
-                      onDeleteChat(chat.id);
-                    }
-                  }}
-                  className="p-1 text-[var(--nova-text-2)] hover:text-rose-400 cursor-pointer"
-                  title="Delete"
-                >
-                  <Trash2 size={12} />
-                </button>
-              </div>
-            </div>
+              chat={chat}
+              active={currentChatId === chat.id}
+              index={index}
+              onSelect={() => onSelectChat(chat.id)}
+              onTogglePin={onTogglePinChat ? () => onTogglePinChat(chat.id, !chat.isPinned) : undefined}
+              onExport={onExportChat ? () => onExportChat(chat.id) : undefined}
+              onRename={() => {
+                const newTitle = prompt('Rename conversation:', chat.title);
+                if (newTitle && newTitle.trim()) {
+                  onRenameChat(chat.id, newTitle.trim());
+                }
+              }}
+              onDelete={() => {
+                if (confirm('Delete conversation?')) {
+                  onDeleteChat(chat.id);
+                }
+              }}
+            />
           ))
         )}
       </div>
 
-      {/* Bottom Footer */}
-      <div className="p-2.5 border-t border-[var(--nova-border)] flex flex-col gap-2">
+      {/* ── Account & Settings Footer ─────────────────────── */}
+      <div className="p-3 border-t border-[var(--line)]">
         <div className="flex items-center justify-between gap-2">
           <button
+            type="button"
             onClick={onOpenSettings}
-            className="flex-1 flex items-center gap-2.5 p-1.5 rounded-lg hover:bg-white/[0.04] transition-all text-left cursor-pointer min-w-0"
+            className="flex-1 flex items-center gap-2.5 p-1.5 rounded-xl hover:bg-black/[0.04] dark:hover:bg-white/[0.06] transition-colors text-left cursor-pointer min-w-0"
             title="Open Settings & Profile"
           >
-            <div className="w-[34px] h-[34px] rounded-full nova-btn-primary text-white font-bold text-xs flex items-center justify-center shrink-0">
-              {userName ? userName.slice(0, 2).toUpperCase() : 'MT'}
+            <div className="w-9 h-9 rounded-full bg-[var(--accent-soft)] border border-[var(--accent-muted)] text-[var(--accent)] font-bold text-[11px] flex items-center justify-center shrink-0">
+              {userName ? userName.slice(0, 2).toUpperCase() : 'MU'}
             </div>
             <div className="min-w-0 flex-1">
-              <div className="text-xs font-medium text-white truncate leading-tight">{userName}</div>
-              <div className="text-[10px] text-[var(--nova-text-2)] truncate leading-none mt-0.5">{userEmail}</div>
+              <div className="text-xs font-semibold text-[var(--text-primary)] truncate leading-tight">{userName}</div>
+              <div className="text-[10px] text-[var(--text-muted)] truncate leading-none mt-0.5">{userEmail}</div>
             </div>
           </button>
 
-          {/* Settings button — increased by 20% to 38px */}
           <button
+            type="button"
             onClick={onOpenSettings}
-            className="w-[38px] h-[38px] rounded-lg bg-white/[0.04] hover:bg-white/[0.06] text-[var(--nova-text-2)] hover:text-white flex items-center justify-center transition-colors cursor-pointer shrink-0"
-            title="Settings & Control Center"
+            className="btn btn-ghost w-9 h-9 !p-0"
+            title="Control Center & Settings"
           >
-            <Settings size={18} />
+            <Settings size={16} />
           </button>
         </div>
       </div>

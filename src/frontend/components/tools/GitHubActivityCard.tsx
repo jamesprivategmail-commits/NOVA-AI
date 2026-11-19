@@ -23,11 +23,11 @@ export function GitHubActivityCard({ event }: GitHubActivityCardProps) {
   const isRunning = event.status === 'running';
 
   return (
-    <div className="w-full my-2 rounded-xl bg-[#161b22] border border-[#30363d] px-3.5 py-2.5 text-xs shadow-md transition-all font-sans">
+    <div className="w-full my-2 rounded-xl bg-[#FFFFFF] border border-[#FFFFFF] px-3.5 py-2.5 text-xs shadow-md transition-all font-sans">
       <div className="flex items-start justify-between gap-3">
         <div className="flex items-start gap-2.5 min-w-0">
           {/* Arrow / Icon Indicator */}
-          <div className="mt-0.5 w-6 h-6 rounded-lg bg-[#21262d] border border-[#30363d] flex items-center justify-center text-slate-200 shrink-0">
+          <div className="mt-0.5 w-6 h-6 rounded-lg bg-[#FFFFFF] border border-[#FFFFFF] flex items-center justify-center text-slate-200 shrink-0">
             {isCommit ? (
               <span className="font-bold text-emerald-400 text-sm">↑</span>
             ) : isRead ? (
@@ -38,17 +38,17 @@ export function GitHubActivityCard({ event }: GitHubActivityCardProps) {
           </div>
 
           <div className="min-w-0 space-y-0.5">
-            <div className="flex items-center gap-1.5 font-bold text-white tracking-wide">
+            <div className="flex items-center gap-1.5 font-bold text-[#1F1E1D] tracking-wide">
               <span>{isCommit ? '↑' : isRead ? '↗' : '⑂'}</span>
               <span>GitHub</span>
               {event.repo && (
-                <span className="text-[10px] text-[#8d8d91] font-mono font-normal">
+                <span className="text-[10px] text-[#6B6A67] font-mono font-normal">
                   • {event.repo}
                 </span>
               )}
             </div>
 
-            <p className="text-[11px] text-slate-300 font-medium">
+            <p className="text-[11px] text-[#6B6A67] font-medium">
               {actionTitle}
             </p>
 
@@ -65,7 +65,7 @@ export function GitHubActivityCard({ event }: GitHubActivityCardProps) {
                   {event.commitSha.slice(0, 7)}
                 </span>
                 {event.commitMessage && (
-                  <span className="text-slate-300 truncate max-w-xs font-sans text-[11px]">
+                  <span className="text-[#6B6A67] truncate max-w-xs font-sans text-[11px]">
                     "{event.commitMessage}"
                   </span>
                 )}
@@ -73,7 +73,7 @@ export function GitHubActivityCard({ event }: GitHubActivityCardProps) {
             )}
 
             {event.detail && (
-              <p className="text-[10px] text-[#8d8d91] mt-0.5 truncate">
+              <p className="text-[10px] text-[#6B6A67] mt-0.5 truncate">
                 {event.detail}
               </p>
             )}

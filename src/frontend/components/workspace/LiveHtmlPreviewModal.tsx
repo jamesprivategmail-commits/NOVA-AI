@@ -89,17 +89,17 @@ export function LiveHtmlPreviewModal({
     <div className="fixed inset-0 z-50 bg-black/85 backdrop-blur-xl flex items-center justify-center p-2 sm:p-4 animate-fadeIn">
       <div 
         className={clsx(
-          "bg-[#090a0f] border border-white/10 rounded-2xl flex flex-col shadow-2xl overflow-hidden transition-all duration-200",
+          "bg-[#FAF9F5] border border-white/10 rounded-2xl flex flex-col shadow-2xl overflow-hidden transition-all duration-200",
           isFullScreen ? "w-full h-full rounded-none" : "w-full max-w-6xl h-[90vh]"
         )}
       >
         {/* Top Header Bar */}
-        <header className="h-14 px-4 bg-[#0e1017] border-b border-white/10 flex items-center justify-between shrink-0 select-none">
+        <header className="h-14 px-4 bg-[#FAF9F5] border-b border-white/10 flex items-center justify-between shrink-0 select-none">
           {/* Left: Title & Live indicator */}
           <div className="flex items-center gap-3 min-w-0">
             <div className="flex items-center gap-2">
               <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse" />
-              <h3 className="font-bold text-sm text-white truncate max-w-[200px] sm:max-w-xs">
+              <h3 className="font-bold text-sm text-[#1F1E1D] truncate max-w-[200px] sm:max-w-xs">
                 {title}
               </h3>
             </div>
@@ -111,14 +111,14 @@ export function LiveHtmlPreviewModal({
           {/* Middle: Tab Switcher & Viewport Toggles */}
           <div className="flex items-center gap-2">
             {/* Tab Switcher */}
-            <div className="flex items-center bg-[#151722] p-1 rounded-lg border border-white/5">
+            <div className="flex items-center bg-[#FAF9F5] p-1 rounded-lg border border-white/5">
               <button
                 onClick={() => setActiveTab('preview')}
                 className={clsx(
                   "px-3 py-1 text-xs font-medium rounded-md transition-all flex items-center gap-1.5 cursor-pointer",
                   activeTab === 'preview'
-                    ? "bg-red-600 text-white shadow"
-                    : "text-slate-400 hover:text-white"
+                    ? "bg-red-600 text-[#1F1E1D] shadow"
+                    : "text-[#6B6A67] hover:text-[#1F1E1D]"
                 )}
               >
                 <Play size={12} />
@@ -129,8 +129,8 @@ export function LiveHtmlPreviewModal({
                 className={clsx(
                   "px-3 py-1 text-xs font-medium rounded-md transition-all flex items-center gap-1.5 cursor-pointer",
                   activeTab === 'code'
-                    ? "bg-blue-600 text-white shadow"
-                    : "text-slate-400 hover:text-white"
+                    ? "bg-blue-600 text-[#1F1E1D] shadow"
+                    : "text-[#6B6A67] hover:text-[#1F1E1D]"
                 )}
               >
                 <Code2 size={12} />
@@ -140,12 +140,12 @@ export function LiveHtmlPreviewModal({
 
             {/* Viewport Toggles (only in preview tab) */}
             {activeTab === 'preview' && (
-              <div className="hidden sm:flex items-center bg-[#151722] p-1 rounded-lg border border-white/5 gap-0.5">
+              <div className="hidden sm:flex items-center bg-[#FAF9F5] p-1 rounded-lg border border-white/5 gap-0.5">
                 <button
                   onClick={() => setViewport('desktop')}
                   className={clsx(
                     "p-1.5 rounded-md transition-colors cursor-pointer",
-                    viewport === 'desktop' ? "bg-white/10 text-white" : "text-slate-400 hover:text-white"
+                    viewport === 'desktop' ? "bg-white/10 text-[#1F1E1D]" : "text-[#6B6A67] hover:text-[#1F1E1D]"
                   )}
                   title="Desktop (100%)"
                 >
@@ -155,7 +155,7 @@ export function LiveHtmlPreviewModal({
                   onClick={() => setViewport('tablet')}
                   className={clsx(
                     "p-1.5 rounded-md transition-colors cursor-pointer",
-                    viewport === 'tablet' ? "bg-white/10 text-white" : "text-slate-400 hover:text-white"
+                    viewport === 'tablet' ? "bg-white/10 text-[#1F1E1D]" : "text-[#6B6A67] hover:text-[#1F1E1D]"
                   )}
                   title="Tablet (768px)"
                 >
@@ -165,7 +165,7 @@ export function LiveHtmlPreviewModal({
                   onClick={() => setViewport('mobile')}
                   className={clsx(
                     "p-1.5 rounded-md transition-colors cursor-pointer",
-                    viewport === 'mobile' ? "bg-white/10 text-white" : "text-slate-400 hover:text-white"
+                    viewport === 'mobile' ? "bg-white/10 text-[#1F1E1D]" : "text-[#6B6A67] hover:text-[#1F1E1D]"
                   )}
                   title="Mobile (375px)"
                 >
@@ -179,35 +179,35 @@ export function LiveHtmlPreviewModal({
           <div className="flex items-center gap-1 sm:gap-2">
             <button
               onClick={() => setKey(k => k + 1)}
-              className="p-2 rounded-lg text-slate-400 hover:text-white hover:bg-white/5 transition-colors cursor-pointer"
+              className="p-2 rounded-lg text-[#6B6A67] hover:text-[#1F1E1D] hover:bg-white/5 transition-colors cursor-pointer"
               title="Reload sandbox"
             >
               <RefreshCw size={15} />
             </button>
             <button
               onClick={handleCopyCode}
-              className="p-2 rounded-lg text-slate-400 hover:text-white hover:bg-white/5 transition-colors cursor-pointer"
+              className="p-2 rounded-lg text-[#6B6A67] hover:text-[#1F1E1D] hover:bg-white/5 transition-colors cursor-pointer"
               title="Copy code"
             >
               {copied ? <Check size={15} className="text-emerald-400" /> : <Copy size={15} />}
             </button>
             <button
               onClick={handleDownload}
-              className="p-2 rounded-lg text-slate-400 hover:text-white hover:bg-white/5 transition-colors cursor-pointer"
+              className="p-2 rounded-lg text-[#6B6A67] hover:text-[#1F1E1D] hover:bg-white/5 transition-colors cursor-pointer"
               title="Download HTML file"
             >
               <Download size={15} />
             </button>
             <button
               onClick={() => setIsFullScreen(!isFullScreen)}
-              className="p-2 rounded-lg text-slate-400 hover:text-white hover:bg-white/5 transition-colors cursor-pointer hidden sm:inline-flex"
+              className="p-2 rounded-lg text-[#6B6A67] hover:text-[#1F1E1D] hover:bg-white/5 transition-colors cursor-pointer hidden sm:inline-flex"
               title={isFullScreen ? "Exit Fullscreen" : "Fullscreen"}
             >
               {isFullScreen ? <Minimize2 size={15} /> : <Maximize2 size={15} />}
             </button>
             <button
               onClick={onClose}
-              className="p-2 rounded-lg text-slate-400 hover:text-white hover:bg-red-500/20 hover:text-red-400 transition-colors cursor-pointer ml-1"
+              className="p-2 rounded-lg text-[#6B6A67] hover:text-[#1F1E1D] hover:bg-red-500/20 hover:text-red-400 transition-colors cursor-pointer ml-1"
               title="Close Sandbox"
             >
               <X size={17} />
@@ -216,9 +216,9 @@ export function LiveHtmlPreviewModal({
         </header>
 
         {/* Content Area */}
-        <div className="flex-1 min-h-0 relative flex flex-col bg-[#050608] overflow-hidden">
+        <div className="flex-1 min-h-0 relative flex flex-col bg-[#FAF9F5] overflow-hidden">
           {activeTab === 'preview' ? (
-            <div className="flex-1 w-full h-full flex items-center justify-center p-2 sm:p-4 overflow-auto bg-[#0a0c12]">
+            <div className="flex-1 w-full h-full flex items-center justify-center p-2 sm:p-4 overflow-auto bg-[#FAF9F5]">
               <div 
                 className={clsx(
                   "h-full transition-all duration-300 bg-white rounded-xl shadow-2xl overflow-hidden flex flex-col border border-white/20",
@@ -239,26 +239,26 @@ export function LiveHtmlPreviewModal({
             </div>
           ) : (
             <div className="flex-1 w-full h-full flex flex-col p-3">
-              <div className="text-xs text-slate-400 mb-2 flex items-center justify-between font-mono">
+              <div className="text-xs text-[#6B6A67] mb-2 flex items-center justify-between font-mono">
                 <span>Direct HTML/CSS/JS Editor · Real-time live reload active</span>
                 <span className="text-slate-500">{htmlCode.length} chars</span>
               </div>
               <textarea
                 value={htmlCode}
                 onChange={(e) => setHtmlCode(e.target.value)}
-                className="flex-1 w-full p-4 bg-[#0a0c10] border border-white/10 rounded-xl text-slate-200 font-mono text-xs leading-relaxed focus:outline-none focus:border-blue-500/60 resize-none"
+                className="flex-1 w-full p-4 bg-[#FAF9F5] border border-white/10 rounded-xl text-slate-200 font-mono text-xs leading-relaxed focus:outline-none focus:border-blue-500/60 resize-none"
                 spellCheck={false}
               />
             </div>
           )}
 
           {/* Collapsible Sandbox Console Drawer */}
-          <div className="shrink-0 border-t border-white/10 bg-[#0d0e14]">
+          <div className="shrink-0 border-t border-white/10 bg-[#FAF9F5]">
             <div 
               onClick={() => setIsConsoleOpen(!isConsoleOpen)}
               className="h-8 px-4 flex items-center justify-between cursor-pointer hover:bg-white/5 select-none transition-colors"
             >
-              <div className="flex items-center gap-2 text-xs font-mono text-slate-400">
+              <div className="flex items-center gap-2 text-xs font-mono text-[#6B6A67]">
                 <Terminal size={12} className="text-amber-400" />
                 <span>Console Logs ({consoleLogs.length})</span>
                 {consoleLogs.some(l => l.type === 'error') && (
@@ -284,7 +284,7 @@ export function LiveHtmlPreviewModal({
                         "flex items-start gap-2 text-[11px]",
                         log.type === 'error' && "text-red-400",
                         log.type === 'warn' && "text-amber-300",
-                        log.type === 'log' && "text-slate-300"
+                        log.type === 'log' && "text-[#6B6A67]"
                       )}
                     >
                       <span className="text-slate-600 shrink-0 text-[10px]">{log.time}</span>

@@ -215,11 +215,11 @@ export function CodingActivityPanel({
   };
 
   return (
-    <div className="my-3 rounded-2xl border border-[#38383b] bg-[#1a1a1c]/95 overflow-hidden shadow-2xl text-xs w-full max-w-2xl font-sans transition-all">
+    <div className="my-3 rounded-2xl border border-[#3D3929] bg-[#1F1E1D]/95 overflow-hidden shadow-2xl text-xs w-full max-w-2xl font-sans transition-all">
       {/* 1. Header: GitHub Mode & Target Repo */}
-      <div className="bg-[#202022] border-b border-[#38383b] px-3.5 py-2.5 flex items-center justify-between gap-2">
+      <div className="bg-[#1F1E1D] border-b border-[#3D3929] px-3.5 py-2.5 flex items-center justify-between gap-2">
         <div className="flex items-center gap-2">
-          <div className="w-6 h-6 rounded-lg bg-black border border-[#38383b] flex items-center justify-center text-white shrink-0">
+          <div className="w-6 h-6 rounded-lg bg-black border border-[#3D3929] flex items-center justify-center text-white shrink-0">
             <svg className="w-3.5 h-3.5 fill-current" viewBox="0 0 24 24">
               <path
                 fillRule="evenodd"
@@ -229,14 +229,14 @@ export function CodingActivityPanel({
             </svg>
           </div>
           <div className="flex items-center gap-1.5">
-            <span className="font-bold text-white tracking-wide text-xs">GitHub:</span>
+            <span className="font-bold text-[#1F1E1D] tracking-wide text-xs">GitHub:</span>
             {codingModeEnabled ? (
               <span className="px-2 py-0.5 rounded-full bg-emerald-950/80 border border-emerald-700/60 text-emerald-400 font-bold text-[10px] flex items-center gap-1">
                 <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
                 ON
               </span>
             ) : (
-              <span className="px-2 py-0.5 rounded-full bg-[#252527] border border-[#38383b] text-[#8d8d91] font-bold text-[10px]">
+              <span className="px-2 py-0.5 rounded-full bg-[#1F1E1D] border border-[#3D3929] text-[#E8E4D9] font-bold text-[10px]">
                 OFF
               </span>
             )}
@@ -245,10 +245,10 @@ export function CodingActivityPanel({
         </div>
 
         {activeRepo ? (
-          <div className="flex items-center gap-1.5 font-mono text-[11px] text-[#8d8d91] truncate">
-            <span className="text-white font-medium truncate">{activeRepo.owner}/{activeRepo.repo}</span>
+          <div className="flex items-center gap-1.5 font-mono text-[11px] text-[#6B6A67] truncate">
+            <span className="text-[#1F1E1D] font-medium truncate">{activeRepo.owner}/{activeRepo.repo}</span>
             <span>/</span>
-            <span className="text-[#3f86ff] flex items-center gap-0.5 shrink-0">
+            <span className="text-[#D97757] flex items-center gap-0.5 shrink-0">
               <GitBranch size={11} />
               {activeRepo.branch}
             </span>
@@ -259,7 +259,7 @@ export function CodingActivityPanel({
       </div>
 
       {/* 2. Autonomous Workflow Phase Tracker */}
-      <div className="bg-[#121214] px-3.5 py-2 border-b border-[#38383b]/50 overflow-x-auto scrollbar-none">
+      <div className="bg-[#FAF9F5] px-3.5 py-2 border-b border-[#3D3929]/50 overflow-x-auto scrollbar-none">
         <div className="flex items-center gap-1 min-w-max">
           {WORKFLOW_PHASES.map((phase, idx) => {
             const isCurrent = currentPhase === phase;
@@ -270,17 +270,17 @@ export function CodingActivityPanel({
                 <div
                   className={`flex items-center gap-1 px-2 py-0.5 rounded-md font-mono text-[9px] uppercase tracking-wider transition-colors ${
                     isCurrent
-                      ? 'bg-[#3f86ff]/20 text-[#3f86ff] font-bold border border-[#3f86ff]/50'
+                      ? 'bg-[#D97757]/20 text-[#D97757] font-bold border border-[#D97757]/50'
                       : isPassed
                       ? 'text-emerald-400 font-medium'
-                      : 'text-[#5d5d62]'
+                      : 'text-[#6B6A67]'
                   }`}
                 >
                   {isPassed ? <Check size={8} className="text-emerald-400" /> : null}
                   <span>{phase}</span>
                 </div>
                 {idx < WORKFLOW_PHASES.length - 1 && (
-                  <span className="text-[#38383b] text-[10px]">→</span>
+                  <span className="text-[#3D3929] text-[10px]">→</span>
                 )}
               </React.Fragment>
             );
@@ -307,11 +307,11 @@ export function CodingActivityPanel({
       )}
 
       {/* 3. Current Task */}
-      <div className="p-3.5 border-b border-[#38383b]/60 space-y-1">
-        <span className="text-[10px] font-bold uppercase tracking-wider text-[#8d8d91] block">
+      <div className="p-3.5 border-b border-[#3D3929]/60 space-y-1">
+        <span className="text-[10px] font-bold uppercase tracking-wider text-[#6B6A67] block">
           Current Task
         </span>
-        <p className="text-sm font-semibold text-white tracking-tight">
+        <p className="text-sm font-semibold text-[#1F1E1D] tracking-tight">
           "{activity.task}"
         </p>
         {activity.activeFile && (
@@ -324,21 +324,21 @@ export function CodingActivityPanel({
 
       {/* 4. Internal Tool / Action Records */}
       {activity.actions && activity.actions.length > 0 && (
-        <div className="p-3.5 border-b border-[#38383b]/60 space-y-2 bg-black/20">
+        <div className="p-3.5 border-b border-[#3D3929]/60 space-y-2 bg-black/20">
           <div
             className="flex items-center justify-between cursor-pointer select-none"
             onClick={() => setShowActionsDropdown(!showActionsDropdown)}
           >
             <div className="flex items-center gap-1.5">
-              <Activity size={12} className="text-[#3f86ff]" />
-              <span className="text-[10px] font-bold uppercase tracking-wider text-[#8d8d91]">
+              <Activity size={12} className="text-[#D97757]" />
+              <span className="text-[10px] font-bold uppercase tracking-wider text-[#6B6A67]">
                 Tool Action Records ({activity.actions.length})
               </span>
             </div>
             {showActionsDropdown ? (
-              <ChevronUp size={13} className="text-[#8d8d91]" />
+              <ChevronUp size={13} className="text-[#6B6A67]" />
             ) : (
-              <ChevronDown size={13} className="text-[#8d8d91]" />
+              <ChevronDown size={13} className="text-[#6B6A67]" />
             )}
           </div>
 
@@ -347,17 +347,17 @@ export function CodingActivityPanel({
               {activity.actions.map((act, idx) => (
                 <div
                   key={idx}
-                  className="flex items-center justify-between p-2 rounded-lg bg-[#141416] border border-[#38383b]/40 font-mono text-[11px]"
+                  className="flex items-center justify-between p-2 rounded-lg bg-[#FAF9F5] border border-[#3D3929]/40 font-mono text-[11px]"
                 >
                   <div className="flex items-center gap-2 truncate">
-                    <span className="px-1.5 py-0.5 rounded bg-[#252528] text-[#3f86ff] text-[10px] font-semibold">
+                    <span className="px-1.5 py-0.5 rounded bg-[#FFFFFF] text-[#D97757] text-[10px] font-semibold">
                       {act.tool}
                     </span>
                     <span className="text-slate-200 truncate">{act.action}</span>
                   </div>
                   <div className="flex items-center gap-1.5 shrink-0">
                     {act.phase && (
-                      <span className="text-[9px] text-[#8d8d91] font-bold">[{act.phase}]</span>
+                      <span className="text-[9px] text-[#6B6A67] font-bold">[{act.phase}]</span>
                     )}
                     <span
                       className={`w-2 h-2 rounded-full ${
@@ -377,8 +377,8 @@ export function CodingActivityPanel({
       )}
 
       {/* 5. Activity Steps */}
-      <div className="p-3.5 border-b border-[#38383b]/60 space-y-2">
-        <span className="text-[10px] font-bold uppercase tracking-wider text-[#8d8d91] block">
+      <div className="p-3.5 border-b border-[#3D3929]/60 space-y-2">
+        <span className="text-[10px] font-bold uppercase tracking-wider text-[#6B6A67] block">
           Workflow Steps
         </span>
         <div className="space-y-1.5">
@@ -395,18 +395,18 @@ export function CodingActivityPanel({
 
       {/* 6. Changed Files */}
       {activity.changedFiles && activity.changedFiles.length > 0 && (
-        <div className="p-3.5 border-b border-[#38383b]/60 space-y-2">
-          <span className="text-[10px] font-bold uppercase tracking-wider text-[#8d8d91] block">
+        <div className="p-3.5 border-b border-[#3D3929]/60 space-y-2">
+          <span className="text-[10px] font-bold uppercase tracking-wider text-[#6B6A67] block">
             Changed Files ({activity.changedFiles.length})
           </span>
           <div className="space-y-1">
             {activity.changedFiles.map((file, idx) => (
               <div
                 key={idx}
-                className="flex items-center justify-between font-mono text-[11px] text-slate-300 bg-black/40 px-2.5 py-1.5 rounded-lg border border-[#38383b]/50"
+                className="flex items-center justify-between font-mono text-[11px] text-[#6B6A67] bg-black/40 px-2.5 py-1.5 rounded-lg border border-[#3D3929]/50"
               >
                 <div className="flex items-center gap-2 truncate">
-                  <span className="text-[#3f86ff] font-bold">•</span>
+                  <span className="text-[#D97757] font-bold">•</span>
                   <span className="truncate">{file}</span>
                 </div>
                 {commitSuccessUrls[file] ? (
@@ -429,7 +429,7 @@ export function CodingActivityPanel({
       {/* 7. Verification Status Badge */}
       {activity.verification && (
         <div
-          className={`px-3.5 py-2 border-b border-[#38383b]/40 flex items-center justify-between text-[11px] ${
+          className={`px-3.5 py-2 border-b border-[#3D3929]/40 flex items-center justify-between text-[11px] ${
             activity.verification.passed
               ? 'bg-emerald-950/20 text-emerald-300'
               : 'bg-red-950/20 text-red-300'
@@ -451,20 +451,20 @@ export function CodingActivityPanel({
 
       {/* 8. Summary */}
       {activity.summary && (
-        <div className="px-3.5 py-2.5 bg-black/30 border-b border-[#38383b]/40 text-[11px] text-slate-300">
+        <div className="px-3.5 py-2.5 bg-black/30 border-b border-[#3D3929]/40 text-[11px] text-[#6B6A67]">
           {activity.summary}
         </div>
       )}
 
       {/* Terminal capability disclaimer (honest & unblurred) */}
-      <div className="px-3.5 py-1.5 bg-[#121214] text-[10px] text-[#8d8d91] border-b border-[#38383b]/40 flex items-center justify-between">
+      <div className="px-3.5 py-1.5 bg-[#FAF9F5] text-[10px] text-[#6B6A67] border-b border-[#3D3929]/40 flex items-center justify-between">
         <div className="flex items-center gap-1.5">
-          <Terminal size={11} className="text-[#5d5d62]" />
+          <Terminal size={11} className="text-[#6B6A67]" />
           <span>
-            Terminal execution: <strong className="text-slate-300">Unavailable</strong> (No local shell execution simulated)
+            Terminal execution: <strong className="text-[#6B6A67]">Unavailable</strong> (No local shell execution simulated)
           </span>
         </div>
-        <span className="text-[9px] text-[#5d5d62]">VOID Agent Core v2.0</span>
+        <span className="text-[9px] text-[#6B6A67]">VOID Agent Core v2.0</span>
       </div>
 
       {/* Commit error message */}
@@ -476,11 +476,11 @@ export function CodingActivityPanel({
       )}
 
       {/* 9. Action Buttons */}
-      <div className="p-3 bg-[#1e1e20] flex items-center justify-between gap-2">
+      <div className="p-3 bg-[#FFFFFF] flex items-center justify-between gap-2">
         <button
           onClick={() => setShowChangesModal(true)}
           disabled={!activity.filesData || activity.filesData.length === 0}
-          className="px-3 py-1.5 rounded-lg bg-[#2a2a2d] hover:bg-[#343438] text-white font-medium text-xs flex items-center gap-1.5 transition-colors cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed border border-[#38383b]"
+          className="px-3 py-1.5 rounded-lg bg-[#3D3929] hover:bg-[#FFFFFF] text-[#1F1E1D] font-medium text-xs flex items-center gap-1.5 transition-colors cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed border border-[#3D3929]"
         >
           <Eye size={13} />
           <span>Inspect Changes ({activity.filesData?.length || 0})</span>
@@ -492,8 +492,8 @@ export function CodingActivityPanel({
             disabled={isCommitting || allCommitted}
             className={`px-3 py-1.5 rounded-lg font-bold text-xs flex items-center gap-1.5 transition-colors cursor-pointer shadow-md ${
               allCommitted
-                ? 'bg-emerald-600 text-white cursor-default'
-                : 'bg-[#3f86ff] hover:bg-[#3270d8] text-white disabled:opacity-50'
+                ? 'bg-emerald-600 text-[#1F1E1D] cursor-default'
+                : 'bg-[#D97757] hover:bg-[#E8E4D9] text-white disabled:opacity-50'
             }`}
           >
             {isCommitting ? (
@@ -519,18 +519,18 @@ export function CodingActivityPanel({
       {/* Changes Modal */}
       {showChangesModal && activity.filesData && activity.filesData.length > 0 && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
-          <div className="bg-[#18181a] border border-[#38383b] rounded-2xl w-full max-w-4xl max-h-[85vh] flex flex-col shadow-2xl overflow-hidden animate-in fade-in zoom-in-95">
+          <div className="bg-[#FAF9F5] border border-[#3D3929] rounded-2xl w-full max-w-4xl max-h-[85vh] flex flex-col shadow-2xl overflow-hidden animate-in fade-in zoom-in-95">
             {/* Modal Header */}
-            <div className="p-4 border-b border-[#38383b] flex items-center justify-between bg-[#202022]">
+            <div className="p-4 border-b border-[#3D3929] flex items-center justify-between bg-[#1F1E1D]">
               <div className="flex items-center gap-2">
-                <FileCode size={18} className="text-[#3f86ff]" />
-                <h3 className="font-bold text-white text-sm">
+                <FileCode size={18} className="text-[#D97757]" />
+                <h3 className="font-bold text-[#1F1E1D] text-sm">
                   Generated Changes: {activity.task}
                 </h3>
               </div>
               <button
                 onClick={() => setShowChangesModal(false)}
-                className="text-[#8d8d91] hover:text-white p-1 rounded-lg hover:bg-white/5 transition-colors cursor-pointer text-sm"
+                className="text-[#6B6A67] hover:text-[#1F1E1D] p-1 rounded-lg hover:bg-white/5 transition-colors cursor-pointer text-sm"
               >
                 ✕
               </button>
@@ -539,15 +539,15 @@ export function CodingActivityPanel({
             {/* Modal Body: File Tabs + Code Viewer */}
             <div className="flex-1 overflow-hidden flex flex-col p-4 space-y-3">
               {/* File selector tabs */}
-              <div className="flex items-center gap-1.5 overflow-x-auto pb-1 border-b border-[#38383b]/60">
+              <div className="flex items-center gap-1.5 overflow-x-auto pb-1 border-b border-[#3D3929]/60">
                 {activity.filesData.map((f, idx) => (
                   <button
                     key={idx}
                     onClick={() => setSelectedFileIdx(idx)}
                     className={`px-3 py-1.5 rounded-lg text-xs font-mono transition-colors flex items-center gap-1.5 shrink-0 cursor-pointer ${
                       selectedFileIdx === idx
-                        ? 'bg-[#3f86ff] text-white font-bold'
-                        : 'bg-[#252528] text-slate-300 hover:bg-[#303034]'
+                        ? 'bg-[#D97757] text-white font-bold'
+                        : 'bg-[#FFFFFF] text-[#6B6A67] hover:bg-[#FFFFFF]'
                     }`}
                   >
                     <span>{f.path}</span>
@@ -559,7 +559,7 @@ export function CodingActivityPanel({
               </div>
 
               {/* Code Viewer */}
-              <div className="flex-1 overflow-y-auto rounded-xl border border-[#38383b] bg-black/60 p-1">
+              <div className="flex-1 overflow-y-auto rounded-xl border border-[#3D3929] bg-black/60 p-1">
                 <CodeBlock
                   language={
                     activity.filesData[selectedFileIdx]?.path.split('.').pop() || 'typescript'
@@ -570,14 +570,14 @@ export function CodingActivityPanel({
             </div>
 
             {/* Modal Footer */}
-            <div className="p-4 border-t border-[#38383b] flex items-center justify-between bg-[#202022]">
-              <span className="text-xs text-[#8d8d91]">
+            <div className="p-4 border-t border-[#3D3929] flex items-center justify-between bg-[#1F1E1D]">
+              <span className="text-xs text-[#6B6A67]">
                 Target: {repoName} ({branchName})
               </span>
               <div className="flex items-center gap-2">
                 <button
                   onClick={() => setShowChangesModal(false)}
-                  className="px-4 py-2 rounded-xl bg-[#2a2a2d] hover:bg-[#343438] text-white text-xs font-semibold transition-colors cursor-pointer"
+                  className="px-4 py-2 rounded-xl bg-[#3D3929] hover:bg-[#FFFFFF] text-[#1F1E1D] text-xs font-semibold transition-colors cursor-pointer"
                 >
                   Close
                 </button>
@@ -585,7 +585,7 @@ export function CodingActivityPanel({
                   <button
                     onClick={handleCommitAll}
                     disabled={isCommitting || allCommitted}
-                    className="px-4 py-2 rounded-xl bg-[#3f86ff] hover:bg-[#3270d8] text-white text-xs font-bold transition-colors cursor-pointer disabled:opacity-50 flex items-center gap-1.5 shadow-md"
+                    className="px-4 py-2 rounded-xl bg-[#D97757] hover:bg-[#E8E4D9] text-white text-xs font-bold transition-colors cursor-pointer disabled:opacity-50 flex items-center gap-1.5 shadow-md"
                   >
                     {isCommitting ? (
                       <>

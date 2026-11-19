@@ -112,10 +112,10 @@ export function SubscriptionModal({ userId, walletBalance = 0, onClose, currentT
         'Basic email campaign generator',
         'Community user support'
       ],
-      border: 'border-[#38383b]',
-      bg: 'bg-[#202022]/80',
-      badgeBg: 'bg-[#38383b] text-white',
-      buttonStyle: 'bg-[#38383b] hover:bg-[#454547] text-white'
+      border: 'border-[#3D3929]',
+      bg: 'bg-[#1F1E1D]/80',
+      badgeBg: 'bg-[#3D3929] text-[#1F1E1D]',
+      buttonStyle: 'bg-[#3D3929] hover:bg-[#F0EEE5] text-[#1F1E1D]'
     },
     {
       id: 'pro' as UserTier,
@@ -135,7 +135,7 @@ export function SubscriptionModal({ userId, walletBalance = 0, onClose, currentT
       border: 'border-blue-600/80',
       bg: 'bg-blue-950/20',
       badgeBg: 'bg-blue-950 text-blue-300 border border-blue-700',
-      buttonStyle: 'bg-blue-600 hover:bg-blue-500 text-white font-bold',
+      buttonStyle: 'bg-blue-600 hover:bg-blue-500 text-[#1F1E1D] font-bold',
       popular: true
     },
     {
@@ -176,36 +176,36 @@ export function SubscriptionModal({ userId, walletBalance = 0, onClose, currentT
       border: 'border-purple-600/80',
       bg: 'bg-purple-950/20',
       badgeBg: 'bg-purple-950 text-purple-300 border border-purple-700',
-      buttonStyle: 'bg-purple-600 hover:bg-purple-500 text-white font-bold'
+      buttonStyle: 'bg-purple-600 hover:bg-purple-500 text-[#1F1E1D] font-bold'
     }
   ];
 
   return (
-    <div className="fixed inset-0 z-50 bg-[#050205] overflow-y-auto min-h-screen text-white flex flex-col animate-fadeIn selection:bg-[#202022] selection:text-white">
+    <div className="fixed inset-0 z-50 bg-[#1F1E1D] overflow-y-auto min-h-screen text-white flex flex-col animate-fadeIn selection:bg-[#1F1E1D] selection:text-white">
       
       {/* Top Header Navigation */}
-      <header className="sticky top-0 z-40 bg-black/95 border-b border-[#38383b]  px-3 sm:px-6 py-2.5 flex items-center justify-between ">
+      <header className="sticky top-0 z-40 bg-black/95 border-b border-[#3D3929]  px-3 sm:px-6 py-2.5 flex items-center justify-between ">
         <div className="flex items-center gap-3">
           <button
             onClick={onClose}
-            className="flex items-center gap-1.5 px-2.5 py-1.5 bg-[#252527] hover:bg-[#202022] border border-[#38383b] text-[#8d8d91] hover:text-white font-bold text-[11px] rounded-lg transition-all cursor-pointer  group"
+            className="flex items-center gap-1.5 px-2.5 py-1.5 bg-[#1F1E1D] hover:bg-[#1F1E1D] border border-[#3D3929] text-[#E8E4D9] hover:text-white font-bold text-[11px] rounded-lg transition-all cursor-pointer  group"
           >
             <ArrowLeft size={14} className="group-hover:-translate-x-0.5 transition-transform" />
             <span className="uppercase tracking-wider">Back</span>
           </button>
 
-          <div className="h-5 w-px bg-[#252527] hidden sm:block" />
+          <div className="h-5 w-px bg-[#1F1E1D] hidden sm:block" />
 
           <div className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-lg bg-[#2b0709] border border-[#3f86ff] p-1.5 shadow-[0_0_15px_rgba(220,38,38,0.4)] flex items-center justify-center text-[#8d8d91] shrink-0">
+            <div className="w-8 h-8 rounded-lg bg-[#FAF9F5] border border-[#D97757] p-1.5 shadow-[0_0_15px_rgba(220,38,38,0.4)] flex items-center justify-center text-[#6B6A67] shrink-0">
               <Crown size={18} />
             </div>
             <div>
               <div className="flex items-center gap-1.5 flex-wrap">
-                <h1 className="text-xs sm:text-sm font-black text-[#3f86ff] uppercase tracking-widest drop-shadow">
+                <h1 className="text-xs sm:text-sm font-black text-[#D97757] uppercase tracking-widest drop-shadow">
                   SUBSCRIPTION & WALLET STORE
                 </h1>
-                <span className="text-[9px] px-2 py-0.2 rounded-full bg-[#252527] text-[#8d8d91] border border-[#38383b] font-bold uppercase tracking-wider">
+                <span className="text-[9px] px-2 py-0.2 rounded-full bg-[#1F1E1D] text-[#E8E4D9] border border-[#3D3929] font-bold uppercase tracking-wider">
                   ACTIVE: {currentTier.toUpperCase()}
                 </span>
               </div>
@@ -215,11 +215,11 @@ export function SubscriptionModal({ userId, walletBalance = 0, onClose, currentT
 
         {/* Right Live Wallet Balance Badge */}
         <div className="flex items-center gap-2">
-          <div className="px-2.5 py-1 bg-[#252527] border border-[#38383b] rounded-lg flex items-center gap-2 ">
-            <Wallet size={14} className="text-[#8d8d91]" />
+          <div className="px-2.5 py-1 bg-[#1F1E1D] border border-[#3D3929] rounded-lg flex items-center gap-2 ">
+            <Wallet size={14} className="text-[#6B6A67]" />
             <div>
-              <div className="text-[8px] text-[#8d8d91] font-bold uppercase tracking-widest">BALANCE</div>
-              <div className="text-xs font-black text-[#8d8d91] ">₦{walletBalance.toLocaleString()}</div>
+              <div className="text-[8px] text-[#6B6A67] font-bold uppercase tracking-widest">BALANCE</div>
+              <div className="text-xs font-black text-[#6B6A67] ">₦{walletBalance.toLocaleString()}</div>
             </div>
           </div>
 
@@ -227,7 +227,7 @@ export function SubscriptionModal({ userId, walletBalance = 0, onClose, currentT
             href="https://t.me/nova_tech_1"
             target="_blank"
             rel="noreferrer"
-            className="px-2.5 py-1.5 bg-[#3f86ff] hover:bg-[#3f86ff] border border-[#3f86ff] text-white font-bold text-[10px] rounded-lg transition-all flex items-center gap-1.5 cursor-pointer uppercase tracking-wider shrink-0 "
+            className="px-2.5 py-1.5 bg-[#D97757] hover:bg-[#D97757] border border-[#D97757] text-white font-bold text-[10px] rounded-lg transition-all flex items-center gap-1.5 cursor-pointer uppercase tracking-wider shrink-0 "
           >
             <Send size={12} />
             <span className="hidden sm:inline">Fund Wallet</span>
@@ -239,14 +239,14 @@ export function SubscriptionModal({ userId, walletBalance = 0, onClose, currentT
       <main className="max-w-6xl mx-auto w-full p-3 sm:p-5 space-y-4 flex-1">
         
         {/* Banner with Billing Toggle and Wallet Summary */}
-        <div className="p-3.5 bg-gradient-to-r from-[#202022]/90 via-[#2b0709] to-[#202022] border border-[#38383b] rounded-xl flex flex-col lg:flex-row items-start lg:items-center justify-between gap-3 shadow-xl">
+        <div className="p-3.5 bg-gradient-to-r from-[#FFFFFF]/90 via-[#FAF9F5] to-[#FFFFFF] border border-[#3D3929] rounded-xl flex flex-col lg:flex-row items-start lg:items-center justify-between gap-3 shadow-xl">
           <div className="space-y-0.5 max-w-lg">
-            <h2 className="text-xs sm:text-sm font-black text-white uppercase tracking-wider flex items-center gap-1.5">
+            <h2 className="text-xs sm:text-sm font-black text-[#1F1E1D] uppercase tracking-wider flex items-center gap-1.5">
               <Sparkles className="text-amber-400" size={16} />
               <span>DIRECT WALLET PURCHASES</span>
             </h2>
-            <p className="text-[11px] text-white leading-snug">
-              Instant plan upgrades using account wallet. Need top-ups? Contact Admin (<strong className="text-[#8d8d91]">@nova_tech_1</strong>).
+            <p className="text-[11px] text-[#1F1E1D] leading-snug">
+              Instant plan upgrades using account wallet. Need top-ups? Contact Admin (<strong className="text-[#6B6A67]">@nova_tech_1</strong>).
             </p>
           </div>
 
@@ -254,19 +254,19 @@ export function SubscriptionModal({ userId, walletBalance = 0, onClose, currentT
             {/* History Toggle Button */}
             <button
               onClick={() => setShowHistory(!showHistory)}
-              className="px-2.5 py-1 bg-[#252527] border border-[#38383b] hover:border-zinc-500 text-white text-[10px] font-bold rounded-lg transition-all flex items-center gap-1.5 cursor-pointer uppercase tracking-wider"
+              className="px-2.5 py-1 bg-[#1F1E1D] border border-[#3D3929] hover:border-zinc-500 text-white text-[10px] font-bold rounded-lg transition-all flex items-center gap-1.5 cursor-pointer uppercase tracking-wider"
             >
               <History size={13} className="text-amber-400" />
               <span>{showHistory ? 'Hide' : 'Logs'}</span>
             </button>
 
             {/* Monthly / Yearly Billing Toggle */}
-            <div className="flex items-center gap-1 bg-black/90 border border-[#38383b] p-1 rounded-xl">
+            <div className="flex items-center gap-1 bg-black/90 border border-[#3D3929] p-1 rounded-xl">
               <button
                 onClick={() => setBillingCycle('monthly')}
                 className={clsx(
                   "px-2.5 py-1 rounded-lg text-[10px] font-bold transition-all cursor-pointer uppercase tracking-wider",
-                  !isYearly ? "bg-[#3f86ff] text-white shadow" : "text-[#8d8d91] hover:text-white"
+                  !isYearly ? "bg-[#D97757] text-white shadow" : "text-[#E8E4D9] hover:text-white"
                 )}
               >
                 Monthly
@@ -275,7 +275,7 @@ export function SubscriptionModal({ userId, walletBalance = 0, onClose, currentT
                 onClick={() => setBillingCycle('yearly')}
                 className={clsx(
                   "px-2.5 py-1 rounded-lg text-[10px] font-bold transition-all cursor-pointer flex items-center gap-1 uppercase tracking-wider",
-                  isYearly ? "bg-emerald-600 text-white shadow" : "text-[#8d8d91] hover:text-white"
+                  isYearly ? "bg-emerald-600 text-[#1F1E1D] shadow" : "text-[#6B6A67] hover:text-[#1F1E1D]"
                 )}
               >
                 <span>Yearly</span>
@@ -289,22 +289,22 @@ export function SubscriptionModal({ userId, walletBalance = 0, onClose, currentT
 
         {/* Wallet History Drawer */}
         {showHistory && (
-          <div className="p-5 bg-[#202022] border border-[#38383b] rounded-2xl space-y-3 animate-fadeIn">
+          <div className="p-5 bg-[#1F1E1D] border border-[#3D3929] rounded-2xl space-y-3 animate-fadeIn">
             <h3 className="text-xs font-bold text-amber-400 uppercase tracking-widest flex items-center gap-2">
               <History size={16} />
               <span>ACCOUNT WALLET TRANSACTION HISTORY</span>
             </h3>
             {txs.length === 0 ? (
-              <p className="text-xs text-[#8d8d91]">No transaction records found yet.</p>
+              <p className="text-xs text-[#6B6A67]">No transaction records found yet.</p>
             ) : (
               <div className="space-y-2 max-h-60 overflow-y-auto pr-2">
                 {txs.map((tx) => (
-                  <div key={tx.id} className="p-3 bg-[#252527]/90 border border-[#38383b] rounded-xl flex items-center justify-between text-xs">
+                  <div key={tx.id} className="p-3 bg-[#1F1E1D]/90 border border-[#3D3929] rounded-xl flex items-center justify-between text-xs">
                     <div>
-                      <div className="font-bold text-white">{tx.description}</div>
-                      <div className="text-[10px] text-[#8d8d91]">{new Date(tx.createdAt).toLocaleString()}</div>
+                      <div className="font-bold text-[#1F1E1D]">{tx.description}</div>
+                      <div className="text-[10px] text-[#6B6A67]">{new Date(tx.createdAt).toLocaleString()}</div>
                     </div>
-                    <div className={clsx("font-bold text-sm ", tx.amount >= 0 ? "text-emerald-400" : "text-[#8d8d91]")}>
+                    <div className={clsx("font-bold text-sm ", tx.amount >= 0 ? "text-emerald-400" : "text-[#6B6A67]")}>
                       {tx.amount >= 0 ? `+₦${tx.amount.toLocaleString()}` : `-₦${Math.abs(tx.amount).toLocaleString()}`}
                     </div>
                   </div>
@@ -331,7 +331,7 @@ export function SubscriptionModal({ userId, walletBalance = 0, onClose, currentT
                 )}
               >
                 {plan.popular && !isActive && (
-                  <div className="absolute top-0 right-0 bg-blue-600 text-white text-[8px] font-black uppercase tracking-widest py-0.5 px-2.5 rounded-bl-lg shadow">
+                  <div className="absolute top-0 right-0 bg-blue-600 text-[#1F1E1D] text-[8px] font-black uppercase tracking-widest py-0.5 px-2.5 rounded-bl-lg shadow">
                     POPULAR
                   </div>
                 )}
@@ -347,25 +347,25 @@ export function SubscriptionModal({ userId, walletBalance = 0, onClose, currentT
                     <span className={clsx("text-[10px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wider inline-block", plan.badgeBg)}>
                       {plan.name}
                     </span>
-                    <div className="text-xl sm:text-2xl font-black text-white tracking-tight">
+                    <div className="text-xl sm:text-2xl font-black text-[#1F1E1D] tracking-tight">
                       {plan.priceStr}
-                      <span className="text-[10px] text-[#8d8d91] font-normal ml-0.5 ">{plan.interval}</span>
+                      <span className="text-[10px] text-[#6B6A67] font-normal ml-0.5 ">{plan.interval}</span>
                     </div>
                     {plan.discountTag && (
                       <span className="inline-block text-[9px] bg-emerald-950 text-emerald-400 border border-emerald-700 px-1.5 py-0.2 rounded font-bold">
                         {plan.discountTag}
                       </span>
                     )}
-                    <p className="text-[11px] text-white leading-tight min-h-[28px]">
+                    <p className="text-[11px] text-[#1F1E1D] leading-tight min-h-[28px]">
                       {plan.description}
                     </p>
                   </div>
 
-                  <div className="pt-2 border-t border-[#38383b] space-y-1">
-                    <span className="text-[9px] font-bold text-[#8d8d91] uppercase tracking-widest block">INCLUDED:</span>
+                  <div className="pt-2 border-t border-[#3D3929] space-y-1">
+                    <span className="text-[9px] font-bold text-[#6B6A67] uppercase tracking-widest block">INCLUDED:</span>
                     <ul className="space-y-1">
                       {plan.features.map((feat, idx) => (
-                        <li key={idx} className="flex items-start gap-1.5 text-[11px] text-white">
+                        <li key={idx} className="flex items-start gap-1.5 text-[11px] text-[#1F1E1D]">
                           <Check size={12} className="text-emerald-400 shrink-0 mt-0.5" />
                           <span className="leading-tight">{feat}</span>
                         </li>
@@ -374,18 +374,18 @@ export function SubscriptionModal({ userId, walletBalance = 0, onClose, currentT
                   </div>
                 </div>
 
-                <div className="pt-3 mt-3 border-t border-[#38383b]/80 space-y-1.5">
+                <div className="pt-3 mt-3 border-t border-[#3D3929]/80 space-y-1.5">
                   {isActive ? (
                     <button
                       disabled
-                      className="w-full py-1.5 px-2.5 rounded-lg text-[10px] font-bold uppercase tracking-wider bg-[#38383b] text-[#8d8d91] border border-[#38383b] cursor-not-allowed opacity-60"
+                      className="w-full py-1.5 px-2.5 rounded-lg text-[10px] font-bold uppercase tracking-wider bg-[#3D3929] text-[#6B6A67] border border-[#3D3929] cursor-not-allowed opacity-60"
                     >
                       Active Plan
                     </button>
                   ) : plan.id === 'free' ? (
                     <button
                       onClick={() => handleWalletPurchase('free')}
-                      className="w-full py-1.5 px-2.5 rounded-lg text-[10px] font-bold uppercase tracking-wider bg-[#38383b] hover:bg-[#454547] text-white transition-all cursor-pointer"
+                      className="w-full py-1.5 px-2.5 rounded-lg text-[10px] font-bold uppercase tracking-wider bg-[#3D3929] hover:bg-[#F0EEE5] text-[#1F1E1D] transition-all cursor-pointer"
                     >
                       Switch to Free
                     </button>
@@ -398,8 +398,8 @@ export function SubscriptionModal({ userId, walletBalance = 0, onClose, currentT
                         className={clsx(
                           "w-full py-1.5 px-2.5 rounded-lg text-[10px] font-bold uppercase tracking-wider transition-all shadow flex items-center justify-center gap-1.5 cursor-pointer",
                           canAfford 
-                            ? "bg-emerald-600 hover:bg-emerald-500 text-white font-black" 
-                            : "bg-[#252527] border border-[#38383b] text-[#8d8d91] hover:bg-[#252527]/40",
+                            ? "bg-emerald-600 hover:bg-emerald-500 text-[#1F1E1D] font-black" 
+                            : "bg-[#1F1E1D] border border-[#3D3929] text-[#E8E4D9] hover:bg-[#1F1E1D]/40",
                           loadingTier === plan.id ? "animate-pulse" : ""
                         )}
                       >
@@ -416,7 +416,7 @@ export function SubscriptionModal({ userId, walletBalance = 0, onClose, currentT
                       {/* Request Admin Option */}
                       <button
                         onClick={() => handleRequestAdminUpgrade(plan.id)}
-                        className="w-full py-1 px-2 rounded-lg text-[9px] font-bold uppercase tracking-wider text-[#8d8d91] hover:text-white bg-black/60 hover:bg-[#38383b] border border-[#38383b] transition-colors flex items-center justify-center gap-1 cursor-pointer"
+                        className="w-full py-1 px-2 rounded-lg text-[9px] font-bold uppercase tracking-wider text-[#6B6A67] hover:text-white bg-black/60 hover:bg-[#3D3929] border border-[#3D3929] transition-colors flex items-center justify-center gap-1 cursor-pointer"
                       >
                         <Send size={10} />
                         <span>Fund via Admin</span>
@@ -430,17 +430,17 @@ export function SubscriptionModal({ userId, walletBalance = 0, onClose, currentT
         </div>
 
         {/* Admin Wallet Credit Info Card */}
-        <div className="p-6 bg-[#202022] border border-[#38383b] rounded-3xl flex flex-col md:flex-row items-start md:items-center justify-between gap-4 shadow-xl">
+        <div className="p-6 bg-[#1F1E1D] border border-[#3D3929] rounded-3xl flex flex-col md:flex-row items-start md:items-center justify-between gap-4 shadow-xl">
           <div className="flex items-center gap-3">
-            <div className="p-3 bg-[#252527] border border-[#38383b] text-[#8d8d91] rounded-2xl shrink-0">
+            <div className="p-3 bg-[#1F1E1D] border border-[#3D3929] text-[#E8E4D9] rounded-2xl shrink-0">
               <ShieldAlert size={22} />
             </div>
             <div>
-              <h3 className="text-sm font-bold text-white uppercase tracking-wider">
+              <h3 className="text-sm font-bold text-[#1F1E1D] uppercase tracking-wider">
                 Instant Account Wallet Top-Ups & Bank Transfers
               </h3>
-              <p className="text-xs text-[#8d8d91] leading-relaxed mt-0.5">
-                Send funds to Admin on Telegram (<strong className="text-[#8d8d91]">@nova_tech_1</strong>) or through the in-app support desk. Your wallet balance will be credited instantly upon confirmation.
+              <p className="text-xs text-[#6B6A67] leading-relaxed mt-0.5">
+                Send funds to Admin on Telegram (<strong className="text-[#6B6A67]">@nova_tech_1</strong>) or through the in-app support desk. Your wallet balance will be credited instantly upon confirmation.
               </p>
             </div>
           </div>
@@ -449,7 +449,7 @@ export function SubscriptionModal({ userId, walletBalance = 0, onClose, currentT
             href="https://t.me/nova_tech_1"
             target="_blank"
             rel="noreferrer"
-            className="px-5 py-3 bg-[#3f86ff] hover:opacity-90 text-white font-bold text-xs rounded-xl transition-all shadow-lg shrink-0 flex items-center gap-2 uppercase tracking-wider cursor-pointer"
+            className="px-5 py-3 bg-[#D97757] hover:opacity-90 text-white font-bold text-xs rounded-xl transition-all shadow-lg shrink-0 flex items-center gap-2 uppercase tracking-wider cursor-pointer"
           >
             <Send size={16} />
             <span>Fund Wallet (@nova_tech_1)</span>
@@ -458,7 +458,7 @@ export function SubscriptionModal({ userId, walletBalance = 0, onClose, currentT
       </main>
 
       {/* Footer */}
-      <footer className="border-t border-[#38383b] bg-[#2b0709] py-4 px-8 text-center text-xs text-[#8d8d91]">
+      <footer className="border-t border-[#3D3929] bg-[#FAF9F5] py-4 px-8 text-center text-xs text-[#6B6A67]">
         VOID AI Subscription & Account Wallet Desk • All Rights Reserved
       </footer>
     </div>

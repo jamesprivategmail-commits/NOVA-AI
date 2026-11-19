@@ -24,18 +24,18 @@ export function EditorCard({ event }: EditorCardProps) {
     <>
       <div 
         onClick={() => setShowDiff(true)}
-        className="w-full my-2 rounded-xl bg-[#161b22] hover:bg-[#1c2128] border border-[#30363d] hover:border-[#58a6ff]/60 px-3.5 py-2.5 flex items-center justify-between text-xs shadow-md transition-all cursor-pointer group select-none font-sans"
+        className="w-full my-2 rounded-xl bg-[#FFFFFF] hover:bg-[#FFFFFF] border border-[#FFFFFF] hover:border-[#58a6ff]/60 px-3.5 py-2.5 flex items-center justify-between text-xs shadow-md transition-all cursor-pointer group select-none font-sans"
         title="Click to view file diff"
       >
         <div className="flex items-center gap-2.5 min-w-0">
-          <div className="w-6 h-6 rounded-lg bg-[#21262d] border border-[#30363d] flex items-center justify-center text-[#58a6ff] shrink-0 group-hover:scale-105 transition-transform">
-            <span className="text-[#3f86ff] text-xs">✦</span>
+          <div className="w-6 h-6 rounded-lg bg-[#FFFFFF] border border-[#FFFFFF] flex items-center justify-center text-[#58a6ff] shrink-0 group-hover:scale-105 transition-transform">
+            <span className="text-[#D97757] text-xs">✦</span>
           </div>
 
           <div className="min-w-0">
             <div className="flex items-center gap-2 flex-wrap">
-              <span className="text-slate-300 font-medium">
-                {actionVerb} <span className="text-white font-mono font-semibold">"{event.filePath}"</span>
+              <span className="text-[#6B6A67] font-medium">
+                {actionVerb} <span className="text-[#1F1E1D] font-mono font-semibold">"{event.filePath}"</span>
               </span>
 
               {/* +24 -8 Diff badge */}
@@ -52,7 +52,7 @@ export function EditorCard({ event }: EditorCardProps) {
             </div>
 
             {event.summary && (
-              <p className="text-[10px] text-[#8d8d91] truncate max-w-sm mt-0.5">
+              <p className="text-[10px] text-[#6B6A67] truncate max-w-sm mt-0.5">
                 {event.summary}
               </p>
             )}
@@ -74,7 +74,7 @@ export function EditorCard({ event }: EditorCardProps) {
             <span className="text-[11px] text-rose-400 font-medium">Failed</span>
           )}
 
-          <ChevronRight size={14} className="text-[#8d8d91] group-hover:text-white transition-colors" />
+          <ChevronRight size={14} className="text-[#6B6A67] group-hover:text-[#1F1E1D] transition-colors" />
         </div>
       </div>
 

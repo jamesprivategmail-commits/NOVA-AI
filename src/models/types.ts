@@ -198,6 +198,135 @@ export type StructuredToolEvent =
   | BuildOrTestToolEvent
   | GenericToolEvent;
 
+export interface WebResearchSource {
+  url: string;
+  title: string;
+  snippet: string;
+  section?: string;
+  wordCount?: number;
+  isSubpage?: boolean;
+}
+
+export interface CouncilAgentDiscussion {
+  agentId: string;
+  agentName: string;
+  role: string;
+  provider: string;
+  modelUsed: string;
+  analysis: string;
+  proposedSubtask?: string;
+  durationMs: number;
+  status: 'thinking' | 'completed' | 'error';
+}
+
+export interface CouncilWorkerTask {
+  agentId: string;
+  agentName: string;
+  role: string;
+  taskTitle: string;
+  instruction: string;
+  provider: string;
+  modelUsed: string;
+  output: string;
+  durationMs: number;
+  status: 'pending' | 'running' | 'completed' | 'error';
+}
+
+export interface CouncilData {
+  phase: 'research' | 'discussion' | 'work' | 'synthesis' | 'done';
+  squadMemberIds: string[];
+  webSources?: WebResearchSource[];
+  totalPagesRead?: number;
+  discussions?: CouncilAgentDiscussion[];
+  tasks?: CouncilWorkerTask[];
+  leadAgentName?: string;
+  totalDurationMs?: number;
+}
+
+export type ArtifactKind =
+  | 'html'
+  | 'css'
+  | 'javascript'
+  | 'react'
+  | 'typescript'
+  | 'json'
+  | 'text'
+  | 'markdown'
+  | 'pdf'
+  | 'csv'
+  | 'xlsx'
+  | 'docx'
+  | 'image'
+  | 'svg'
+  | 'zip'
+  | 'code';
+
+export interface ArtifactZipEntryInfo {
+  path: string;
+  name: string;
+  size: number;
+  isText: boolean;
+}
+
+export interface ArtifactRecord {
+  id: string;
+  filename: string;
+  path: string;
+  mimeType: string;
+  extension: string;
+  kind: ArtifactKind;
+  size: number;
+  content?: string;
+  base64Data?: string;
+  isBinary?: boolean;
+  storageRef: string;
+  downloadUrl: string;
+  previewUrl?: string;
+  createdAt: number;
+  updatedAt?: number;
+  conversationId: string;
+  messageId?: string;
+  userId: string;
+  groupId?: string;
+  projectName?: string;
+  title?: string;
+  description?: string;
+  sourceProjectId?: string;
+  fileCount?: number;
+  zipEntries?: ArtifactZipEntryInfo[];
+  modifiedFiles?: string[];
+  preservedFiles?: string[];
+  extractedPreview?: string;
+}
+
+export interface MessageAttachmentMeta {
+  id: string;
+  artifactId?: string;
+  projectId?: string;
+  kind: 'image' | 'file' | 'zip';
+  name: string;
+  extension: string;
+  mimeType: string;
+  size: number;
+  fileCount?: number;
+  downloadUrl?: string;
+  previewUrl?: string;
+  extractedPreview?: string;
+}
+
+export interface ProjectGroupInfo {
+  groupId: string;
+  projectName: string;
+  sourceProjectId?: string;
+  zipArtifactId?: string;
+  zipFilename?: string;
+  zipSize?: number;
+  fileCount: number;
+  artifactIds: string[];
+  modifiedFiles?: string[];
+  preservedFiles?: string[];
+}
+
 export interface Message {
   id: string;
   chatId: string;
@@ -206,6 +335,7 @@ export interface Message {
   createdAt: number;
   thinking?: string;
   toolEvents?: StructuredToolEvent[];
+  councilData?: CouncilData;
   isToolEvent?: boolean;
   latencyMs?: number;
   ttftMs?: number;
@@ -214,6 +344,9 @@ export interface Message {
   modelUsed?: string;
   providerUsed?: string;
   isStarred?: boolean;
+  artifacts?: ArtifactRecord[];
+  attachments?: MessageAttachmentMeta[];
+  projectGroup?: ProjectGroupInfo;
 }
 
 export interface ExecutionGraphStep {

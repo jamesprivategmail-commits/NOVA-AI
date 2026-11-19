@@ -75,14 +75,14 @@ export function FileDiffModal({
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6 bg-black/75 backdrop-blur-sm animate-in fade-in duration-150">
       <div 
-        className="w-full max-w-4xl max-h-[90vh] bg-[#0d1117] border border-[#30363d] rounded-2xl shadow-2xl flex flex-col overflow-hidden font-mono"
+        className="w-full max-w-4xl max-h-[90vh] bg-[#FAF9F5] border border-[#FFFFFF] rounded-2xl shadow-2xl flex flex-col overflow-hidden font-mono"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
-        <div className="flex items-center justify-between px-4 py-3 bg-[#161b22] border-b border-[#30363d]">
+        <div className="flex items-center justify-between px-4 py-3 bg-[#FFFFFF] border-b border-[#FFFFFF]">
           <div className="flex items-center gap-2.5 min-w-0">
-            <FileCode size={16} className="text-[#3f86ff] shrink-0" />
-            <span className="font-semibold text-white text-xs sm:text-sm truncate">
+            <FileCode size={16} className="text-[#D97757] shrink-0" />
+            <span className="font-semibold text-[#1F1E1D] text-xs sm:text-sm truncate">
               {filePath}
             </span>
             <div className="flex items-center gap-1.5 text-xs font-bold shrink-0 ml-1">
@@ -104,7 +104,7 @@ export function FileDiffModal({
               <button
                 type="button"
                 onClick={() => setViewMode(viewMode === 'diff' ? 'new' : 'diff')}
-                className="px-2.5 py-1 text-xs rounded bg-[#21262d] hover:bg-[#30363d] text-slate-200 transition-colors cursor-pointer flex items-center gap-1 font-sans"
+                className="px-2.5 py-1 text-xs rounded bg-[#FFFFFF] hover:bg-[#FFFFFF] text-slate-200 transition-colors cursor-pointer flex items-center gap-1 font-sans"
               >
                 <ArrowLeftRight size={12} />
                 <span>{viewMode === 'diff' ? 'Full File' : 'Diff View'}</span>
@@ -114,7 +114,7 @@ export function FileDiffModal({
             <button
               type="button"
               onClick={handleCopy}
-              className="p-1.5 hover:bg-[#21262d] rounded-lg text-[#8d8d91] hover:text-white transition-colors cursor-pointer"
+              className="p-1.5 hover:bg-[#FFFFFF] rounded-lg text-[#6B6A67] hover:text-[#1F1E1D] transition-colors cursor-pointer"
               title="Copy diff"
             >
               {copied ? <Check size={14} className="text-emerald-400" /> : <Copy size={14} />}
@@ -123,7 +123,7 @@ export function FileDiffModal({
             <button
               type="button"
               onClick={onClose}
-              className="p-1.5 hover:bg-[#21262d] rounded-lg text-[#8d8d91] hover:text-white transition-colors cursor-pointer"
+              className="p-1.5 hover:bg-[#FFFFFF] rounded-lg text-[#6B6A67] hover:text-[#1F1E1D] transition-colors cursor-pointer"
               title="Close modal"
             >
               <X size={15} />
@@ -132,7 +132,7 @@ export function FileDiffModal({
         </div>
 
         {/* Content View */}
-        <div className="flex-1 overflow-y-auto p-4 text-xs leading-relaxed select-text bg-[#0d1117]">
+        <div className="flex-1 overflow-y-auto p-4 text-xs leading-relaxed select-text bg-[#FAF9F5]">
           {viewMode === 'diff' && displayDiff ? (
             <div className="space-y-0.5 divide-y divide-transparent">
               {diffLines.map((line, idx) => {
@@ -148,10 +148,10 @@ export function FileDiffModal({
                       isAdd && "bg-emerald-950/40 text-emerald-300 border-l-2 border-emerald-500",
                       isDel && "bg-rose-950/40 text-rose-300 border-l-2 border-rose-500",
                       isHeader && "text-purple-400 bg-purple-950/20 font-bold",
-                      !isAdd && !isDel && !isHeader && "text-slate-400"
+                      !isAdd && !isDel && !isHeader && "text-[#6B6A67]"
                     )}
                   >
-                    <span className="w-8 shrink-0 text-[#484f58] select-none text-[10px] text-right">
+                    <span className="w-8 shrink-0 text-[#3D3929] select-none text-[10px] text-right">
                       {idx + 1}
                     </span>
                     <span className="flex-1">
@@ -162,7 +162,7 @@ export function FileDiffModal({
               })}
             </div>
           ) : (
-            <pre className="text-slate-300 font-mono whitespace-pre-wrap break-all leading-relaxed">
+            <pre className="text-[#6B6A67] font-mono whitespace-pre-wrap break-all leading-relaxed">
               {newContent || displayDiff || '(No content available)'}
             </pre>
           )}

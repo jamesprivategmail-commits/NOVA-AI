@@ -98,17 +98,17 @@ export function ZipInspectorModal({
 
   return (
     <div className="fixed inset-0 z-50 bg-black/85 backdrop-blur-xl flex items-center justify-center p-2 sm:p-4 animate-fadeIn">
-      <div className="bg-[#090a0f] border border-white/10 rounded-2xl w-full max-w-6xl h-[92vh] flex flex-col shadow-2xl overflow-hidden">
+      <div className="bg-[#FAF9F5] border border-white/10 rounded-2xl w-full max-w-6xl h-[92vh] flex flex-col shadow-2xl overflow-hidden">
         
         {/* Header Bar */}
-        <header className="h-14 px-4 bg-[#0e1017] border-b border-white/10 flex items-center justify-between shrink-0 select-none">
+        <header className="h-14 px-4 bg-[#FAF9F5] border-b border-white/10 flex items-center justify-between shrink-0 select-none">
           <div className="flex items-center gap-3 min-w-0">
             <div className="w-8 h-8 rounded-lg bg-amber-500/15 border border-amber-500/30 text-amber-400 flex items-center justify-center shrink-0">
               <Archive size={17} />
             </div>
             <div className="min-w-0">
               <div className="flex items-center gap-2">
-                <h3 className="text-sm font-bold text-white truncate">{zipData.fileName}</h3>
+                <h3 className="text-sm font-bold text-[#1F1E1D] truncate">{zipData.fileName}</h3>
                 <span className="text-[10px] px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-300 border border-amber-500/20 font-mono">
                   {zipData.totalFiles} files
                 </span>
@@ -116,7 +116,7 @@ export function ZipInspectorModal({
                   {(zipData.totalSize / 1024).toFixed(1)} KB uncompressed
                 </span>
               </div>
-              <p className="text-[10px] text-slate-400 truncate">
+              <p className="text-[10px] text-[#6B6A67] truncate">
                 AI Full Comprehension active · All text entries indexed
               </p>
             </div>
@@ -135,7 +135,7 @@ export function ZipInspectorModal({
 
             <button
               onClick={onClose}
-              className="p-1.5 hover:bg-white/10 text-slate-400 hover:text-white rounded-lg transition-colors cursor-pointer"
+              className="p-1.5 hover:bg-white/10 text-[#6B6A67] hover:text-[#1F1E1D] rounded-lg transition-colors cursor-pointer"
             >
               <X size={16} />
             </button>
@@ -146,17 +146,17 @@ export function ZipInspectorModal({
         <div className="flex-1 min-h-0 flex flex-col md:flex-row overflow-hidden">
           
           {/* Left Column: File Explorer & Filters */}
-          <div className="w-full md:w-80 bg-[#0c0d14] border-b md:border-b-0 md:border-r border-white/10 flex flex-col shrink-0">
+          <div className="w-full md:w-80 bg-[#FAF9F5] border-b md:border-b-0 md:border-r border-white/10 flex flex-col shrink-0">
             {/* Search Box */}
             <div className="p-3 border-b border-white/5 space-y-2">
               <div className="relative">
-                <Search size={13} className="absolute left-2.5 top-2.5 text-slate-400" />
+                <Search size={13} className="absolute left-2.5 top-2.5 text-[#6B6A67]" />
                 <input
                   type="text"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   placeholder="Filter files in archive..."
-                  className="w-full bg-[#141622] border border-white/10 focus:border-blue-500/50 rounded-lg pl-8 pr-3 py-1.5 text-xs text-white placeholder-slate-500 outline-none"
+                  className="w-full bg-[#FAF9F5] border border-white/10 focus:border-blue-500/50 rounded-lg pl-8 pr-3 py-1.5 text-xs text-[#1F1E1D] placeholder-slate-500 outline-none"
                 />
               </div>
 
@@ -170,7 +170,7 @@ export function ZipInspectorModal({
                       "px-2 py-0.5 rounded text-[10px] uppercase font-mono tracking-wider transition-colors cursor-pointer",
                       selectedCategory === cat 
                         ? "bg-blue-600/30 text-blue-300 border border-blue-500/50 font-bold" 
-                        : "bg-white/5 text-slate-400 hover:text-slate-200 border border-white/5"
+                        : "bg-white/5 text-[#6B6A67] hover:text-slate-200 border border-white/5"
                     )}
                   >
                     {cat}
@@ -201,8 +201,8 @@ export function ZipInspectorModal({
                       className={clsx(
                         "w-full text-left px-2.5 py-1.5 rounded-lg text-xs flex items-center justify-between gap-2 transition-all cursor-pointer",
                         isSelected 
-                          ? "bg-blue-600/20 text-white border border-blue-500/40 font-medium" 
-                          : "text-slate-300 hover:bg-white/5 hover:text-white"
+                          ? "bg-blue-600/20 text-[#1F1E1D] border border-blue-500/40 font-medium" 
+                          : "text-[#6B6A67] hover:bg-white/5 hover:text-[#1F1E1D]"
                       )}
                     >
                       <div className="flex items-center gap-2 min-w-0">
@@ -213,7 +213,7 @@ export function ZipInspectorModal({
                         ) : ['css', 'scss', 'svg'].includes(ext) ? (
                           <FileText size={13} className="text-pink-400 shrink-0" />
                         ) : (
-                          <FileText size={13} className="text-slate-400 shrink-0" />
+                          <FileText size={13} className="text-[#6B6A67] shrink-0" />
                         )}
                         <span className="truncate text-xs font-mono">{file.path}</span>
                       </div>
@@ -236,11 +236,11 @@ export function ZipInspectorModal({
           </div>
 
           {/* Right Column: Code Viewer / Live Preview */}
-          <div className="flex-1 min-w-0 bg-[#090a0f] flex flex-col overflow-hidden">
+          <div className="flex-1 min-w-0 bg-[#FAF9F5] flex flex-col overflow-hidden">
             {selectedFile ? (
               <>
                 {/* File Header Bar */}
-                <div className="h-11 px-4 bg-[#0e1017] border-b border-white/10 flex items-center justify-between gap-3 shrink-0">
+                <div className="h-11 px-4 bg-[#FAF9F5] border-b border-white/10 flex items-center justify-between gap-3 shrink-0">
                   <div className="flex items-center gap-2 min-w-0">
                     <span className="font-mono text-xs text-blue-400 font-semibold truncate">
                       {selectedFile.path}
@@ -253,12 +253,12 @@ export function ZipInspectorModal({
                   <div className="flex items-center gap-1.5 shrink-0">
                     {/* If file is HTML, allow toggling between Code and Live View */}
                     {isCurrentFileHtml && (
-                      <div className="flex items-center bg-[#151722] p-0.5 rounded-lg border border-white/10 mr-1">
+                      <div className="flex items-center bg-[#FAF9F5] p-0.5 rounded-lg border border-white/10 mr-1">
                         <button
                           onClick={() => setPreviewMode('code')}
                           className={clsx(
                             "px-2 py-0.5 rounded text-[11px] font-medium transition-colors cursor-pointer",
-                            previewMode === 'code' ? "bg-blue-600 text-white" : "text-slate-400 hover:text-white"
+                            previewMode === 'code' ? "bg-blue-600 text-[#1F1E1D]" : "text-[#6B6A67] hover:text-[#1F1E1D]"
                           )}
                         >
                           Code
@@ -267,7 +267,7 @@ export function ZipInspectorModal({
                           onClick={() => setPreviewMode('live')}
                           className={clsx(
                             "px-2 py-0.5 rounded text-[11px] font-medium transition-colors flex items-center gap-1 cursor-pointer",
-                            previewMode === 'live' ? "bg-emerald-600 text-white" : "text-slate-400 hover:text-white"
+                            previewMode === 'live' ? "bg-emerald-600 text-[#1F1E1D]" : "text-[#6B6A67] hover:text-[#1F1E1D]"
                           )}
                         >
                           <Play size={10} fill="currentColor" />
@@ -298,7 +298,7 @@ export function ZipInspectorModal({
                           onOpenInWorkspace(selectedFile.path, selectedFile.content || '');
                           onClose();
                         }}
-                        className="px-2.5 py-1 bg-white/5 hover:bg-white/10 border border-white/10 text-slate-300 hover:text-white rounded-lg text-[11px] font-medium flex items-center gap-1 transition-colors cursor-pointer"
+                        className="px-2.5 py-1 bg-white/5 hover:bg-white/10 border border-white/10 text-[#6B6A67] hover:text-[#1F1E1D] rounded-lg text-[11px] font-medium flex items-center gap-1 transition-colors cursor-pointer"
                         title="Edit in full Code Workspace"
                       >
                         <ArrowUpRight size={11} />
@@ -309,7 +309,7 @@ export function ZipInspectorModal({
                     {/* Copy Code */}
                     <button
                       onClick={handleCopyCode}
-                      className="p-1.5 hover:bg-white/10 text-slate-400 hover:text-white rounded-lg transition-colors cursor-pointer"
+                      className="p-1.5 hover:bg-white/10 text-[#6B6A67] hover:text-[#1F1E1D] rounded-lg transition-colors cursor-pointer"
                       title="Copy code"
                     >
                       {copied ? <Check size={13} className="text-emerald-400" /> : <Copy size={13} />}
@@ -318,7 +318,7 @@ export function ZipInspectorModal({
                     {/* Download File */}
                     <button
                       onClick={handleDownloadSingleFile}
-                      className="p-1.5 hover:bg-white/10 text-slate-400 hover:text-white rounded-lg transition-colors cursor-pointer"
+                      className="p-1.5 hover:bg-white/10 text-[#6B6A67] hover:text-[#1F1E1D] rounded-lg transition-colors cursor-pointer"
                       title="Download file"
                     >
                       <Download size={13} />
@@ -327,7 +327,7 @@ export function ZipInspectorModal({
                 </div>
 
                 {/* Content Area */}
-                <div className="flex-1 min-h-0 overflow-auto bg-[#0a0c12]">
+                <div className="flex-1 min-h-0 overflow-auto bg-[#FAF9F5]">
                   {previewMode === 'live' && isCurrentFileHtml ? (
                     <iframe
                       title={selectedFile.name}
@@ -357,7 +357,7 @@ export function ZipInspectorModal({
                       <p className="text-xs">Binary or non-text file ({selectedFile.size} bytes).</p>
                       <button
                         onClick={handleDownloadSingleFile}
-                        className="mt-3 px-3 py-1.5 bg-blue-600 hover:bg-blue-500 text-white text-xs font-semibold rounded-lg flex items-center gap-1.5"
+                        className="mt-3 px-3 py-1.5 bg-blue-600 hover:bg-blue-500 text-[#1F1E1D] text-xs font-semibold rounded-lg flex items-center gap-1.5"
                       >
                         <Download size={12} />
                         <span>Download Binary File</span>

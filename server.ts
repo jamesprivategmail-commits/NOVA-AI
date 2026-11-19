@@ -41,10 +41,11 @@ async function startServer() {
 
     const { groqKeys, cohereKeys, bazaarLinkKeys } = await getSystemKeys();
     const { userTier, brainSettings } = await fetchUserAndTierSettings(userId);
-    const maxTokens = ((userTier as string) === 'vip' || (userTier as string) === 'god_mode' ? brainSettings.vipMaxTokens
+    const rawTokens = ((userTier as string) === 'vip' || (userTier as string) === 'god_mode' ? brainSettings.vipMaxTokens
       : userTier === 'premium' ? brainSettings.premiumMaxTokens
       : userTier === 'pro' ? brainSettings.proMaxTokens
       : brainSettings.freeMaxTokens) || 2048;
+    const maxTokens = Math.min(Math.max(Number(rawTokens) || 2048, 256), 16384);
 
     // Use unified brain prompt across all integrations
     const masterPrompt = buildUnifiedBrainPrompt({

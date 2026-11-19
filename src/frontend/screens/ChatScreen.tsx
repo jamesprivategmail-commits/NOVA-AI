@@ -12,9 +12,10 @@ import { EmailCampaignGenerator } from '../components/EmailCampaignGenerator';
 import { LiveVoiceModal } from '../components/LiveVoiceModal';
 import { TelegramModal } from './TelegramModal';
 import { BrainPanel } from '../components/BrainPanel';
-import { EvolutionPanel } from '../components/EvolutionPanel';
+import { EvolutionCentre } from '../components/EvolutionCentre';
 import { ApiKeyModal } from '../components/ApiKeyModal';
 import { GitHubModal } from '../components/GitHubModal';
+import { PWAInstallButton } from '../components/pwa/PWAInstallButton';
 import { 
   getStoredGitHubUser, 
   getStoredActiveRepo, 
@@ -26,7 +27,17 @@ import {
   GitHubUser 
 } from '../utils/github';
 import { terminalManager } from '../utils/terminalManager';
-import { Chat, Message, UserProfile, BroadcastMessage, AIBrainSettings, AgentState } from '../../models/types';
+import {
+  Chat,
+  Message,
+  UserProfile,
+  BroadcastMessage,
+  AIBrainSettings,
+  AgentState,
+  ArtifactRecord,
+  MessageAttachmentMeta,
+  type CouncilData,
+} from '../../models/types';
 import {
   createChat,
   getUserChats,
@@ -40,6 +51,7 @@ import {
   incrementMessageCount,
   deleteMessage,
   updateMessage,
+  updateMessageArtifacts,
   sendSupportMessage,
   getAIBrainSettings,
   listenToAIBrainSettings,
@@ -48,18 +60,32 @@ import {
   toggleStarMessage,
   listenToSystemAPIKeys
 } from '../../database/db';
-import { sendMessageToGroq, setClientSystemKeys } from '../../api/client';
+import {
+  sendMessageToGroq,
+  sendCouncilMessage,
+  setClientSystemKeys,
+  commitResponseArtifactsApi,
+  listConversationArtifacts,
+  rebindArtifactsApi,
+} from '../../api/client';
+import { parseArtifactsFromResponse } from '../../utils/artifactParser';
+import { ConversationArtifactsDrawer } from '../components/artifacts/ConversationArtifactsDrawer';
 import { memoryManager } from '../../memory/context';
 import { CommandPalette } from '../components/CommandPalette';
-import { AccentThemePicker, applyStoredAccent } from '../components/AccentThemePicker';
+import { AppearanceMenu } from '../components/AppearanceMenu';
+import { ShortcutsModal } from '../components/ShortcutsModal';
 import { ModelSelectorDropdown } from '../components/ModelSelectorDropdown';
+import { NovaOrb, type NovaOrbState } from '../components/NovaOrb';
+import { MuseCharacterStage, type MusePresenceMode } from '../components/MuseCharacterStage';
+import { SquadRosterModal } from '../components/SquadRosterModal';
+import { NOVA_PERSONAS, getPersona, getTimeGreeting, PROMPT_LIBRARY } from '../models/personas';
 import { CodeWorkspaceDrawer, WorkspaceTab } from '../components/workspace/CodeWorkspaceDrawer';
 import { PromptStudioModal } from '../components/workspace/PromptStudioModal';
 import { LiveHtmlPreviewModal } from '../components/workspace/LiveHtmlPreviewModal';
 import { ZipInspectorModal } from '../components/workspace/ZipInspectorModal';
 import { ParsedZipResult } from '../utils/zipParser';
 import { offlineCache } from '../utils/offlineQueue';
-import { Menu, Shield, Crown, Mail, ArrowDown, Sparkles, Code, Code2, Target, Binary, Zap, Bot, Mic, ChevronDown, Send, Radio, X, Trash2, Terminal, Flame, Eye, Lock, ShieldAlert, GitBranch, MessageSquare, FolderCode, Check, Loader2, Command, Sliders, ExternalLink, Download, RefreshCw } from 'lucide-react';
+import { Menu, ArrowDown, Code2, Radio, X, Sliders, Command, Check, Phone, Video, Users, Globe, Layers } from 'lucide-react';
 import { getAuth, signOut } from 'firebase/auth';
 import { clsx } from 'clsx';
 
@@ -93,25 +119,92 @@ export function ChatScreen({ userId }: ChatScreenProps) {
     tokensPerSec?: number;
   }>({});
 
-  // AI Model Selection state (Persisted, managed in Settings & Top Bar)
+  // AI Character & Model Selection state (Persisted)
+  const [selectedPersonaId, setSelectedPersonaId] = useState<string>(() => {
+    return localStorage.getItem('void_ai_selected_persona') || 'shii';
+  });
   const [selectedProvider, setSelectedProvider] = useState<'groq' | 'cohere' | 'bazaarlink' | 'gemini'>(() => {
     return (localStorage.getItem('void_ai_selected_provider') as any) || 'groq';
   });
   const [selectedModel, setSelectedModel] = useState<string>(() => {
-    return localStorage.getItem('void_ai_selected_model') || 'auto';
+    return localStorage.getItem('void_ai_selected_model') || 'qwen/qwen3.8-27b';
   });
+  const [showShortcuts, setShowShortcuts] = useState(false);
+  const [promptLibOpen, setPromptLibOpen] = useState(false);
+  const [presenceMode, setPresenceMode] = useState<MusePresenceMode>(() => {
+    const saved = localStorage.getItem('void_ai_muse_presence');
+    return saved === 'pip' || saved === 'voice' ? saved : 'stage';
+  });
+  const [isUserComposing, setIsUserComposing] = useState(false);
+  const [isSpeakingReply, setIsSpeakingReply] = useState(false);
 
-  const handleSelectProviderModel = (provider: 'groq' | 'cohere' | 'bazaarlink' | 'gemini', model: string) => {
-    setSelectedProvider(provider);
-    setSelectedModel(model);
-    localStorage.setItem('void_ai_selected_provider', provider);
-    localStorage.setItem('void_ai_selected_model', model);
+  // 4-Model Collaborative Squad + Live Web Research Controls
+  const [squadMode, setSquadMode] = useState<boolean>(() => {
+    return localStorage.getItem('void_ai_squad_mode') === 'true';
+  });
+  const [squadPersonaIds, setSquadPersonaIds] = useState<string[]>(() => {
+    try {
+      const saved = JSON.parse(localStorage.getItem('void_ai_squad_ids') || 'null');
+      if (Array.isArray(saved) && saved.length === 4) return saved;
+    } catch (_) {}
+    return ['shii', 'shiia', 'lyra', 'sora'];
+  });
+  const [showSquadRoster, setShowSquadRoster] = useState(false);
+  const [webResearchEnabled, setWebResearchEnabled] = useState<boolean>(() => {
+    return localStorage.getItem('void_ai_web_research') === 'true';
+  });
+  const [streamingCouncil, setStreamingCouncil] = useState<CouncilData | null>(null);
+
+  const squadPersonas = React.useMemo(
+    () => squadPersonaIds.map((id) => getPersona(undefined, undefined, id)),
+    [squadPersonaIds]
+  );
+
+  const handleToggleSquadMode = () => {
+    const next = !squadMode;
+    setSquadMode(next);
+    localStorage.setItem('void_ai_squad_mode', String(next));
   };
 
-  // Apply the persisted accent theme before first paint of the chrome
-  useEffect(() => {
-    applyStoredAccent();
-  }, []);
+  const handleChangeSquadIds = (ids: string[]) => {
+    setSquadPersonaIds(ids);
+    localStorage.setItem('void_ai_squad_ids', JSON.stringify(ids));
+  };
+
+  const handleToggleWebResearch = () => {
+    const next = !webResearchEnabled;
+    setWebResearchEnabled(next);
+    localStorage.setItem('void_ai_web_research', String(next));
+  };
+
+  const activePersona = getPersona(selectedProvider, selectedModel, selectedPersonaId);
+
+  const liveAvatarState: NovaOrbState = isLoading
+    ? (streamingMessage ? 'speaking' : 'thinking')
+    : isSpeakingReply
+    ? 'speaking'
+    : isUserComposing
+    ? 'listening'
+    : 'idle';
+
+  const handleChangePresenceMode = (nextMode: MusePresenceMode) => {
+    if (nextMode === 'face') {
+      setShowLiveVoice(true);
+      return;
+    }
+    setPresenceMode(nextMode);
+    localStorage.setItem('void_ai_muse_presence', nextMode);
+  };
+
+  const handleSelectProviderModel = (provider: 'groq' | 'cohere' | 'bazaarlink' | 'gemini', model: string, personaId?: string) => {
+    const resolved = getPersona(provider, model, personaId);
+    setSelectedProvider(provider);
+    setSelectedModel(model);
+    setSelectedPersonaId(resolved.id);
+    localStorage.setItem('void_ai_selected_provider', provider);
+    localStorage.setItem('void_ai_selected_model', model);
+    localStorage.setItem('void_ai_selected_persona', resolved.id);
+  };
 
   // Keyboard Shortcuts (⌘K for command palette, ⌘E for editor, ⌘T for terminal)
   useEffect(() => {
@@ -123,6 +216,12 @@ export function ChatScreen({ userId }: ChatScreenProps) {
         e.preventDefault();
         setWorkspaceTab('editor');
         setShowWorkspace(prev => !prev);
+      } else if (e.key === '?' && !e.metaKey && !e.ctrlKey && !e.altKey) {
+        const el = document.activeElement;
+        if (!el || (el.tagName !== 'INPUT' && el.tagName !== 'TEXTAREA' && !(el as HTMLElement).isContentEditable)) {
+          e.preventDefault();
+          setShowShortcuts(prev => !prev);
+        }
       } else if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 't') {
         e.preventDefault();
         setWorkspaceTab('terminal');
@@ -147,9 +246,12 @@ export function ChatScreen({ userId }: ChatScreenProps) {
     return () => window.removeEventListener('void_ai_open_workspace_file', handleOpenWorkspaceFile);
   }, []);
 
-  // 2026 Interactive HTML Sandbox & ZIP Inspector modals
+  // 2026 Interactive HTML Sandbox, ZIP Inspector & Persistent Artifact Engine
   const [previewHtmlData, setPreviewHtmlData] = useState<{ html: string; title: string } | null>(null);
   const [inspectZipData, setInspectZipData] = useState<ParsedZipResult | null>(null);
+  const [conversationArtifacts, setConversationArtifacts] = useState<ArtifactRecord[]>([]);
+  const [showArtifactsDrawer, setShowArtifactsDrawer] = useState(false);
+  const [activeProjectId, setActiveProjectId] = useState<string | null>(null);
 
   useEffect(() => {
     const handlePreviewHtml = (e: any) => {
@@ -271,10 +373,19 @@ export function ChatScreen({ userId }: ChatScreenProps) {
     if (currentChatId) {
       userScrolledUpRef.current = false;
       loadMessages(currentChatId);
+      listConversationArtifacts(userId, currentChatId)
+        .then((arts) => {
+          setConversationArtifacts(arts);
+          const latestProjectZip = arts.find((a) => a.sourceProjectId);
+          setActiveProjectId(latestProjectZip?.sourceProjectId || null);
+        })
+        .catch(() => {});
     } else {
       setMessages([]);
+      setConversationArtifacts([]);
+      setActiveProjectId(null);
     }
-  }, [currentChatId]);
+  }, [currentChatId, userId]);
 
   // Ultra-fast auto-scroll: zero layout thrashing
   useEffect(() => {
@@ -333,6 +444,20 @@ export function ChatScreen({ userId }: ChatScreenProps) {
     const chatMsgs = await getChatMessages(chatId);
     setMessages(chatMsgs);
     offlineCache.saveMessages(chatId, chatMsgs);
+
+    const embeddedArts = chatMsgs.flatMap((m) => m.artifacts || []);
+    if (embeddedArts.length > 0) {
+      setConversationArtifacts((prev) => {
+        const byId = new Map<string, ArtifactRecord>();
+        for (const a of prev) byId.set(a.id, a);
+        for (const a of embeddedArts) if (!byId.has(a.id)) byId.set(a.id, a);
+        return Array.from(byId.values()).sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
+      });
+      const proj = embeddedArts.find((a) => a.sourceProjectId);
+      if (proj?.sourceProjectId) {
+        setActiveProjectId((curr) => curr || proj.sourceProjectId || null);
+      }
+    }
   };
 
   const handleTogglePin = async (chatId: string, isPinned: boolean) => {
@@ -377,6 +502,8 @@ export function ChatScreen({ userId }: ChatScreenProps) {
     setCurrentChatId(null);
     setMessages([]);
     setStreamingMessage('');
+    setConversationArtifacts([]);
+    setActiveProjectId(null);
   };
 
   const handleRegenerate = async () => {
@@ -391,7 +518,7 @@ export function ChatScreen({ userId }: ChatScreenProps) {
       try { await deleteMessage(currentChatId!, m.id); } catch (_) {}
     }
     setMessages(messages.slice(0, lastUserIdx + 1));
-    await handleSend(lastUserMsg.text, undefined, { resend: true });
+    await handleSend(lastUserMsg.text, undefined, undefined, { resend: true });
   };
 
   const handleDeleteChat = async (id: string) => {
@@ -563,26 +690,122 @@ export function ChatScreen({ userId }: ChatScreenProps) {
     }
   };
 
-  const handleSend = async (text: string, attachment?: ChatAttachment, opts?: { resend?: boolean }) => {
+  const persistAndAttachArtifacts = async (
+    activeChatId: string,
+    modelMsg: Message,
+    fullResponse: string,
+    priorMessages: Message[],
+    sourceProjId?: string
+  ): Promise<Message> => {
+    try {
+      const detected = parseArtifactsFromResponse(fullResponse, false);
+      if (detected.files.length === 0) {
+        return modelMsg;
+      }
+
+      const committed = await commitResponseArtifactsApi({
+        userId,
+        conversationId: activeChatId,
+        messageId: modelMsg.id,
+        rawText: fullResponse,
+        sourceProjectId: sourceProjId || activeProjectId || undefined,
+        projectName: detected.projectName,
+      });
+
+      const combinedArtifacts: ArtifactRecord[] = [
+        ...(committed.artifacts || []),
+        ...(committed.zipArtifact ? [committed.zipArtifact] : []),
+      ];
+
+      if (combinedArtifacts.length === 0) {
+        return modelMsg;
+      }
+
+      await updateMessageArtifacts(
+        activeChatId,
+        modelMsg.id,
+        combinedArtifacts,
+        committed.projectGroup
+      ).catch((err) => console.warn('Failed updating message artifacts in Firestore:', err));
+
+      const hydratedMsg: Message = {
+        ...modelMsg,
+        artifacts: combinedArtifacts,
+        projectGroup: committed.projectGroup || modelMsg.projectGroup,
+      };
+
+      const hydratedList = [...priorMessages, hydratedMsg];
+      setMessages(hydratedList);
+      offlineCache.saveMessages(activeChatId, hydratedList);
+
+      setConversationArtifacts((prev) => {
+        const byId = new Map<string, ArtifactRecord>();
+        for (const item of combinedArtifacts) byId.set(item.id, item);
+        for (const item of prev) {
+          if (!byId.has(item.id)) byId.set(item.id, item);
+        }
+        return Array.from(byId.values()).sort((a, b) => b.createdAt - a.createdAt);
+      });
+
+      if (committed.zipArtifact?.sourceProjectId || committed.projectGroup?.sourceProjectId) {
+        setActiveProjectId(committed.zipArtifact?.sourceProjectId || committed.projectGroup?.sourceProjectId || null);
+      }
+
+      return hydratedMsg;
+    } catch (err) {
+      console.warn('Artifact persistence failed gracefully:', err);
+      return modelMsg;
+    }
+  };
+
+  const handleSend = async (
+    text: string,
+    attachment?: ChatAttachment,
+    attachmentsList?: ChatAttachment[],
+    opts?: { resend?: boolean }
+  ) => {
     if (!checkLimitations()) return;
 
     let activeChatId = currentChatId;
+    const allAttachments =
+      attachmentsList && attachmentsList.length > 0
+        ? attachmentsList
+        : attachment
+        ? [attachment]
+        : [];
+    const primaryAttachment = allAttachments[0];
 
-    // Build display text (with embedded image/file indicator for chat history)
+    // Build display text & structured attachment metadata
     let displayText = text;
-    if (attachment) {
-      if (attachment.kind === 'image') {
-        displayText = `![${attachment.name}](${attachment.data})\n\n${text}`.trim();
-      } else if (attachment.kind === 'zip') {
-        displayText = `📦 **ZIP Archive: \`${attachment.name}\`** (${attachment.zipStats?.fileCount || 0} files unpacked · ${((attachment.zipStats?.totalSize || 0) / 1024).toFixed(1)} KB)\n\n${text}`.trim();
-      } else {
-        displayText = `📎 **${attachment.name}**\n\n${text}`.trim();
-      }
+    if (allAttachments.length === 1 && primaryAttachment?.kind === 'image') {
+      displayText = `![${primaryAttachment.name}](${primaryAttachment.data})\n\n${text}`.trim();
+    } else if (allAttachments.length > 0 && !text.trim()) {
+      displayText = `Attached ${allAttachments.map((a) => a.name).join(', ')}`;
+    }
+
+    const attachmentsMeta: MessageAttachmentMeta[] = allAttachments.map((att, idx) => ({
+      id: att.artifactId || att.id || `att-${Date.now()}-${idx}`,
+      artifactId: att.artifactId,
+      projectId: att.projectId,
+      kind: att.kind,
+      name: att.name,
+      extension: att.extension || att.name.split('.').pop()?.toLowerCase() || 'txt',
+      mimeType: att.mimeType,
+      size: att.size || (att.data ? att.data.length : 0),
+      fileCount: att.zipStats?.fileCount,
+      downloadUrl: att.downloadUrl,
+      previewUrl: att.previewUrl,
+      extractedPreview: att.kind !== 'image' ? att.data.slice(0, 600) : undefined,
+    }));
+
+    const attachedProjectId = allAttachments.find((a) => a.projectId)?.projectId || activeProjectId || undefined;
+    if (attachedProjectId) {
+      setActiveProjectId(attachedProjectId);
     }
 
     // Create new chat if none selected
     if (!activeChatId) {
-      const titleText = text || (attachment ? attachment.name : 'New Chat');
+      const titleText = text || (primaryAttachment ? primaryAttachment.name : 'New Chat');
       const chat = await createChat(userId, titleText.slice(0, 32) + (titleText.length > 32 ? '...' : ''));
       setChats([chat, ...chats]);
       activeChatId = chat.id;
@@ -590,10 +813,25 @@ export function ChatScreen({ userId }: ChatScreenProps) {
     } else if (messages.length === 0) {
       const chat = chats.find((c) => c.id === activeChatId);
       if (chat && chat.title === 'New Chat') {
-        const titleText = text || (attachment ? attachment.name : 'New Chat');
+        const titleText = text || (primaryAttachment ? primaryAttachment.name : 'New Chat');
         const newTitle = titleText.slice(0, 32) + (titleText.length > 32 ? '...' : '');
         await handleRenameChat(activeChatId, newTitle);
       }
+    }
+
+    // Include newly uploaded artifacts in current conversation drawer immediately & rebind pending-chat uploads
+    const uploadedArts = allAttachments.map((a) => a.artifact).filter(Boolean) as ArtifactRecord[];
+    if (uploadedArts.length > 0) {
+      const pendingIds = uploadedArts.filter((a) => a.conversationId === 'pending-chat').map((a) => a.id);
+      if (pendingIds.length > 0) {
+        rebindArtifactsApi({ userId, artifactIds: pendingIds, conversationId: activeChatId }).catch(() => {});
+      }
+      setConversationArtifacts((prev) => {
+        const byId = new Map<string, ArtifactRecord>();
+        for (const a of uploadedArts) byId.set(a.id, { ...a, conversationId: activeChatId! });
+        for (const a of prev) if (!byId.has(a.id)) byId.set(a.id, a);
+        return Array.from(byId.values()).sort((a, b) => b.createdAt - a.createdAt);
+      });
     }
 
     // Optimistic user message for 0ms input lag
@@ -603,16 +841,19 @@ export function ChatScreen({ userId }: ChatScreenProps) {
       chatId: activeChatId,
       role: 'user',
       text: displayText,
-      createdAt: Date.now()
+      attachments: attachmentsMeta.length > 0 ? attachmentsMeta : undefined,
+      createdAt: Date.now(),
     };
 
     const isResend = Boolean(opts?.resend);
     const currentMessages = isResend ? [...messages] : [...messages, optimisticUserMsg];
     setMessages(currentMessages);
 
-    // Persist user message to db asynchronously (skip when regenerating)
+    // Persist user message to db asynchronously
     if (!isResend) {
-      saveMessage(activeChatId, 'user', displayText).catch((err) => console.error('Failed async message save:', err));
+    saveMessage(activeChatId, 'user', displayText, {
+      attachments: attachmentsMeta.length > 0 ? attachmentsMeta : undefined,
+    }).catch((err) => console.error('Failed async message save:', err));
     }
 
     setIsLoading(true);
@@ -635,11 +876,10 @@ export function ChatScreen({ userId }: ChatScreenProps) {
       const updatedProfile = await incrementMessageCount(userId);
       setProfile(updatedProfile);
 
-      const context = memoryManager.buildContext(currentMessages);
-      let lastStreamUpdate = 0;
-
-      const systemPrompt = '';
+      const builtContext = memoryManager.buildContextWithSummary(currentMessages);
       const userTier = updatedProfile?.tier || profile?.tier || 'free';
+      const savedTemp = parseFloat(localStorage.getItem('void_ai_temperature') || '0.65');
+      const temperature = Number.isNaN(savedTemp) ? 0.65 : savedTemp;
 
       const githubContext = activeRepo ? {
         owner: activeRepo.owner,
@@ -651,48 +891,129 @@ export function ChatScreen({ userId }: ChatScreenProps) {
         fileTreeSnippet: repoTreeSnippet || undefined,
       } : undefined;
 
+      const combinedExtraPrompt = [
+        customSystemPrompt?.trim(),
+        builtContext.activeTaskHint
+          ? `[Active Conversation Goal]: ${builtContext.activeTaskHint}`
+          : '',
+      ]
+        .filter(Boolean)
+        .join('\n\n');
+
       let pendingUpdate = false;
-      const telemetry = await sendMessageToGroq(
-        context,
-        customSystemPrompt || '',
-        (chunk) => {
-          fullResponse += chunk;
-          if (!pendingUpdate) {
-            pendingUpdate = true;
-            requestAnimationFrame(() => {
-              setStreamingMessage(fullResponse);
-              pendingUpdate = false;
-            });
+      const shouldUseSquad = squadMode && primaryAttachment?.kind !== 'image';
+
+      if (shouldUseSquad) {
+        const effectiveSquad = squadPersonas.length >= 4 ? squadPersonas.slice(0, 4) : NOVA_PERSONAS.slice(0, 4);
+        const { telemetry, finalCouncilData } = await sendCouncilMessage({
+          messages: builtContext.messages,
+          systemPrompt: combinedExtraPrompt,
+          agents: effectiveSquad.map((p) => ({
+            id: p.id,
+            name: p.name,
+            role: p.role,
+            provider: p.provider,
+            modelId: p.modelId,
+            systemDirective: p.systemDirective,
+          })),
+          webResearch: webResearchEnabled ? true : 'auto',
+          userId,
+          attachment: primaryAttachment,
+          attachments: allAttachments,
+          conversationId: activeChatId,
+          githubContext,
+          temperature,
+          earlierSummary: builtContext.earlierSummary,
+          signal: abortControllerRef.current.signal,
+          onCouncilUpdate: (councilState) => {
+            setStreamingCouncil(councilState);
+          },
+          onChunk: (chunk) => {
+            fullResponse += chunk;
+            if (!pendingUpdate) {
+              pendingUpdate = true;
+              requestAnimationFrame(() => {
+                setStreamingMessage(fullResponse);
+                pendingUpdate = false;
+              });
+            }
+          },
+        });
+
+        if (telemetry) setLastTelemetry(telemetry);
+
+        if (fullResponse.trim()) {
+          const modelMsg = await saveMessage(activeChatId, 'model', fullResponse, {
+            councilData: finalCouncilData,
+            latencyMs: telemetry?.latencyMs,
+            ttftMs: telemetry?.ttftMs,
+            tokensPerSec: telemetry?.tokensPerSec,
+            totalTokens: telemetry?.totalTokens,
+            modelUsed: `4-Model Squad (${effectiveSquad.map((s) => s.name).join(' + ')})`,
+            providerUsed: 'multi-model-council',
+          } as any);
+          const updatedMsgs = [...currentMessages, modelMsg];
+          setMessages(updatedMsgs);
+          offlineCache.saveMessages(activeChatId, updatedMsgs);
+          await persistAndAttachArtifacts(activeChatId, modelMsg, fullResponse, currentMessages, attachedProjectId);
+        }
+        setStreamingCouncil(null);
+        setStreamingMessage('');
+      } else {
+        const telemetry = await sendMessageToGroq(
+          builtContext.messages,
+          combinedExtraPrompt,
+          (chunk) => {
+            fullResponse += chunk;
+            if (!pendingUpdate) {
+              pendingUpdate = true;
+              requestAnimationFrame(() => {
+                setStreamingMessage(fullResponse);
+                pendingUpdate = false;
+              });
+            }
+          },
+          abortControllerRef.current.signal,
+          userId,
+          userTier,
+          selectedProvider,
+          selectedModel,
+          primaryAttachment,
+          githubContext,
+          undefined,
+          {
+            temperature,
+            personaId: activePersona.id,
+            personaName: activePersona.name,
+            characterDirective: activePersona.systemDirective,
+            earlierSummary: builtContext.earlierSummary,
+            webResearch: webResearchEnabled ? true : 'auto',
+            conversationId: activeChatId,
+            attachments: allAttachments,
           }
-        },
-        abortControllerRef.current.signal,
-        userId,
-        userTier,
-        selectedProvider,
-        selectedModel,
-        attachment,
-        githubContext
-      );
+        );
 
-      if (telemetry) {
-        setLastTelemetry(telemetry);
-      }
+        if (telemetry) {
+          setLastTelemetry(telemetry);
+        }
 
-      // Save complete model message with telemetry
-      if (fullResponse.trim()) {
-        const modelMsg = await saveMessage(activeChatId, 'model', fullResponse, {
-          latencyMs: telemetry?.latencyMs,
-          ttftMs: telemetry?.ttftMs,
-          tokensPerSec: telemetry?.tokensPerSec,
-          totalTokens: telemetry?.totalTokens,
-          modelUsed: selectedModel,
-          providerUsed: selectedProvider,
-        } as any);
-        const updatedMsgs = [...currentMessages, modelMsg];
-        setMessages(updatedMsgs);
-        offlineCache.saveMessages(activeChatId, updatedMsgs);
+        // Save complete model message with telemetry
+        if (fullResponse.trim()) {
+          const modelMsg = await saveMessage(activeChatId, 'model', fullResponse, {
+            latencyMs: telemetry?.latencyMs,
+            ttftMs: telemetry?.ttftMs,
+            tokensPerSec: telemetry?.tokensPerSec,
+            totalTokens: telemetry?.totalTokens,
+            modelUsed: `${activePersona.name} · ${selectedModel}`,
+            providerUsed: selectedProvider,
+          } as any);
+          const updatedMsgs = [...currentMessages, modelMsg];
+          setMessages(updatedMsgs);
+          offlineCache.saveMessages(activeChatId, updatedMsgs);
+          await persistAndAttachArtifacts(activeChatId, modelMsg, fullResponse, currentMessages, attachedProjectId);
+        }
+        setStreamingMessage('');
       }
-      setStreamingMessage('');
     } catch (error: any) {
       if (error.name === 'AbortError') {
         console.log('Stream aborted by user');
@@ -710,27 +1031,50 @@ export function ChatScreen({ userId }: ChatScreenProps) {
           const modelMsg = await saveMessage(activeChatId, 'model', errNotice);
           setMessages([...currentMessages, modelMsg]);
         }
+        setStreamingCouncil(null);
         setStreamingMessage('');
       }
     } finally {
       setIsLoading(false);
+      setStreamingCouncil(null);
       abortControllerRef.current = null;
     }
   };
+
+  const handleSpeakLatestReply = useCallback(() => {
+    if (typeof window === 'undefined' || !('speechSynthesis' in window)) return;
+    if (isSpeakingReply) {
+      window.speechSynthesis.cancel();
+      setIsSpeakingReply(false);
+      return;
+    }
+    const latestModelMsg = [...messages].reverse().find((m) => m.role !== 'user' && m.text.trim());
+    if (!latestModelMsg) return;
+    window.speechSynthesis.cancel();
+    const cleanSpeech = latestModelMsg.text
+      .replace(/```[\s\S]*?```/g, 'Code block omitted.')
+      .replace(/\[.*?\]\(.*?\)/g, '')
+      .replace(/[#*_`]/g, '');
+    const utterance = new SpeechSynthesisUtterance(cleanSpeech.slice(0, 1800));
+    utterance.onend = () => setIsSpeakingReply(false);
+    utterance.onerror = () => setIsSpeakingReply(false);
+    setIsSpeakingReply(true);
+    window.speechSynthesis.speak(utterance);
+  }, [isSpeakingReply, messages]);
 
   const handleLogout = async () => {
     await signOut(getAuth());
   };
 
   return (
-    <div className="flex h-screen h-[100dvh] w-full bg-transparent text-white overflow-hidden relative overscroll-none select-none">
-      {/* Crystal-clear starry void background enhancement — sharp & high-contrast */}
-      <div className="fixed inset-0 pointer-events-none z-0 bg-gradient-to-b from-black/25 via-transparent to-black/45" />
+    <div className="view-enter flex h-screen h-[100dvh] w-full bg-transparent text-[var(--text-primary)] overflow-hidden relative overscroll-none select-none md:p-3 md:gap-3">
+      {/* Subtle warm ambient atmosphere that respects light & dark liquid glass */}
+      <div className="fixed inset-0 pointer-events-none z-0 opacity-65 bg-[radial-gradient(ellipse_at_top,var(--accent-soft)_0%,transparent_60%)]" />
       {/* Mobile Backdrop Overlay when Sidebar is expanded */}
       {isSidebarOpen && (
         <div
           onClick={() => setIsSidebarOpen(false)}
-          className="fixed inset-0 bg-black/60 z-30 md:hidden"
+          className="fixed inset-0 bg-black/50 backdrop-blur-sm z-30 md:hidden"
         />
       )}
 
@@ -740,7 +1084,6 @@ export function ChatScreen({ userId }: ChatScreenProps) {
         currentChatId={currentChatId}
         onSelectChat={(id) => {
           setCurrentChatId(id);
-          // Auto close drawer on mobile screen selection
           if (window.innerWidth < 768) setIsSidebarOpen(false);
         }}
         onNewChat={() => {
@@ -752,6 +1095,8 @@ export function ChatScreen({ userId }: ChatScreenProps) {
         onClearAllHistory={handleClearAllHistory}
         onOpenSettings={() => setShowSettings(true)}
         onOpenGitHub={() => setShowGitHubModal(true)}
+        onOpenPromptStudio={() => setShowPromptStudio(true)}
+        onOpenEvolutionCentre={() => setShowEvolutionPanel(true)}
         onOpenSupport={() => setShowSupport(true)}
         onOpenSubscription={() => setShowSubscription(true)}
         onOpenAdmin={() => setShowAdminPanel(true)}
@@ -767,197 +1112,418 @@ export function ChatScreen({ userId }: ChatScreenProps) {
         isAdmin={profile?.isAdmin || false}
         isSupportStaff={profile?.isSupportStaff || false}
         walletBalance={profile?.walletBalance || 0}
+        userEmail={profile?.email || 'mrnovatech4@gmail.com'}
+        userName={profile?.displayName || 'Workspace User'}
       />
 
-      {/* Main Chat Workspace */}
-      <div className="flex-1 flex flex-col h-full min-h-0 relative min-w-0 bg-transparent z-10 overflow-hidden">
-        {/* Broadcast System Banner Notice */}
-        {activeBroadcast && (
-          <div className="bg-[var(--nova-bg-2)] border-b border-[var(--nova-border)] p-2 px-3 flex items-center justify-between text-xs text-white z-30">
-            <div className="flex items-center gap-2 min-w-0">
-              <div className="p-1 bg-blue-600 rounded-lg text-white font-bold shrink-0">
-                <Radio size={12} />
-              </div>
-              <div className="min-w-0">
-                <div className="font-bold text-white flex items-center gap-1.5 text-xs">
-                  <span>{activeBroadcast.title}</span>
-                  <span className="text-[9px] uppercase font-mono text-slate-400">
-                    · Official Broadcast
-                  </span>
+      {/* Main Muse Workspace + Living Companion Stage */}
+      <div className="flex-1 flex flex-col lg:flex-row gap-3 h-full min-h-0 relative min-w-0 z-10 overflow-hidden">
+        {/* Muse Conversation Canvas */}
+        <div className="flex-1 flex flex-col h-full min-h-0 relative min-w-0 muse-glass-panel md:rounded-[28px] overflow-hidden">
+          {/* Broadcast System Banner Notice */}
+          {activeBroadcast && (
+            <div className="glass-thick border-b border-[var(--line)] p-2 px-3 flex items-center justify-between text-xs text-[var(--text-primary)] z-30 shrink-0">
+              <div className="flex items-center gap-2.5 min-w-0">
+                <div className="p-1.5 rounded-lg text-white font-bold shrink-0" style={{ background: 'var(--accent)' }}>
+                  <Radio size={12} />
                 </div>
-                <p className="text-slate-300 truncate text-[10px]">{activeBroadcast.message}</p>
+                <div className="min-w-0">
+                  <div className="font-semibold text-[var(--text-primary)] flex items-center gap-1.5 text-xs">
+                    <span>{activeBroadcast.title}</span>
+                    <span className="text-[10px] text-[var(--text-muted)]">· Broadcast</span>
+                  </div>
+                  <p className="text-[var(--text-secondary)] truncate text-[11px]">{activeBroadcast.message}</p>
+                </div>
               </div>
+              <button
+                type="button"
+                onClick={() => setDismissedBroadcastIds(prev => [...prev, activeBroadcast.id])}
+                className="p-1.5 text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-black/[0.05] dark:hover:bg-white/[0.08] rounded-lg transition-colors shrink-0 cursor-pointer"
+                title="Dismiss Notice"
+              >
+                <X size={14} />
+              </button>
             </div>
-            <button
-              onClick={() => setDismissedBroadcastIds(prev => [...prev, activeBroadcast.id])}
-              className="p-1 text-slate-400 hover:text-white hover:bg-zinc-800 rounded transition-colors shrink-0"
-              title="Dismiss Notice"
-            >
-              <X size={14} />
-            </button>
-          </div>
-        )}
+          )}
 
-        {/* 2026 Top Bar Contract — Zone 1: Brand | Zone 2: Engine & Preset | Zone 3: Actions */}
-        <header className="h-14 px-3 sm:px-4 sticky top-0 z-20 nova-glass-strong border-x-0 border-t-0 flex items-center justify-between gap-4 select-none w-full min-w-0">
-          {/* Zone 1: Sidebar Toggle + Brand wordmark */}
-          <div className="flex items-center gap-2.5 shrink-0">
-            <button
-              onClick={() => setIsSidebarOpen(!isSidebarOpen)}
-              className="w-9 h-9 rounded-lg bg-white/[0.05] hover:bg-white/[0.1] border border-[var(--nova-border)] text-[var(--nova-text-2)] hover:text-white flex items-center justify-center transition-colors cursor-pointer shrink-0"
-              title="Toggle sidebar"
-            >
-              <Menu size={17} />
-            </button>
+          {/* Muse 3-Zone Floating Glass Top Bar */}
+          <header className="h-14 px-3 sm:px-4 sticky top-0 z-20 glass-header-2026 flex items-center justify-between gap-2 sm:gap-4 select-none w-full min-w-0 shrink-0">
+            {/* Zone 1: Sidebar Toggle + Wordmark + Active Companion */}
+            <div className="flex items-center gap-2 min-w-0">
+              <button
+                type="button"
+                onClick={() => setIsSidebarOpen(!isSidebarOpen)}
+                className="btn btn-ghost w-10 h-10 !p-0 rounded-full shrink-0"
+                title="Toggle sidebar"
+              >
+                <Menu size={17} />
+              </button>
 
-            <div className="flex items-center gap-2">
-              <span className="font-bold text-sm tracking-tight text-white whitespace-nowrap">NOVA<span className="nova-aurora-text"> AI</span></span><span hidden>
-                VOID AI
+              <span className={clsx(
+                'font-display font-semibold text-base tracking-tight text-[var(--text-primary)] whitespace-nowrap shrink-0',
+                isSidebarOpen ? 'hidden 2xl:inline' : 'hidden sm:inline'
+              )}>
+                NOVA <span className="text-gradient text-gradient-animated">Muse</span>
               </span>
-              <span className="hidden sm:inline text-[10px] font-mono text-slate-500">
-                · 2026
-              </span>
+
+              <ModelSelectorDropdown
+                selectedProvider={selectedProvider}
+                selectedModel={selectedModel}
+                selectedPersonaId={selectedPersonaId}
+                onSelect={handleSelectProviderModel}
+                lastTelemetry={lastTelemetry}
+              />
             </div>
-          </div>
 
-          {/* Zone 2: Engine Selector & Persona Preset */}
-          <div className="flex items-center gap-2 min-w-0">
-            <ModelSelectorDropdown
-              selectedProvider={selectedProvider}
-              selectedModel={selectedModel}
-              onSelect={handleSelectProviderModel}
-              lastTelemetry={lastTelemetry}
-            />
-
-            <button
-              onClick={() => setShowPromptStudio(true)}
-              className="h-9 px-2.5 rounded-lg bg-white/[0.04] hover:bg-white/[0.09] border border-[var(--nova-border)] text-[var(--nova-text-2)] hover:text-white text-xs font-medium hidden md:flex items-center gap-1.5 transition-colors cursor-pointer shrink-0"
-              title="Prompt Engineering Studio & Custom System Directives"
-            >
-              <Sliders size={13} className="text-amber-400" />
-              <span>Persona</span>
-            </button>
-          </div>
-
-          {/* Zone 3: Command Bar, Interactive Workspace, Plus & Profile */}
-          <div className="flex items-center gap-2 shrink-0">
-            {/* Global Command Bar Button (⌘K) */}
-            <button
-              onClick={() => handleExportChat()}
-              title="Export this chat as Markdown"
-              className="h-9 px-2.5 rounded-lg bg-white/[0.04] hover:bg-white/[0.09] border border-[var(--nova-border)] text-[var(--nova-text-2)] hover:text-white text-xs font-medium hidden md:flex items-center gap-1.5 transition-colors cursor-pointer shrink-0"
-            >
-              <Download size={13} className="text-violet-400" />
-              <span className="hidden lg:inline text-xs">Export</span>
-            </button>
-            <button
-              onClick={handleRegenerate}
-              disabled={isLoading || messages.length === 0}
-              title="Regenerate the last response"
-              className="h-9 px-2.5 rounded-lg bg-white/[0.04] hover:bg-white/[0.09] border border-[var(--nova-border)] text-[var(--nova-text-2)] hover:text-white text-xs font-medium hidden md:flex items-center gap-1.5 transition-colors cursor-pointer shrink-0 disabled:opacity-40 disabled:cursor-not-allowed"
-            >
-              <RefreshCw size={13} className="text-cyan-400" />
-              <span className="hidden lg:inline text-xs">Regenerate</span>
-            </button>
-            <button
-              onClick={() => setShowCommandPalette(true)}
-              className="h-9 px-2.5 sm:px-3 rounded-lg bg-white/[0.04] hover:bg-white/[0.09] border border-[var(--nova-border)] hover:border-[var(--nova-border-strong)] text-[var(--nova-text-2)] hover:text-white text-xs font-medium flex items-center gap-2 transition-all cursor-pointer"
-              title="Global Command Palette (Press ⌘K or Ctrl+K)"
-            >
-              <Command size={13} className="text-blue-400" />
-              <span className="hidden lg:inline text-xs">Commands</span>
-              <kbd className="hidden sm:inline-block px-1.5 py-0.5 text-[10px] font-mono text-[var(--nova-text-3)] bg-white/[0.05] border border-[var(--nova-border)] rounded">
-                ⌘K
-              </kbd>
-            </button>
-
-            {/* Split Code Workspace Drawer Trigger */}
-            <button
-              onClick={() => setShowWorkspace(!showWorkspace)}
+            {/* Zone 2: Muse Presence Mode Switcher (Stage | PiP | Voice | Face) */}
+            <nav
+              aria-label="Muse companion mode"
               className={clsx(
-                "h-9 px-2.5 sm:px-3 rounded-lg border text-xs font-medium flex items-center gap-1.5 transition-all cursor-pointer",
-                showWorkspace
-                  ? "bg-blue-600 border-blue-500 text-white shadow-sm"
-                  : "bg-white/[0.04] hover:bg-white/[0.09] border-[var(--nova-border)] text-[var(--nova-text-2)] hover:text-white"
+                'items-center gap-0.5 p-1 rounded-full glass-subtle shrink-0',
+                isSidebarOpen ? 'hidden 2xl:flex' : 'hidden xl:flex'
               )}
-              title="Toggle Interactive Code Workspace & Sandbox Terminal (⌘E)"
             >
-              <Code2 size={14} className={showWorkspace ? "text-white" : "text-emerald-400"} />
-              <span className="hidden sm:inline">Workspace</span>
-            </button>
+              {([
+                { id: 'stage', label: 'Stage' },
+                { id: 'pip', label: 'PiP' },
+                { id: 'voice', label: 'Voice' },
+                { id: 'face', label: 'Face-to-Face' },
+              ] as { id: MusePresenceMode; label: string }[]).map((item) => {
+                const isActive = presenceMode === item.id;
+                return (
+                  <button
+                    type="button"
+                    key={item.id}
+                    onClick={() => handleChangePresenceMode(item.id)}
+                    className={clsx(
+                      'px-3 py-1.5 rounded-full text-xs font-semibold transition-all cursor-pointer whitespace-nowrap',
+                      isActive
+                        ? 'glass-thick text-[var(--text-primary)] shadow-[var(--shadow-xs)]'
+                        : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)]'
+                    )}
+                  >
+                    {item.label}
+                  </button>
+                );
+              })}
+            </nav>
 
-            <button
-              onClick={() => setShowSubscription(true)}
-              className="h-9 px-3 rounded-lg bg-white/[0.05] hover:bg-white/[0.1] border border-[var(--nova-border-strong)] text-white text-xs font-medium hidden sm:flex items-center gap-1 whitespace-nowrap transition-all cursor-pointer"
-              title="Upgrade Plan"
-            >
-              <span className="text-blue-400 text-xs">✦</span>
-              <span>Plus</span>
-            </button>
-
-            {/* Accent theme picker (retints the whole Nova UI live) */}
-            <AccentThemePicker />
-
-            <button
-              onClick={() => setShowSettings(true)}
-              className="w-9 h-9 rounded-lg bg-blue-600 text-white font-bold text-xs flex items-center justify-center hover:bg-blue-500 transition-colors cursor-pointer shrink-0 shadow-sm"
-              title="Account Settings"
-            >
-              {profile?.displayName ? profile.displayName.slice(0, 2).toUpperCase() : 'MT'}
-            </button>
-          </div>
-        </header>
-
-        {/* Chat Messages Container with 2026 Smooth Scrolling Physics */}
-        <div
-          ref={chatContainerRef}
-          onScroll={handleScroll}
-          className="flex-1 min-h-0 overflow-y-auto relative flex flex-col justify-between smooth-scroll-container touch-scroll select-text"
-        >
-          {messages.length === 0 ? (
-            /* Clean 2026 NOVA/VOID Welcome Screen */
-            <div className="flex-1 flex flex-col items-center justify-center px-4 max-w-2xl mx-auto w-full">
-              <div className="w-24 h-24 rounded-2xl bg-black/80 border border-[var(--nova-accent-border)] p-1.5 flex items-center justify-center mb-5 overflow-hidden nova-pulse ring-1 ring-white/10">
-                <img 
-                  src="/void-logo.jpg"
-                  alt="VOID AI" 
-                  className="w-full h-full object-cover rounded-xl"
-                />
+            {/* Zone 3: 4-Model Squad, Workspace Tools, Call Muse Trigger, Appearance & Profile */}
+            <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
+              {/* 4-Model Collaboration Squad Toggle */}
+              <div className="flex items-center rounded-full glass-subtle p-0.5 shrink-0">
+                <button
+                  type="button"
+                  onClick={handleToggleSquadMode}
+                  className={clsx(
+                    'btn h-8 px-2.5 sm:px-3 rounded-full text-xs whitespace-nowrap',
+                    squadMode ? 'btn-primary' : 'btn-ghost !border-transparent'
+                  )}
+                  title="Toggle 4-Model Collaborative Chat (4 AI models discuss & split tasks in parallel)"
+                >
+                  <Users size={13} />
+                  <span className="hidden sm:inline">{squadMode ? '4-Model Squad' : 'Squad'}</span>
+                </button>
+                {squadMode && (
+                  <button
+                    type="button"
+                    onClick={() => setShowSquadRoster(true)}
+                    className="h-8 px-2 text-[11px] font-semibold text-[var(--text-secondary)] hover:text-[var(--text-primary)] cursor-pointer whitespace-nowrap"
+                    title="Customize the 4 Muse models"
+                  >
+                    Edit
+                  </button>
+                )}
               </div>
-              <h1 className="text-2xl sm:text-3xl font-bold mb-1.5 tracking-tight"><span className="nova-aurora-text">How can I help you today?</span></h1>
-              <p className="text-sm text-slate-400 mb-8 font-normal">Brilliant answers, beautifully fast.</p>
 
-              {/* Quick action prompts with 2026 obsidian styling */}
-              <div className="w-full grid grid-cols-2 gap-2.5 max-w-lg">
+              <button
+                type="button"
+                onClick={() => setShowPromptStudio(true)}
+                className="btn btn-ghost h-9 px-2.5 rounded-full text-xs hidden xl:flex whitespace-nowrap"
+                title="Directives & Prompt Engineering Studio"
+              >
+                <Sliders size={13} style={{ color: 'var(--accent)' }} />
+                <span>Directives</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setShowCommandPalette(true)}
+                className="btn btn-ghost h-9 px-2.5 rounded-full text-xs whitespace-nowrap hidden sm:inline-flex"
+                title="Command Palette (⌘K)"
+              >
+                <Command size={13} style={{ color: 'var(--accent)' }} />
+                <kbd className="kbd hidden sm:inline-block">⌘K</kbd>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setShowArtifactsDrawer(true)}
+                className={clsx(
+                  'btn h-9 px-2.5 sm:px-3 rounded-full text-xs whitespace-nowrap',
+                  showArtifactsDrawer ? 'btn-primary' : 'btn-ghost'
+                )}
+                title="View persistent conversation artifacts & downloads"
+              >
+                <Layers size={14} style={showArtifactsDrawer ? undefined : { color: 'var(--accent)' }} />
+                <span className="hidden sm:inline">Artifacts</span>
+                {conversationArtifacts.length > 0 && (
+                  <span className="ml-0.5 text-[10px] font-mono tabular-nums opacity-85">
+                    ({conversationArtifacts.length})
+                  </span>
+                )}
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setShowWorkspace(!showWorkspace)}
+                className={clsx(
+                  'btn h-9 px-2.5 sm:px-3 rounded-full text-xs whitespace-nowrap hidden sm:inline-flex',
+                  showWorkspace ? 'btn-primary' : 'btn-ghost'
+                )}
+                title="Toggle Code Workspace & Terminal (⌘E)"
+              >
+                <Code2 size={14} style={showWorkspace ? undefined : { color: 'var(--accent)' }} />
+                <span className="hidden sm:inline">Workspace</span>
+              </button>
+
+              <PWAInstallButton compact />
+
+              <AppearanceMenu />
+
+              {/* Signature Muse Upper-Right Phone / Face-to-Face Trigger */}
+              <button
+                type="button"
+                onClick={() => setShowLiveVoice(true)}
+                className="btn btn-primary h-9 px-3 rounded-full text-xs whitespace-nowrap shrink-0"
+                title={`Call ${activePersona.name} (Face-to-Face)`}
+              >
+                {presenceMode === 'voice' ? <Phone size={14} /> : <Video size={14} />}
+                <span className="hidden sm:inline">Call</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setShowSettings(true)}
+                className="w-9 h-9 rounded-full glass border border-[var(--glass-border)] font-bold text-[11px] flex items-center justify-center transition-all cursor-pointer shrink-0 hover:brightness-105 active:scale-95 text-[var(--text-primary)]"
+                title="Account Settings & Integrations"
+              >
+                {profile?.displayName ? profile.displayName.slice(0, 2).toUpperCase() : 'MU'}
+              </button>
+            </div>
+          </header>
+
+          {/* Compact Mobile Companion Bar / Voice-Only Banner */}
+          {(presenceMode === 'voice' || (presenceMode === 'stage' && messages.length > 0)) && (
+            <MuseCharacterStage
+              mode={presenceMode}
+              onChangeMode={handleChangePresenceMode}
+              persona={activePersona}
+              avatarState={liveAvatarState}
+              onSelectPersona={(p) => handleSelectProviderModel(p.provider, p.modelId, p.id)}
+              onOpenFaceToFace={() => setShowLiveVoice(true)}
+              onQuickPrompt={(prompt) => handleSend(prompt)}
+              hasActiveMessages={messages.length > 0}
+              onSpeakLatest={handleSpeakLatestReply}
+              isSpeakingReply={isSpeakingReply}
+              squadMode={squadMode}
+              squadPersonas={squadPersonas}
+              liveCouncilData={streamingCouncil}
+              onOpenSquadRoster={() => setShowSquadRoster(true)}
+            />
+          )}
+
+          {/* Chat Messages Container */}
+          <div
+            ref={chatContainerRef}
+            onScroll={handleScroll}
+            className="flex-1 min-h-0 overflow-y-auto relative flex flex-col justify-between smooth-scroll-container touch-scroll select-text"
+          >
+            {messages.length === 0 ? (
+              /* Faithful Muse AI Liquid Glass Hero Stage */
+              <div className="flex-1 flex flex-col items-center justify-center px-4 py-6 max-w-2xl mx-auto w-full">
+                {/* Featured Living Companion Portrait */}
+                <div className="relative mb-5 animate-riseIn flex flex-col items-center text-center">
+                  <div className="muse-glass-panel rounded-[2.2rem] p-3 mb-4 inline-flex flex-col items-center">
+                    <NovaOrb
+                      size={140}
+                      state={liveAvatarState}
+                      persona={activePersona}
+                      shape="rounded"
+                      showAudioBars
+                      interactiveTilt
+                      label={activePersona.name}
+                      className="sm:!w-[164px] sm:!h-[164px]"
+                    />
+                  </div>
+
+                  <div className="text-xs font-medium text-[var(--text-muted)] mb-1">
+                    {new Date().toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric' })}
+                    <span className="mx-1.5" aria-hidden="true">·</span>
+                    <span>{activePersona.name} ({activePersona.role})</span>
+                  </div>
+
+                  <h1
+                    className="font-display text-2xl sm:text-3xl font-semibold text-[var(--text-primary)] tracking-tight mb-2"
+                    style={{ textWrap: 'balance' }}
+                  >
+                    {getTimeGreeting()}. How can {activePersona.name} help?
+                  </h1>
+
+                  <p className="text-sm text-[var(--text-secondary)] max-w-lg leading-relaxed">
+                    {activePersona.personality}
+                  </p>
+
+                  <div className="flex flex-wrap items-center justify-center gap-2 mt-4">
+                    <button
+                      type="button"
+                      onClick={() => setShowLiveVoice(true)}
+                      className="btn btn-primary h-10 px-4 rounded-full text-xs whitespace-nowrap"
+                    >
+                      <Phone size={14} />
+                      <span>Start Face-to-Face Call</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleToggleSquadMode}
+                      className={clsx(
+                        'btn h-10 px-4 rounded-full text-xs whitespace-nowrap',
+                        squadMode ? 'btn-primary' : 'btn-ghost'
+                      )}
+                    >
+                      <Users size={14} />
+                      <span>{squadMode ? '4-Model Squad: ON' : 'Enable 4-Model Squad'}</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleToggleWebResearch}
+                      className={clsx(
+                        'btn h-10 px-4 rounded-full text-xs whitespace-nowrap',
+                        webResearchEnabled ? 'btn-primary' : 'btn-ghost'
+                      )}
+                    >
+                      <Globe size={14} />
+                      <span>{webResearchEnabled ? 'Live Web Crawl: ON' : 'Live Web Access'}</span>
+                    </button>
+                  </div>
+                </div>
+
+                {/* Muse Companion Selector Strip */}
+                <div className="w-full mb-5 animate-riseIn" style={{ animationDelay: '120ms' }}>
+                  <div className="flex items-center justify-between px-1 mb-2">
+                    <span className="section-label">Choose Your Muse</span>
+                    <span className="text-[11px] text-[var(--text-muted)]">Tap to switch live</span>
+                  </div>
+                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                    {NOVA_PERSONAS.map((p) => {
+                      const isActive = activePersona.id === p.id;
+                      return (
+                        <button
+                          type="button"
+                          key={p.id}
+                          onClick={() => handleSelectProviderModel(p.provider, p.modelId, p.id)}
+                          className={clsx(
+                            'p-2.5 rounded-2xl border text-left transition-all cursor-pointer flex items-center gap-2.5 hover-lift',
+                            isActive
+                              ? 'glass-thick text-[var(--text-primary)]'
+                              : 'glass text-[var(--text-secondary)] hover:text-[var(--text-primary)]'
+                          )}
+                          style={isActive ? { borderColor: 'var(--accent-muted)', background: 'var(--accent-soft)' } : undefined}
+                        >
+                          <NovaOrb size={38} persona={p} shape="circle" className="shrink-0" label={p.name} />
+                          <div className="min-w-0 flex-1">
+                            <div className="flex items-center justify-between gap-1">
+                              <span className="text-xs font-bold text-[var(--text-primary)] truncate">{p.name}</span>
+                              {isActive && <Check size={12} style={{ color: 'var(--accent)' }} className="shrink-0" />}
+                            </div>
+                            <div className="text-[11px] text-[var(--text-muted)] truncate">{p.role.split('·')[0].trim()}</div>
+                          </div>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+
+              {/* Curated Prompt Library */}
+              <div className="relative w-full max-w-2xl mb-3 animate-riseIn" style={{ animationDelay: '210ms' }}>
                 <button
-                  onClick={() => handleSend("Explain quantum computing algorithms with interactive examples.")}
-                  className="nova-chip nova-in p-3.5 sm:p-4 min-h-[56px] rounded-xl flex items-center justify-center text-center text-[13px] sm:text-sm font-medium cursor-pointer leading-snug active:scale-[0.98]"
+                  type="button"
+                  onClick={() => setPromptLibOpen(o => !o)}
+                  className="chip !rounded-2xl !px-4 !py-3 w-full justify-between !text-sm"
+                  aria-expanded={promptLibOpen}
                 >
-                  Quantum algorithms & code
+                  <span className="flex items-center gap-2">
+                    <span style={{ color: 'var(--accent)' }}>✦</span>
+                    <span className="text-[var(--text-primary)] font-semibold">Prompt Library</span>
+                    <span className="text-[var(--text-muted)] text-xs">· {PROMPT_LIBRARY.length} full-execution starters</span>
+                  </span>
+                  <span className={clsx('text-[var(--text-muted)] transition-transform duration-200', promptLibOpen && 'rotate-180')}>▾</span>
+                </button>
+                {promptLibOpen && (
+                  <div className="absolute left-0 right-0 top-full mt-2 z-30 rounded-2xl glass-thick p-2 max-h-72 overflow-y-auto animate-fadeIn">
+                    {PROMPT_LIBRARY.map((p, i) => (
+                      <button
+                        type="button"
+                        key={p.label}
+                        onClick={() => { setPromptLibOpen(false); handleSend(p.prompt); }}
+                        className="w-full text-left px-3 py-2.5 rounded-xl hover:bg-black/[0.04] dark:hover:bg-white/[0.06] transition-colors cursor-pointer nova-menu-item"
+                        style={{ animationDelay: `${i * 25}ms` }}
+                      >
+                        <span className="block text-xs font-semibold text-[var(--text-primary)]">{p.label}</span>
+                        <span className="block text-[11px] text-[var(--text-muted)] truncate mt-0.5">{p.prompt}</span>
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* Starter Action Cards */}
+              <div className="w-full grid grid-cols-1 sm:grid-cols-2 gap-2.5 max-w-2xl animate-riseIn" style={{ animationDelay: '260ms' }}>
+                <button
+                  type="button"
+                  onClick={() => handleSend("Design and build a complete interactive web dashboard with full component structure.")}
+                  className="chip !rounded-2xl !px-4 !py-3.5 justify-start text-left min-h-[58px] text-[13px] leading-snug hover-lift"
+                >
+                  <div>
+                    <div className="font-semibold text-[var(--text-primary)]">Build a complete web app</div>
+                    <div className="text-[11px] text-[var(--text-muted)] mt-0.5">End-to-end architecture & UI</div>
+                  </div>
                 </button>
                 <button
-                  onClick={() => handleSend("Build a high-performance REST and WebSocket API architecture.")}
-                  className="nova-chip nova-in p-3.5 sm:p-4 min-h-[56px] rounded-xl flex items-center justify-center text-center text-[13px] sm:text-sm font-medium cursor-pointer leading-snug active:scale-[0.98]"
+                  type="button"
+                  onClick={() => handleSend("Build a high-performance REST and real-time streaming API service with error handling.")}
+                  className="chip !rounded-2xl !px-4 !py-3.5 justify-start text-left min-h-[58px] text-[13px] leading-snug hover-lift"
                 >
-                  Design API architecture
+                  <div>
+                    <div className="font-semibold text-[var(--text-primary)]">Architect API & Backend</div>
+                    <div className="text-[11px] text-[var(--text-muted)] mt-0.5">Routes, schemas & streaming</div>
+                  </div>
                 </button>
                 <button
-                  onClick={() => handleSend("Audit my code for security vulnerabilities and optimize memory.")}
-                  className="nova-chip nova-in p-3.5 sm:p-4 min-h-[56px] rounded-xl flex items-center justify-center text-center text-[13px] sm:text-sm font-medium cursor-pointer leading-snug active:scale-[0.98]"
+                  type="button"
+                  onClick={() => handleSend("Review and harden my code for bugs, race conditions, and security edge cases.")}
+                  className="chip !rounded-2xl !px-4 !py-3.5 justify-start text-left min-h-[58px] text-[13px] leading-snug hover-lift"
                 >
-                  Security audit & profiling
+                  <div>
+                    <div className="font-semibold text-[var(--text-primary)]">Deep Code & Security Audit</div>
+                    <div className="text-[11px] text-[var(--text-muted)] mt-0.5">Bug hunt & performance fixes</div>
+                  </div>
                 </button>
                 <button
-                  onClick={() => handleSend("Summarize the latest 2026 tech breakthroughs and research.")}
-                  className="nova-chip nova-in p-3.5 sm:p-4 min-h-[56px] rounded-xl flex items-center justify-center text-center text-[13px] sm:text-sm font-medium cursor-pointer leading-snug active:scale-[0.98]"
+                  type="button"
+                  onClick={() => handleSend("Let's plan a multi-step engineering project together and execute it phase by phase.")}
+                  className="chip !rounded-2xl !px-4 !py-3.5 justify-start text-left min-h-[58px] text-[13px] leading-snug hover-lift"
                 >
-                  2026 Research & Insights
+                  <div>
+                    <div className="font-semibold text-[var(--text-primary)]">Multi-Step Project Execution</div>
+                    <div className="text-[11px] text-[var(--text-muted)] mt-0.5">Continuous step-by-step delivery</div>
+                  </div>
                 </button>
               </div>
             </div>
           ) : (
             /* Render Message History */
-            <div className="py-2.5">
+            <div className="py-3">
               {messages.map((msg) => (
                 <MessageBubble
                   key={msg.id}
@@ -965,66 +1531,140 @@ export function ChatScreen({ userId }: ChatScreenProps) {
                   onDelete={handleDeleteMessage}
                   onEdit={handleEditMessage}
                   onToggleStar={handleToggleStar}
+                  onContinue={msg.role !== 'user' ? () => handleSend('Continue seamlessly from where you stopped and finish all remaining parts of our current task without restarting.') : undefined}
                   activeRepo={activeRepo}
                   codingModeEnabled={codingMode}
+                  persona={activePersona}
                   onEnableCodingMode={handleEnableCodingMode}
+                  onInspectZip={(zipData) => setInspectZipData(zipData)}
+                  onOpenInWorkspace={(path, content) => {
+                    setWorkspaceFilePath(path);
+                    setWorkspaceFileContent(content);
+                    setWorkspaceTab('editor');
+                    setShowWorkspace(true);
+                  }}
+                  userId={userId}
                 />
               ))}
 
-              {/* Real-time Streaming AI Message */}
-              {isLoading && streamingMessage && (
+              {/* Real-time Streaming AI Message (or Live 4-Model Council Progress) */}
+              {isLoading && (streamingMessage || streamingCouncil) && (
                 <MessageBubble
                   message={{
                     id: 'temp',
                     chatId: currentChatId || '',
                     role: 'model',
                     text: streamingMessage,
+                    councilData: streamingCouncil || undefined,
                     createdAt: Date.now()
                   }}
                   isStreaming={true}
                   activeRepo={activeRepo}
                   codingModeEnabled={codingMode}
+                  persona={activePersona}
                   onEnableCodingMode={() => {
                     setCodingMode(true);
                     setStoredGitHubCodingMode(true);
                   }}
+                  onInspectZip={(zipData) => setInspectZipData(zipData)}
+                  onOpenInWorkspace={(path, content) => {
+                    setWorkspaceFilePath(path);
+                    setWorkspaceFileContent(content);
+                    setWorkspaceTab('editor');
+                    setShowWorkspace(true);
+                  }}
+                  userId={userId}
                 />
               )}
 
               {/* Thinking Indicator when waiting for stream start */}
-              {isLoading && !streamingMessage && <ThinkingIndicator />}
+              {isLoading && !streamingMessage && !streamingCouncil && <ThinkingIndicator persona={activePersona} />}
 
               <div ref={messagesEndRef} />
             </div>
           )}
 
-          {/* Floating Scroll to Bottom button — 2026 Glass Floating Dock */}
+          {/* Floating Scroll to Bottom button */}
           {showScrollBottom && (
             <button
+              type="button"
               onClick={() => scrollToBottom(true)}
-              className="sticky bottom-4 self-end mr-4 px-3.5 py-2 bg-[var(--nova-bg)]/90 hover:bg-[var(--nova-bg-2)] backdrop-blur-xl border border-[var(--nova-accent-border)] hover:border-[var(--nova-accent)] text-white rounded-full shadow-[var(--nova-shadow-2)] transition-all z-20 flex items-center gap-2 text-xs font-semibold cursor-pointer animate-fadeIn active:scale-95"
+              className="sticky bottom-4 self-end mr-4 px-3.5 py-2 glass-thick text-[var(--text-primary)] rounded-full transition-all z-20 flex items-center gap-2 text-xs font-semibold cursor-pointer animate-fadeIn active:scale-95"
               title="Jump to latest response"
             >
-              <ArrowDown size={13} className="text-red-400 animate-bounce" />
-              <span className="text-[11px] font-mono tracking-wide">Jump to latest</span>
+              <ArrowDown size={13} style={{ color: 'var(--accent)' }} className="animate-bounce" />
+              <span className="text-[11px] font-mono tracking-wide">Latest</span>
             </button>
           )}
         </div>
 
-        {/* Fixed Bottom Input Area — flex flow docked, never overlaps messages or mobile keyboard */}
-        <div className="shrink-0 w-full bg-black/85 backdrop-blur-md pt-1.5 pb-2 px-2 z-10 flex flex-col items-center border-t border-[#2e3354]/50">
-          <InputArea
-            onSend={handleSend}
-            isLoading={isLoading}
-            onStop={handleStopGeneration}
-            onOpenLiveVoice={() => setShowLiveVoice(true)}
-            onImageGenerate={handleImageGenerate}
-          />
-          <div className="text-[10px] text-[var(--nova-text-3)] text-center px-2 pt-0.5 select-none">
-            VOID AI can make mistakes. Check important info.
+          {/* Bottom Input Dock */}
+          <div className="shrink-0 w-full glass-header-2026 pt-2 pb-2 px-2 z-10 flex flex-col items-center">
+            {!isLoading && messages.length > 0 && (
+              <div className="w-full max-w-3xl flex items-center gap-1.5 px-1 pb-2 overflow-x-auto no-scrollbar">
+                {[
+                  { label: "Continue task", prompt: "Continue seamlessly from where you left off and complete the remaining parts without restarting." },
+                  { label: "Finish every file", prompt: "Complete all remaining code and details in full with zero placeholders." },
+                  { label: "Make it concise", prompt: "Summarize our current solution concisely while preserving key technical details." },
+                  { label: "Find edge cases", prompt: "Audit what we just built for edge cases and missing error handling." },
+                  { label: "Write tests", prompt: "Write complete unit/integration tests for what we just built." },
+                ].map(q => (
+                  <button
+                    type="button"
+                    key={q.label}
+                    onClick={() => handleSend(q.prompt)}
+                    className="chip shrink-0 !py-1.5 !px-3 !text-[11px]"
+                  >
+                    {q.label}
+                  </button>
+                ))}
+              </div>
+            )}
+            <InputArea
+              onSend={handleSend}
+              isLoading={isLoading}
+              onStop={handleStopGeneration}
+              onOpenLiveVoice={() => setShowLiveVoice(true)}
+              onImageGenerate={handleImageGenerate}
+              activeCharacterName={activePersona.name}
+              onActivityChange={setIsUserComposing}
+              webResearchEnabled={webResearchEnabled}
+              onToggleWebResearch={handleToggleWebResearch}
+              squadMode={squadMode}
+              userId={userId}
+              conversationId={currentChatId}
+            />
+            <div className="text-[10px] text-[var(--text-muted)] text-center px-2 pt-1 select-none">
+              {squadMode
+                ? `4-Model Squad (${squadPersonas.slice(0, 4).map((s) => s.name).join(' · ')}) · Parallel Execution`
+                : `${activePersona.name} remembers this entire thread · Live Web Crawl ${webResearchEnabled ? 'ON' : 'Auto'}`}
+            </div>
           </div>
         </div>
+
+        {/* Desktop Side-by-Side Stage & PiP Floating Card */}
+        {presenceMode !== 'voice' && (
+          <MuseCharacterStage
+            mode={presenceMode}
+            onChangeMode={handleChangePresenceMode}
+            persona={activePersona}
+            avatarState={liveAvatarState}
+            onSelectPersona={(p) => handleSelectProviderModel(p.provider, p.modelId, p.id)}
+            onOpenFaceToFace={() => setShowLiveVoice(true)}
+            onQuickPrompt={(prompt) => handleSend(prompt)}
+            hasActiveMessages={messages.length > 0}
+            onSpeakLatest={handleSpeakLatestReply}
+            isSpeakingReply={isSpeakingReply}
+            squadMode={squadMode}
+            squadPersonas={squadPersonas}
+            liveCouncilData={streamingCouncil}
+            onOpenSquadRoster={() => setShowSquadRoster(true)}
+          />
+        )}
       </div>
+
+      {/* Keyboard shortcuts guide */}
+      {showShortcuts && <ShortcutsModal onClose={() => setShowShortcuts(false)} />}
 
       {/* Admin Panel Modal */}
       {showAdminPanel && (
@@ -1101,16 +1741,30 @@ export function ChatScreen({ userId }: ChatScreenProps) {
 
       {/* Nova Core Brain Panel */}
       {showBrainPanel && (
-        <div className="fixed inset-0 z-[60] overflow-y-auto">
-          <BrainPanel />
+        <div
+          className="fixed inset-0 z-[70] flex items-center justify-center p-4 bg-black/55 backdrop-blur-md"
+          onClick={() => setShowBrainPanel(false)}
+        >
+          <div
+            className="relative w-full max-w-2xl max-h-[85vh] overflow-y-auto rounded-2xl shadow-2xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <button
+              type="button"
+              onClick={() => setShowBrainPanel(false)}
+              aria-label="Close Nova Core Brain"
+              className="absolute top-3 right-3 z-10 w-8 h-8 rounded-lg bg-black/40 hover:bg-black/70 text-white flex items-center justify-center cursor-pointer"
+            >
+              <X size={15} />
+            </button>
+            <BrainPanel />
+          </div>
         </div>
       )}
 
-      {/* Self-Evolution Panel */}
+      {/* Evolution Centre */}
       {showEvolutionPanel && (
-        <div className="fixed inset-0 z-[60] overflow-y-auto">
-          <EvolutionPanel />
-        </div>
+        <EvolutionCentre onClose={() => setShowEvolutionPanel(false)} />
       )}
 
       {/* Telegram AI Bot Modal */}
@@ -1122,12 +1776,14 @@ export function ChatScreen({ userId }: ChatScreenProps) {
         />
       )}
 
-      {/* Live Voice Chat Modal */}
+      {/* Live Voice Chat Modal (Face-to-Face Muse Call) */}
       {showLiveVoice && (
         <LiveVoiceModal
           onClose={() => setShowLiveVoice(false)}
           userId={userId}
           userTier={profile?.tier || 'free'}
+          persona={activePersona}
+          onSelectPersona={(p) => handleSelectProviderModel(p.provider, p.modelId, p.id)}
         />
       )}
 
@@ -1180,11 +1836,15 @@ export function ChatScreen({ userId }: ChatScreenProps) {
             setShowWorkspace(true);
             setShowCommandPalette(false);
           }}
-          onSelectModel={(provider, model) => {
-            handleSelectProviderModel(provider, model);
+          onSelectModel={(provider, model, personaId) => {
+            handleSelectProviderModel(provider, model, personaId);
           }}
           onOpenPromptStudio={() => {
             setShowPromptStudio(true);
+            setShowCommandPalette(false);
+          }}
+          onOpenEvolutionCentre={() => {
+            setShowEvolutionPanel(true);
             setShowCommandPalette(false);
           }}
           onOpenLiveVoice={() => {
@@ -1262,6 +1922,36 @@ export function ChatScreen({ userId }: ChatScreenProps) {
           }}
         />
       )}
+
+      {/* 4-Model Squad Roster Customization Modal */}
+      {showSquadRoster && (
+        <SquadRosterModal
+          selectedIds={squadPersonaIds}
+          onChangeSquad={handleChangeSquadIds}
+          onClose={() => setShowSquadRoster(false)}
+        />
+      )}
+
+      {/* Persistent Conversation Artifacts Drawer */}
+      <ConversationArtifactsDrawer
+        isOpen={showArtifactsDrawer}
+        onClose={() => setShowArtifactsDrawer(false)}
+        artifacts={conversationArtifacts}
+        userId={userId}
+        conversationId={currentChatId || 'pending-chat'}
+        onArtifactDeleted={(deletedId) => {
+          setConversationArtifacts((prev) => prev.filter((a) => a.id !== deletedId));
+        }}
+        onZipCreated={(zipArt) => {
+          setConversationArtifacts((prev) => [zipArt, ...prev]);
+        }}
+        onOpenInWorkspace={(path, content) => {
+          setWorkspaceFilePath(path);
+          setWorkspaceFileContent(content);
+          setWorkspaceTab('editor');
+          setShowWorkspace(true);
+        }}
+      />
     </div>
   );
 }

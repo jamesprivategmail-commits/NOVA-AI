@@ -25,25 +25,25 @@ export function BuildTestCard({ event }: BuildTestCardProps) {
   };
 
   return (
-    <div className="w-full my-2 rounded-xl bg-[#161b22] border border-[#30363d] overflow-hidden text-xs shadow-md transition-all font-sans">
-      <div className="flex items-center justify-between px-3.5 py-2.5 bg-[#161b22] select-none">
+    <div className="w-full my-2 rounded-xl bg-[#FFFFFF] border border-[#FFFFFF] overflow-hidden text-xs shadow-md transition-all font-sans">
+      <div className="flex items-center justify-between px-3.5 py-2.5 bg-[#FFFFFF] select-none">
         <div className="flex items-center gap-2.5 min-w-0">
-          <div className="w-6 h-6 rounded-lg bg-[#21262d] border border-[#30363d] flex items-center justify-center text-slate-200 shrink-0">
-            <Cpu size={13} className="text-[#3f86ff]" />
+          <div className="w-6 h-6 rounded-lg bg-[#FFFFFF] border border-[#FFFFFF] flex items-center justify-center text-slate-200 shrink-0">
+            <Cpu size={13} className="text-[#D97757]" />
           </div>
 
           <div className="min-w-0">
             <div className="flex items-center gap-2">
-              <span className="font-semibold text-white">
+              <span className="font-semibold text-[#1F1E1D]">
                 {isBuild ? 'Build Execution' : 'Test Suite'}
               </span>
-              <span className="text-[10px] text-[#8d8d91] font-mono">
+              <span className="text-[10px] text-[#6B6A67] font-mono">
                 $ {event.command}
               </span>
             </div>
 
             {/* Test counts or summary */}
-            <div className="flex items-center gap-2 text-[11px] text-[#8d8d91] mt-0.5">
+            <div className="flex items-center gap-2 text-[11px] text-[#6B6A67] mt-0.5">
               {event.testsPassed !== undefined && (
                 <span className="text-emerald-400 font-medium">✓ {event.testsPassed} passed</span>
               )}
@@ -79,7 +79,7 @@ export function BuildTestCard({ event }: BuildTestCardProps) {
             <button
               type="button"
               onClick={() => setIsExpanded(!isExpanded)}
-              className="p-1 hover:bg-[#21262d] rounded text-[#8d8d91] hover:text-white transition-colors cursor-pointer"
+              className="p-1 hover:bg-[#FFFFFF] rounded text-[#6B6A67] hover:text-[#1F1E1D] transition-colors cursor-pointer"
               title={isExpanded ? "Collapse logs" : "Expand logs"}
             >
               {isExpanded ? <ChevronUp size={13} /> : <ChevronDown size={13} />}
@@ -90,8 +90,8 @@ export function BuildTestCard({ event }: BuildTestCardProps) {
 
       {/* Expandable Logs */}
       {isExpanded && event.output && (
-        <div className="p-3 bg-[#0d1117] border-t border-[#30363d] relative">
-          <div className="flex items-center justify-between pb-1.5 mb-1.5 border-b border-[#30363d]/50 text-[10px] text-[#8d8d91]">
+        <div className="p-3 bg-[#FAF9F5] border-t border-[#FFFFFF] relative">
+          <div className="flex items-center justify-between pb-1.5 mb-1.5 border-b border-[#FFFFFF]/50 text-[10px] text-[#6B6A67]">
             <span>Console logs:</span>
             <button
               type="button"
@@ -102,7 +102,7 @@ export function BuildTestCard({ event }: BuildTestCardProps) {
               <span>{copied ? 'Copied' : 'Copy'}</span>
             </button>
           </div>
-          <pre className="max-h-48 overflow-y-auto whitespace-pre-wrap break-all text-[11px] font-mono text-[#c9d1d9] leading-relaxed select-text">
+          <pre className="max-h-48 overflow-y-auto whitespace-pre-wrap break-all text-[11px] font-mono text-[#3D3929] leading-relaxed select-text">
             {event.output}
           </pre>
         </div>

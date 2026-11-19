@@ -6,6 +6,7 @@ import { terminalService } from '../terminal/terminalService';
 import { workspaceService } from '../workspace/workspaceService';
 import { processManager } from '../process/processManager';
 import { AI_CONFIG } from '../../config/ai';
+import { clampTokensForModel, compactSystemPrompt, isPermanentAuthKeyError } from '../aiRouting.js';
 
 export interface AutonomousAgentOptions {
   userId: string;
@@ -14,6 +15,7 @@ export interface AutonomousAgentOptions {
   maxTokens: number;
   provider: string;
   model?: string;
+  temperature?: number;
   keys: {
     groqKeys: string[];
     geminiKeys: string[];
@@ -24,9 +26,14 @@ export interface AutonomousAgentOptions {
   maxSteps?: number;
 }
 
+interface StepCompletionResult {
+  ok: boolean;
+  truncated: boolean;
+}
+
 export class AutonomousAgentEngine {
   /**
-   * Run multi-step autonomous tool execution loop
+   * Run multi-step autonomous tool execution loop with automatic truncation recovery.
    */
   public async runAutonomousLoop(options: AutonomousAgentOptions): Promise<boolean> {
     const {
@@ -36,17 +43,18 @@ export class AutonomousAgentEngine {
       maxTokens,
       provider,
       model,
+      temperature = 0.25,
       keys,
       res,
-      maxSteps = 6,
+      maxSteps = 12,
     } = options;
 
     const autonomousSystemPrompt = `${systemPrompt}
 
 [AUTONOMOUS AGENT CAPABILITIES - REAL LINUX WORKSPACE EXECUTION]:
-You are NOVA AI, an elite autonomous development and automation agent equipped with a REAL Linux terminal, persistent workspace, and process manager.
-When the user asks you to write code, install packages, build apps, run Python/Node scripts, debug errors, manage Git, start servers, or automate workflows:
-YOU MUST EXECUTE REAL ACTIONS. Do NOT merely suggest commands for the user to copy/paste.
+You are an elite autonomous development and automation agent equipped with a REAL Linux terminal, persistent workspace, and process manager.
+When the user asks you to write code, install packages, build apps, run scripts, debug errors, manage Git, start servers, or complete large multi-file projects:
+EXECUTE REAL ACTIONS AND SEE EVERY STEP THROUGH TO COMPLETION. Do NOT stop halfway or leave TODO stubs.
 
 To invoke a tool, output a single JSON block inside \`\`\`void-tool-call:
 \`\`\`void-tool-call
@@ -59,31 +67,18 @@ To invoke a tool, output a single JSON block inside \`\`\`void-tool-call:
 
 AVAILABLE AUTONOMOUS TOOLS:
 1. "execute_command": { "action": "execute_command", "command": string, "thought"?: string }
-   Executes a bash/sh command in the user's workspace (/workspaces/${userId || 'default'}).
-   Returns real stdout, stderr, and exitCode.
 2. "write_file": { "action": "write_file", "path": string, "content": string, "thought"?: string }
-   Creates or updates a file in the persistent workspace.
 3. "read_file": { "action": "read_file", "path": string, "thought"?: string }
-   Reads file content from the persistent workspace.
 4. "list_files": { "action": "list_files", "path"?: string, "thought"?: string }
-   Lists directory contents and file structure in the workspace.
 5. "delete_file": { "action": "delete_file", "path": string, "thought"?: string }
-   Deletes a file or directory from the workspace.
 6. "start_process": { "action": "start_process", "command": string, "name"?: string, "port"?: number, "thought"?: string }
-   Launches a persistent background server or daemon process. If a port is used, Nova generates a live temporary HTTPS preview link: /api/preview/<port>/
 7. "stop_process": { "action": "stop_process", "id": string, "thought"?: string }
-   Stops a background task.
 8. "list_processes": { "action": "list_processes", "thought"?: string }
-   Lists all running background jobs, servers, and active preview links.
 
-AUTONOMOUS EXECUTION & SELF-CORRECTION PRINCIPLES:
-- The system feeds real tool output back to you immediately.
-- If a command fails or throws an error (e.g., missing package, syntax error, port in use):
-  1. Inspect the real error trace and exit code.
-  2. Formulate a fix (e.g., install missing library, edit file, modify config).
-  3. Re-run the verification command.
-  4. Only declare success after verifying the real output.
-- When you do NOT need any further tools, conclude with a clear, concise summary of the result and any preview links.`;
+SELF-CORRECTION & TASK COMPLETION PRINCIPLES:
+- Stay locked on the active task across steps until every requirement is complete and verified.
+- If a command fails, inspect stdout/stderr, fix the root cause, and re-run verification.
+- Never abandon a large task mid-build unless the user explicitly asks to stop.`;
 
     let currentMessages = [...messages];
     let step = 0;
@@ -92,50 +87,67 @@ AUTONOMOUS EXECUTION & SELF-CORRECTION PRINCIPLES:
       step++;
       let stepResponseText = '';
 
-      // Collect LLM completion for this step
-      const stepSuccess = await this.generateStepCompletion({
+      const stepResult = await this.generateStepCompletion({
         messages: currentMessages,
         systemPrompt: autonomousSystemPrompt,
         maxTokens,
         provider,
         model,
+        temperature,
         keys,
         onChunk: (chunk: string) => {
           stepResponseText += chunk;
           res.write(`data: ${JSON.stringify({ text: chunk })}\n\n`);
+          if (typeof (res as any).flush === 'function') {
+            (res as any).flush();
+          }
         },
       });
 
-      if (!stepSuccess) {
-        return false;
+      if (!stepResult.ok) {
+        return step > 1;
       }
 
-      // Check if the LLM requested a tool execution
       const toolCall = this.parseToolCall(stepResponseText);
-      if (!toolCall) {
-        // No tool call produced; the agent has answered or finished its workflow
-        return true;
+      if (toolCall) {
+        const toolResult = await this.executeTool(userId, toolCall, res);
+
+        currentMessages.push({
+          role: 'assistant',
+          content: stepResponseText,
+        });
+
+        currentMessages.push({
+          role: 'user',
+          content: `[SYSTEM TOOL EXECUTION RESULT: ${toolCall.action} (Exit: ${toolResult.exitCode ?? 0})]\n${toolResult.output}`,
+        });
+
+        res.write(`data: ${JSON.stringify({ text: '\n\n' })}\n\n`);
+        continue;
       }
 
-      // Execute tool call in real workspace
-      const toolResult = await this.executeTool(userId, toolCall, res);
+      // If no tool call yet, check if the response was cut off mid-output (token limit or unclosed fence)
+      if (stepResult.truncated || this.hasUnclosedCodeFence(stepResponseText)) {
+        currentMessages.push({
+          role: 'assistant',
+          content: stepResponseText,
+        });
+        currentMessages.push({
+          role: 'user',
+          content: 'Continue seamlessly from the exact character where you stopped without repeating previous text.',
+        });
+        continue;
+      }
 
-      // Append assistant's call and system's execution result back into conversation history
-      currentMessages.push({
-        role: 'assistant',
-        content: stepResponseText,
-      });
-
-      currentMessages.push({
-        role: 'user',
-        content: `[SYSTEM TOOL EXECUTION RESULT: ${toolCall.action} (Exit: ${toolResult.exitCode ?? 0})]\n${toolResult.output}`,
-      });
-
-      // Stream a newline transition
-      res.write(`data: ${JSON.stringify({ text: '\n\n' })}\n\n`);
+      return true;
     }
 
     return true;
+  }
+
+  private hasUnclosedCodeFence(text: string): boolean {
+    const matches = text.match(/```/g);
+    return Boolean(matches && matches.length % 2 === 1);
   }
 
   /**
@@ -169,7 +181,6 @@ AUTONOMOUS EXECUTION & SELF-CORRECTION PRINCIPLES:
         const command = String(toolCall.command || '').trim();
         if (!command) return { exitCode: 1, output: 'Error: No command provided' };
 
-        // Send tool-event running notification
         const startEvent = {
           id: eventId,
           type: 'tool',
@@ -189,7 +200,6 @@ AUTONOMOUS EXECUTION & SELF-CORRECTION PRINCIPLES:
         const completed = await runner.promise;
         const durationMs = Date.now() - startTime;
 
-        // Send completed tool event
         const doneEvent = {
           id: eventId,
           type: 'tool',
@@ -341,55 +351,66 @@ AUTONOMOUS EXECUTION & SELF-CORRECTION PRINCIPLES:
     maxTokens: number;
     provider: string;
     model?: string;
+    temperature?: number;
     keys: { groqKeys: string[]; geminiKeys: string[]; cohereKeys: string[]; bazaarLinkKeys: string[] };
     onChunk: (chunk: string) => void;
-  }): Promise<boolean> {
-    const { messages, systemPrompt, maxTokens, provider, model, keys, onChunk } = params;
+  }): Promise<StepCompletionResult> {
+    const { messages, systemPrompt, maxTokens, provider, model, temperature = 0.25, keys, onChunk } = params;
 
     const providersToTry = [
       provider,
       ...['groq', 'gemini', 'cohere', 'bazaarlink'].filter(p => p !== provider),
     ];
+    const compactedPrompt = compactSystemPrompt(systemPrompt, 6800);
 
     for (const p of providersToTry) {
       try {
         if (p === 'groq' && keys.groqKeys.length > 0) {
+          const strongDefaults = ['openai/gpt-oss-120b', 'qwen/qwen3.8-27b', 'openai/gpt-oss-20b', 'allam-2-7b'];
           const candidateModels = model && model !== 'auto'
-            ? [model, 'qwen/qwen3.8-27b', 'openai/gpt-oss-120b', 'allam-2-7b']
-            : ['qwen/qwen3.8-27b', 'openai/gpt-oss-120b', 'openai/gpt-oss-20b', 'allam-2-7b'];
+            ? [model, ...strongDefaults.filter(m => m !== model)]
+            : strongDefaults;
 
           for (const apiKey of keys.groqKeys) {
             try {
               const client = new Groq({ apiKey });
               let stepSucceeded = false;
+              let truncated = false;
               for (const groqModel of candidateModels) {
                 try {
-                  const stream = await client.chat.completions.create({
-                    model: groqModel,
-                    messages: [
-                      { role: 'system', content: systemPrompt },
-                      ...messages.map((m: any) => ({
-                        role: (m.role === 'model' || m.role === 'assistant' ? 'assistant' : 'user') as 'assistant' | 'user',
-                        content: String(m.text || m.content || ''),
-                      })),
-                    ],
-                    max_tokens: maxTokens,
-                    temperature: 0.2,
-                    stream: true,
-                  });
+                  const clampedTokens = clampTokensForModel('groq', groqModel, maxTokens);
+                  const stream = await client.chat.completions.create(
+                    {
+                      model: groqModel,
+                      messages: [
+                        { role: 'system', content: compactedPrompt },
+                        ...messages.map((m: any) => ({
+                          role: (m.role === 'model' || m.role === 'assistant' ? 'assistant' : 'user') as 'assistant' | 'user',
+                          content: String(m.text || m.content || ''),
+                        })),
+                      ],
+                      max_tokens: clampedTokens,
+                      temperature,
+                      stream: true,
+                    },
+                    { signal: AbortSignal.timeout(45000) }
+                  );
 
                   for await (const chunk of stream) {
                     const text = chunk.choices[0]?.delta?.content || '';
                     if (text) onChunk(text);
+                    if (chunk.choices[0]?.finish_reason === 'length') {
+                      truncated = true;
+                    }
                   }
                   stepSucceeded = true;
                   break;
                 } catch (mErr: any) {
-                  if (mErr.status === 401) throw mErr;
+                  if (isPermanentAuthKeyError(mErr?.status, mErr?.message)) throw mErr;
                   continue;
                 }
               }
-              if (stepSucceeded) return true;
+              if (stepSucceeded) return { ok: true, truncated };
             } catch (kErr: any) {
               continue;
             }
@@ -404,8 +425,10 @@ AUTONOMOUS EXECUTION & SELF-CORRECTION PRINCIPLES:
               const client = new CohereClient({ token });
               const stream = await client.chatStream({
                 message: messages[messages.length - 1]?.text || messages[messages.length - 1]?.content || 'proceed',
-                preamble: systemPrompt,
+                preamble: compactedPrompt,
                 model: cohereModel,
+                maxTokens: clampTokensForModel('cohere', cohereModel, maxTokens),
+                temperature,
                 chatHistory: messages.slice(0, -1).map((m: any) => ({
                   role: m.role === 'model' || m.role === 'assistant' ? 'CHATBOT' : 'USER',
                   message: m.text || m.content || '',
@@ -417,7 +440,7 @@ AUTONOMOUS EXECUTION & SELF-CORRECTION PRINCIPLES:
                   onChunk(chatEvent.text);
                 }
               }
-              return true;
+              return { ok: true, truncated: false };
             } catch (cErr: any) {
               continue;
             }
@@ -430,21 +453,30 @@ AUTONOMOUS EXECUTION & SELF-CORRECTION PRINCIPLES:
 
           for (const apiKey of keys.geminiKeys) {
             try {
-              const ai = new GoogleGenAI({ apiKey });
+              const ai = new GoogleGenAI({
+                apiKey,
+                httpOptions: { headers: { 'User-Agent': 'aistudio-build' } },
+              });
+              const geminiModel = model && model !== 'auto' ? model : 'gemini-2.5-flash';
               const response = await ai.models.generateContentStream({
-                model: model && model !== 'auto' ? model : 'gemini-2.5-flash',
+                model: geminiModel,
                 contents,
                 config: {
-                  systemInstruction: systemPrompt,
-                  maxOutputTokens: maxTokens,
-                  temperature: 0.2,
+                  systemInstruction: compactedPrompt,
+                  maxOutputTokens: clampTokensForModel('gemini', geminiModel, maxTokens),
+                  temperature,
                 },
               });
 
+              let truncated = false;
               for await (const chunk of response) {
                 if (chunk.text) onChunk(chunk.text);
+                const finish = (chunk as any).candidates?.[0]?.finishReason;
+                if (finish === 'MAX_TOKENS') {
+                  truncated = true;
+                }
               }
-              return true;
+              return { ok: true, truncated };
             } catch (gErr: any) {
               continue;
             }
@@ -455,7 +487,7 @@ AUTONOMOUS EXECUTION & SELF-CORRECTION PRINCIPLES:
       }
     }
 
-    return false;
+    return { ok: false, truncated: false };
   }
 }
 
